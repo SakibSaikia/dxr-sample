@@ -3,7 +3,7 @@
 // Main window handle for the application. HWND is of type void* and refers to a handle to a window.
 HWND ghMainWnd = nullptr;
 
-// Initializes the Windows application. HINSTANCE is of type void* and refers to handle to an instance.
+// Initializes the Windows application. HINSTANCE is of type void* and refers to a handle to an instance.
 bool InitWindowsApp(HINSTANCE instanceHandle, int show);
 
 // Wraps the message loop code
@@ -13,8 +13,8 @@ int Run();
 // LRESULT is of type __int64.
 LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
-// Main entry point. WINAPI is equivalent __stdcall.
-int WINAPI(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR pCmdLine, int nShowCmd)
+// Main entry point. WINAPI is equivalent __stdcall (callee cleans the stack leading to slightly smaller program sizes)
+int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR pCmdLine, int nShowCmd)
 {
 	// Initialize the application window
 	if (!InitWindowsApp(hInstance, nShowCmd))
@@ -35,7 +35,7 @@ bool InitWindowsApp(HINSTANCE instanceHandle, int show)
 	desc.hInstance = instanceHandle;					// Handle to the application instance
 	desc.hIcon = LoadIcon(0, IDI_APPLICATION);			// Default application handle
 	desc.hCursor = LoadCursor(0, IDC_ARROW);			// Default arrow cursor
-	desc.hbrBackground = COLOR_WINDOW;					// Background color for client area of window
+	desc.hbrBackground = (HBRUSH)COLOR_WINDOW;			// Background color for client area of window
 	desc.lpszMenuName = nullptr;						// Menu. Not used.
 	desc.lpszClassName = L"D3D12SampleWindow";			// Window class name. Used to identify class by name.
 
@@ -78,12 +78,35 @@ bool InitWindowsApp(HINSTANCE instanceHandle, int show)
 
 int Run()
 {
+	MSG msg = { 0 };
 
+	// GetMessage returns 0 when a WM_QUIT message is received
+	while (GetMessage(&msg, 0, 0, 0))
+	{
+		TranslateMessage(&msg);
+		DispatchMessage(&msg);
+	}
+
+	return static_cast<int>(msg.wParam);
 }
 
 LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
+	switch (msg)
+	{
+	case WM_LBUTTONDOWN:
+		MessageBox(0, L"Hello World", L"Hello", MB_OK);
+		return 0;
+	case WM_KEYDOWN:
+		if (wParam == VK_ESCAPE)
+			DestroyWindow(ghMainWnd);
+		return 0;
+	case WM_DESTROY:
+		PostQuitMessage(0);
+		return 0;
+	}
 
+	return DefWindowProc(hWnd, msg, wParam, lParam);
 }
 
 
