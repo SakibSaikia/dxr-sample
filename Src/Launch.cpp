@@ -81,10 +81,18 @@ int Run()
 	MSG msg = { 0 };
 
 	// GetMessage returns 0 when a WM_QUIT message is received
-	while (GetMessage(&msg, 0, 0, 0))
+	while (msg.message != WM_QUIT)
 	{
-		TranslateMessage(&msg);
-		DispatchMessage(&msg);
+
+		if (PeekMessage(&msg, 0, 0, 0, PM_REMOVE))
+		{
+			TranslateMessage(&msg);
+			DispatchMessage(&msg);
+		}
+		else
+		{
+			// Run game code
+		}
 	}
 
 	return static_cast<int>(msg.wParam);
