@@ -1,11 +1,9 @@
-#include <windows.h>
-#include <wrl.h>
-#include <dxgi1_4.h>
+#include "App.h"
 #include <string>
 
 // Link necessary libraries.
+#pragma comment(lib, "D3D12.lib")
 #pragma comment(lib, "dxgi.lib")
-
 
 // Main window handle for the application. HWND is of type void* and refers to a handle to a window.
 HWND ghMainWnd = nullptr;
@@ -15,9 +13,6 @@ bool InitWindowsApp(HINSTANCE instanceHandle, int show);
 
 // Wraps the message loop code
 int Run();
-
-// Initialize D3D
-void InitD3D();
 
 // Windows procedure to handle events the window receives. CALLBACK is equivalent to __stdcall (it is used to distinguish it as a callback function)
 // LRESULT is of type __int64.
@@ -79,7 +74,8 @@ bool InitWindowsApp(HINSTANCE instanceHandle, int show)
 	
 
 	// Initialize D3D
-	InitD3D();
+	App d3dApp;
+	d3dApp.Init();
 
 	// Window is not shown until we call ShowWindow()
 	ShowWindow(ghMainWnd, show);
@@ -129,32 +125,6 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 	}
 
 	return DefWindowProc(hWnd, msg, wParam, lParam);
-}
-
-void InitD3D()
-{
-	// Create DXGI factory
-	Microsoft::WRL::ComPtr<IDXGIFactory4> dxgiFactory;
-	CreateDXGIFactory1(IID_PPV_ARGS(&dxgiFactory));
-
-	// Log adapters
-	IDXGIAdapter* adapter = nullptr;
-	UINT adapterIndex = 0;
-	while (dxgiFactory->EnumAdapters(adapterIndex, &adapter) != DXGI_ERROR_NOT_FOUND)
-	{
-		DXGI_ADAPTER_DESC desc;
-		adapter->GetDesc(&desc);
-
-		std::wstring text = L"***Adapter: ";
-		text += desc.Description;
-		text += L"\n";
-
-		OutputDebugString(text.c_str());
-
-		adapter->Release();
-
-		adapterIndex++;
-	}
 }
 
 
