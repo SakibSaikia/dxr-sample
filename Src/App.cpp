@@ -1,8 +1,23 @@
 #include "App.h"
 #include <cassert>
 
-bool App::Init()
+bool Engine::App::Init(HWND windowHandle)
 {
+	// Debug layer
+	{
+#if defined(DEBUG) || defined(_DEBUG)
+		// Must be called before D3D12 device is created
+		D3D12GetDebugInterface(IID_PPV_ARGS(m_debugController.GetAddressOf()));
+		m_debugController->EnableDebugLayer();
+#endif
+	}
+
+	// DXGI
+	{
+		HRESULT hr = CreateDXGIFactory1(IID_PPV_ARGS(m_dxgiFactory.GetAddressOf()));
+		assert(hr == S_OK && L"Failed to create DXGI factory");
+	}
+
 	// Device
 	{
 		HRESULT hr = D3D12CreateDevice(
@@ -60,20 +75,76 @@ bool App::Init()
 		m_cmdList->Close();
 	}
 
+	// Swap Chain
+	{
+		DXGI_SWAP_CHAIN_DESC scDesc = {};
+		scDesc.BufferDesc.Width = k_screenWidth;
+		scDesc.BufferDesc.Height = k_screenHeight;
+		scDesc.BufferDesc.RefreshRate.Numerator = 60;
+		scDesc.BufferDesc.RefreshRate.Denominator = 1;
+		scDesc.BufferDesc.Format = k_backBufferFormat;
+		scDesc.BufferDesc.ScanlineOrdering = DXGI_MODE_SCANLINE_ORDER_UNSPECIFIED;
+		scDesc.BufferDesc.Scaling = DXGI_MODE_SCALING_UNSPECIFIED;
+		scDesc.SampleDesc.Count = 1; // No MSAA
+		scDesc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
+		scDesc.BufferCount = k_frameCount;
+		scDesc.OutputWindow = windowHandle;
+		scDesc.Windowed = true;
+		scDesc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
+		scDesc.Flags = DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH;
+
+		HRESULT hr = m_dxgiFactory->CreateSwapChain(
+			m_cmdQueue.Get(),
+			&scDesc,
+			m_swapChain.GetAddressOf()
+		);
+
+		assert(hr == S_OK && L"Failed to create swap chain");
+	}
+
+	// Descriptor Heaps
+	{
+		D3D12_DESCRIPTOR_HEAP_DESC rtvHeapDesc = {};
+		rtvHeapDesc.NumDescriptors = k_frameCount;
+		rtvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
+		HRESULT hr = m_d3dDevice->CreateDescriptorHeap(&rtvHeapDesc, IID_PPV_ARGS(m_rtvHeap.GetAddressOf()));
+		assert(hr == S_OK && L"Failed to create RTV heap");
+
+		D3D12_DESCRIPTOR_HEAP_DESC dsvHeapDesc = {};
+		dsvHeapDesc.NumDescriptors = k_frameCount;
+		dsvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_DSV;
+		hr = m_d3dDevice->CreateDescriptorHeap(&dsvHeapDesc, IID_PPV_ARGS(m_dsvHeap.GetAddressOf()));
+		assert(hr == S_OK && L"Failed to create DSV heap");
+	}
+
 	return true;
 }
 
-bool App::Destroy()
+bool Engine::App::Destroy()
 {
 	return true;
 }
 
-void App::Update()
+void Engine::App::Update()
 {
 
 }
 
-void App::Render()
+void Engine::App::Render() const
 {
 
+}
+
+D3D12_CPU_DESCRIPTOR_HANDLE Engine::App::GetCurrentBackBufferView() const
+{
+	return CD3DX12_CPU_DESCRIPTOR_HANDLE(
+		m_rtvHeap->GetCPUDescriptorHandleForHeapStart(),
+		m_currentBackBuffer,
+		m_rtvDescriptorSize
+	);
+}
+
+D3D12_CPU_DESCRIPTOR_HANDLE Engine::App::GetDepthStencilView() const
+{
+	return m_dsvHeap->GetCPUDescriptorHandleForHeapStart();
 }

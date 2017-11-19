@@ -6,7 +6,7 @@
 #pragma comment(lib, "dxgi.lib")
 
 // Main window handle for the application. HWND is of type void* and refers to a handle to a window.
-HWND ghMainWnd = nullptr;
+HWND g_wndHandle = nullptr;
 
 // Initializes the Windows application. HINSTANCE is of type void* and refers to a handle to an instance.
 bool InitWindowsApp(HINSTANCE instanceHandle, int show);
@@ -52,21 +52,21 @@ bool InitWindowsApp(HINSTANCE instanceHandle, int show)
 	}
 
 	// Create the application window
-	ghMainWnd = CreateWindow(
+	g_wndHandle = CreateWindow(
 		L"D3D12SampleWindow",							// Registered WNDCLASS instance
 		L"D3D12Sample",									// Window title
 		WS_OVERLAPPEDWINDOW,							// Window Style
 		CW_USEDEFAULT,									// X-coordinate
 		CW_USEDEFAULT,									// Y-coordinate
-		CW_USEDEFAULT,									// Width
-		CW_USEDEFAULT,									// Height
+		Engine::k_screenWidth,							// Width
+		Engine::k_screenHeight,							// Height
 		nullptr,										// Parent Window. Not Used.
 		nullptr,										// Menu. Not Used.
 		instanceHandle,									// App instance
 		nullptr											// Not Used
 	);
 
-	if (ghMainWnd == nullptr)
+	if (g_wndHandle == nullptr)
 	{
 		MessageBox(0, L"Failed to create window", 0, 0);
 		return false;
@@ -74,14 +74,14 @@ bool InitWindowsApp(HINSTANCE instanceHandle, int show)
 	
 
 	// Initialize D3D
-	App d3dApp;
-	d3dApp.Init();
+	Engine::App d3dApp;
+	d3dApp.Init(g_wndHandle);
 
 	// Window is not shown until we call ShowWindow()
-	ShowWindow(ghMainWnd, show);
+	ShowWindow(g_wndHandle, show);
 
 	// Sends a WM_PAINT message directly to the window procedure of the specified window
-	UpdateWindow(ghMainWnd);
+	UpdateWindow(g_wndHandle);
 
 	return true;
 }
@@ -117,7 +117,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 		return 0;
 	case WM_KEYDOWN:
 		if (wParam == VK_ESCAPE)
-			DestroyWindow(ghMainWnd);
+			DestroyWindow(g_wndHandle);
 		return 0;
 	case WM_DESTROY:
 		PostQuitMessage(0);
