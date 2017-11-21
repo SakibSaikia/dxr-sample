@@ -117,6 +117,76 @@ bool Engine::App::Init(HWND windowHandle)
 		assert(hr == S_OK && L"Failed to create DSV heap");
 	}
 
+	// Render Target Views
+	{
+		CD3DX12_CPU_DESCRIPTOR_HANDLE rtvHeapHandle(m_rtvHeap->GetCPUDescriptorHandleForHeapStart());
+		for (auto bufferIdx = 0; bufferIdx < k_frameCount; bufferIdx++)
+		{
+			HRESULT hr = m_swapChain->GetBuffer(bufferIdx, IID_PPV_ARGS(m_swapChainBuffer.at(bufferIdx).GetAddressOf()));
+			assert(hr == S_OK && L"Failed to initialize back buffer");
+
+			m_d3dDevice->CreateRenderTargetView(m_swapChainBuffer.at(bufferIdx).Get(), nullptr, rtvHeapHandle);
+			rtvHeapHandle.Offset(1, m_rtvDescriptorSize);
+		}
+	}
+
+	// Depth Stencil View
+	{
+		D3D12_RESOURCE_DESC resDesc = {};
+		resDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
+		resDesc.Width = k_screenWidth;
+		resDesc.Height = k_screenHeight;
+		resDesc.DepthOrArraySize = 1;
+		resDesc.MipLevels = 1;
+		resDesc.Format = k_depthStencilFormatRaw;
+		resDesc.SampleDesc.Count = 1; // No MSAA
+		resDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
+
+		D3D12_CLEAR_VALUE zClear;
+		zClear.Format = k_depthStencilFormatDsv;
+		zClear.DepthStencil.Depth = 1.f;
+		zClear.DepthStencil.Stencil = 0;
+
+		HRESULT hr = m_d3dDevice->CreateCommittedResource(
+			&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
+			D3D12_HEAP_FLAG_NONE,
+			&resDesc,
+			D3D12_RESOURCE_STATE_COMMON,
+			&zClear,
+			IID_PPV_ARGS(m_depthStencilBuffer.GetAddressOf())
+		);
+
+		assert(hr == S_OK && L"Failed to create DepthStencil buffer");
+
+		// Descriptor to mip level 0
+		D3D12_DEPTH_STENCIL_VIEW_DESC dsvDesc = {};
+		dsvDesc.Format = k_depthStencilFormatDsv;
+		dsvDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2D;
+		dsvDesc.Texture2D.MipSlice = 0;
+		dsvDesc.Flags = D3D12_DSV_FLAG_NONE; // Modify if you want a read-only DSV
+		m_d3dDevice->CreateDepthStencilView(
+			m_depthStencilBuffer.Get(),
+			&dsvDesc,
+			m_dsvHeap->GetCPUDescriptorHandleForHeapStart()
+		);
+
+		// Transition to depth write state
+		D3D12_RESOURCE_BARRIER barrierDesc = {};
+		barrierDesc.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+		barrierDesc.Transition.pResource = m_depthStencilBuffer.Get();
+		barrierDesc.Transition.StateBefore = D3D12_RESOURCE_STATE_COMMON;
+		barrierDesc.Transition.StateAfter = D3D12_RESOURCE_STATE_DEPTH_WRITE;
+		barrierDesc.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+		m_cmdList->ResourceBarrier(
+			1,
+			&barrierDesc
+			);
+	}
+
+	m_cmdList->Close();
+	ID3D12CommandList* cmdLists[] = { m_cmdList.Get() };
+	m_cmdQueue->ExecuteCommandLists(_countof(cmdLists), cmdLists);
+
 	return true;
 }
 

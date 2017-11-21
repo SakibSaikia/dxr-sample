@@ -13,6 +13,8 @@ namespace Engine
 	constexpr size_t k_screenWidth = 1280;
 	constexpr size_t k_screenHeight = 720;
 	constexpr DXGI_FORMAT k_backBufferFormat = DXGI_FORMAT_R8G8B8A8_UNORM;
+	constexpr DXGI_FORMAT k_depthStencilFormatRaw = DXGI_FORMAT_R24G8_TYPELESS;
+	constexpr DXGI_FORMAT k_depthStencilFormatDsv = DXGI_FORMAT_D24_UNORM_S8_UINT;
 
 	class App
 	{
@@ -42,6 +44,7 @@ namespace Engine
 		Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList> m_cmdList;
 
 		std::array<Microsoft::WRL::ComPtr<ID3D12Resource>, k_frameCount> m_swapChainBuffer;
+		Microsoft::WRL::ComPtr<ID3D12Resource> m_depthStencilBuffer;
 		uint32_t m_currentBackBuffer = 0;
 
 		uint32_t m_rtvDescriptorSize;
