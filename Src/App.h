@@ -19,14 +19,20 @@ namespace Engine
 	class App
 	{
 	public:
+
 		bool Init(HWND windowHandle);
 		bool Destroy();
 		void Update();
 		void Render() const;
 
+
 	private:
+
 		D3D12_CPU_DESCRIPTOR_HANDLE GetCurrentBackBufferView() const;
 		D3D12_CPU_DESCRIPTOR_HANDLE GetDepthStencilView() const;
+
+		void FlushCommandQueue() const;
+
 
 	private:
 
@@ -45,7 +51,7 @@ namespace Engine
 
 		std::array<Microsoft::WRL::ComPtr<ID3D12Resource>, k_frameCount> m_swapChainBuffer;
 		Microsoft::WRL::ComPtr<ID3D12Resource> m_depthStencilBuffer;
-		uint32_t m_currentBackBuffer = 0;
+		mutable uint32_t m_currentBackBuffer = 0;
 
 		uint32_t m_rtvDescriptorSize;
 		uint32_t m_dsvDescriptorSize;
@@ -54,5 +60,14 @@ namespace Engine
 
 		Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_rtvHeap;
 		Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_dsvHeap;
+
+		Microsoft::WRL::ComPtr<ID3D12Fence> m_fence;
+		mutable uint64_t m_currentFenceValue = 0;
+
+		D3D12_VIEWPORT m_viewport;
+		D3D12_RECT m_scissorRect;
 	};
+
+	// Singleton
+	App* AppInstance();
 }

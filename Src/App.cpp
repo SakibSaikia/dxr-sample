@@ -1,6 +1,12 @@
 #include "App.h"
 #include <cassert>
 
+Engine::App* Engine::AppInstance()
+{
+	static App instance;
+	return &instance;
+}
+
 bool Engine::App::Init(HWND windowHandle)
 {
 	// Debug layer
@@ -183,9 +189,34 @@ bool Engine::App::Init(HWND windowHandle)
 			);
 	}
 
+	// Fence
+	{
+		HRESULT hr = m_d3dDevice->CreateFence(m_currentFenceValue, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(m_fence.GetAddressOf()));
+		assert(hr == S_OK && L"Failed to create fence");
+	}
+
+	//------------------------------------------------------------------
 	m_cmdList->Close();
 	ID3D12CommandList* cmdLists[] = { m_cmdList.Get() };
 	m_cmdQueue->ExecuteCommandLists(_countof(cmdLists), cmdLists);
+	//------------------------------------------------------------------
+
+	// Viewport
+	{
+		m_viewport.TopLeftX = 0.f;
+		m_viewport.TopLeftY = 0.f;
+		m_viewport.Width = static_cast<float>(k_screenWidth);
+		m_viewport.Height = static_cast<float>(k_screenHeight);
+		m_viewport.MinDepth = 0.f;
+		m_viewport.MaxDepth = 1.f;
+	}
+
+	// Scissor
+	{
+		m_scissorRect = { 0, 0, k_screenWidth, k_screenHeight };
+	}
+
+	FlushCommandQueue();
 
 	return true;
 }
@@ -202,7 +233,56 @@ void Engine::App::Update()
 
 void Engine::App::Render() const
 {
+	// Reset command list
+	m_cmdAllocator->Reset();
+	m_cmdList->Reset(m_cmdAllocator.Get(), nullptr);
 
+	// Rasterizer state
+	m_cmdList->RSSetViewports(1, &m_viewport);
+	m_cmdList->RSSetScissorRects(1, &m_scissorRect);
+
+	// Transition back buffer from present to render target
+	D3D12_RESOURCE_BARRIER barrierDesc = {};
+	barrierDesc.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+	barrierDesc.Transition.pResource = m_swapChainBuffer.at(m_currentBackBuffer).Get();
+	barrierDesc.Transition.StateBefore = D3D12_RESOURCE_STATE_PRESENT;
+	barrierDesc.Transition.StateAfter = D3D12_RESOURCE_STATE_RENDER_TARGET;
+	barrierDesc.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+	m_cmdList->ResourceBarrier(
+		1,
+		&barrierDesc
+	);
+
+	// Clear
+	float clearColor[] = { 1.f, 0.f, 0.f, 0.f };
+	m_cmdList->ClearRenderTargetView(GetCurrentBackBufferView(), clearColor, 0, nullptr);
+	m_cmdList->ClearDepthStencilView(GetDepthStencilView(), D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, 1.f, 0, 0, nullptr);
+
+	// Transition back buffer from render target to present
+	barrierDesc = {};
+	barrierDesc.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+	barrierDesc.Transition.pResource = m_swapChainBuffer.at(m_currentBackBuffer).Get();
+	barrierDesc.Transition.StateBefore = D3D12_RESOURCE_STATE_RENDER_TARGET;
+	barrierDesc.Transition.StateAfter = D3D12_RESOURCE_STATE_PRESENT;
+	barrierDesc.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+	m_cmdList->ResourceBarrier(
+		1,
+		&barrierDesc
+	);
+
+	// Done recording
+	m_cmdList->Close();
+
+	// Execute
+	ID3D12CommandList* cmdLists[] = { m_cmdList.Get() };
+	m_cmdQueue->ExecuteCommandLists(_countof(cmdLists), cmdLists);
+
+	// Present and swap buffers
+	m_swapChain->Present(0, 0);
+	m_currentBackBuffer = (m_currentBackBuffer + 1) % k_frameCount;
+
+	// Flush GPU queue
+	FlushCommandQueue();
 }
 
 D3D12_CPU_DESCRIPTOR_HANDLE Engine::App::GetCurrentBackBufferView() const
@@ -217,4 +297,18 @@ D3D12_CPU_DESCRIPTOR_HANDLE Engine::App::GetCurrentBackBufferView() const
 D3D12_CPU_DESCRIPTOR_HANDLE Engine::App::GetDepthStencilView() const
 {
 	return m_dsvHeap->GetCPUDescriptorHandleForHeapStart();
+}
+
+void Engine::App::FlushCommandQueue() const
+{
+	m_cmdQueue->Signal(m_fence.Get(), m_currentFenceValue);
+
+	HANDLE fenceEvent = CreateEventEx(nullptr, false, false, EVENT_ALL_ACCESS);
+
+	m_fence->SetEventOnCompletion(m_currentFenceValue, fenceEvent);
+	WaitForSingleObject(fenceEvent, INFINITE);
+
+	CloseHandle(fenceEvent);
+
+	m_currentFenceValue++;
 }

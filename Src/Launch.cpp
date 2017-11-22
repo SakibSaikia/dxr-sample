@@ -73,9 +73,8 @@ bool InitWindowsApp(HINSTANCE instanceHandle, int show)
 	}
 	
 
-	// Initialize D3D
-	Engine::App d3dApp;
-	d3dApp.Init(g_wndHandle);
+	// Initialize app
+	Engine::AppInstance()->Init(g_wndHandle);
 
 	// Window is not shown until we call ShowWindow()
 	ShowWindow(g_wndHandle, show);
@@ -102,6 +101,8 @@ int Run()
 		else
 		{
 			// Run game code
+			Engine::AppInstance()->Update();
+			Engine::AppInstance()->Render();
 		}
 	}
 
