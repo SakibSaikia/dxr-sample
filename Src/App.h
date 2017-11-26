@@ -4,6 +4,7 @@
 #include <wrl.h>
 #include <dxgi1_4.h>
 #include <d3d12.h>
+#include <DirectXMath.h>
 #include "D3DX12\d3dx12.h"
 #include <array>
 
@@ -53,6 +54,8 @@ namespace Engine
 		Microsoft::WRL::ComPtr<ID3D12Resource> m_depthStencilBuffer;
 		mutable uint32_t m_currentBackBuffer = 0;
 
+		Microsoft::WRL::ComPtr<ID3D12Resource> m_objectConstantBuffer;
+
 		uint32_t m_rtvDescriptorSize;
 		uint32_t m_dsvDescriptorSize;
 		uint32_t m_cbvSrvUavDescriptorSize;
@@ -60,6 +63,7 @@ namespace Engine
 
 		Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_rtvHeap;
 		Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_dsvHeap;
+		Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_cbvHeap;
 
 		Microsoft::WRL::ComPtr<ID3D12Fence> m_fence;
 		mutable uint64_t m_currentFenceValue = 0;
