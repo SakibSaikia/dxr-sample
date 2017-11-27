@@ -40,34 +40,43 @@ namespace Engine
 #if defined(DEBUG) || defined (_DEBUG)
 		Microsoft::WRL::ComPtr<ID3D12Debug> m_debugController;
 #endif
-
+		// Base D3D
 		Microsoft::WRL::ComPtr<IDXGIFactory4> m_dxgiFactory;
-
 		Microsoft::WRL::ComPtr<ID3D12Device> m_d3dDevice;
 		Microsoft::WRL::ComPtr<IDXGISwapChain> m_swapChain;
 
+		// Command objects
 		Microsoft::WRL::ComPtr<ID3D12CommandQueue> m_cmdQueue;
 		Microsoft::WRL::ComPtr<ID3D12CommandAllocator> m_cmdAllocator;
 		Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList> m_cmdList;
 
+		// Back buffer & Depth Stencil
 		std::array<Microsoft::WRL::ComPtr<ID3D12Resource>, k_frameCount> m_swapChainBuffer;
 		Microsoft::WRL::ComPtr<ID3D12Resource> m_depthStencilBuffer;
 		mutable uint32_t m_currentBackBuffer = 0;
 
-		Microsoft::WRL::ComPtr<ID3D12Resource> m_objectConstantBuffer;
-
+		// Cached descriptor size
 		uint32_t m_rtvDescriptorSize;
 		uint32_t m_dsvDescriptorSize;
 		uint32_t m_cbvSrvUavDescriptorSize;
 		uint32_t m_samplerDescriptorSize;
 
+		// Descriptor heaps
 		Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_rtvHeap;
 		Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_dsvHeap;
 		Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_cbvHeap;
 
+		// Fence
 		Microsoft::WRL::ComPtr<ID3D12Fence> m_fence;
 		mutable uint64_t m_currentFenceValue = 0;
 
+		// Constant buffers
+		Microsoft::WRL::ComPtr<ID3D12Resource> m_viewConstantBuffer;
+
+		// Root signatures
+		Microsoft::WRL::ComPtr<ID3D12RootSignature> m_rootSignature;
+
+		// Viewport & Scissor
 		D3D12_VIEWPORT m_viewport;
 		D3D12_RECT m_scissorRect;
 	};

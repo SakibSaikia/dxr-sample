@@ -4,7 +4,7 @@
 namespace Engine
 {
 
-	struct PerObjectConstants
+	struct ViewConstants
 	{
 		DirectX::XMFLOAT4X4 viewProjectionMatrix;
 	};
@@ -200,11 +200,11 @@ namespace Engine
 		// Constant Buffer
 		{
 			// 256 byte aligned
-			uint32_t objConstantBufferSize = (sizeof(PerObjectConstants) + 0xff) & ~0xff;
+			uint32_t viewConstantBufferSize = (sizeof(ViewConstants) + 0xff) & ~0xff;
 
 			D3D12_RESOURCE_DESC resDesc = {};
 			resDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
-			resDesc.Width = objConstantBufferSize;
+			resDesc.Width = viewConstantBufferSize;
 			resDesc.Height = 1;
 			resDesc.DepthOrArraySize = 1;
 			resDesc.MipLevels = 1;
@@ -213,7 +213,7 @@ namespace Engine
 			resDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
 
 			D3D12_HEAP_PROPERTIES heapDesc = {};
-			heapDesc.Type = D3D12_HEAP_TYPE_UPLOAD;
+			heapDesc.Type = D3D12_HEAP_TYPE_UPLOAD; // must be CPU accessible
 			heapDesc.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN; // GPU or system mem
 
 			HRESULT hr = m_d3dDevice->CreateCommittedResource(
@@ -222,18 +222,63 @@ namespace Engine
 				&resDesc,
 				D3D12_RESOURCE_STATE_GENERIC_READ,
 				nullptr,
-				IID_PPV_ARGS(m_objectConstantBuffer.GetAddressOf())
+				IID_PPV_ARGS(m_viewConstantBuffer.GetAddressOf())
 			);
 			assert(hr == S_OK && L"Failed to create constant buffer");
 
 			D3D12_CONSTANT_BUFFER_VIEW_DESC cbvDesc = {};
-			cbvDesc.BufferLocation = m_objectConstantBuffer->GetGPUVirtualAddress();
-			cbvDesc.SizeInBytes = objConstantBufferSize;
+			cbvDesc.BufferLocation = m_viewConstantBuffer->GetGPUVirtualAddress();
+			cbvDesc.SizeInBytes = viewConstantBufferSize;
 
 			m_d3dDevice->CreateConstantBufferView(
 				&cbvDesc, 
 				m_cbvHeap->GetCPUDescriptorHandleForHeapStart()
 			);
+		}
+
+		// Root signature
+		{
+			D3D12_DESCRIPTOR_RANGE cbvTable = {};
+			cbvTable.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_CBV;
+			cbvTable.NumDescriptors = 1; // Table of single CBV
+			cbvTable.BaseShaderRegister = 0; // corresponds to b0 in shader
+			cbvTable.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
+
+			D3D12_ROOT_PARAMETER rootParameters[1];
+			rootParameters[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE; // can be root table, root descriptor or root constant
+			rootParameters[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+			rootParameters[0].DescriptorTable.NumDescriptorRanges = 1;
+			rootParameters[0].DescriptorTable.pDescriptorRanges = &cbvTable;
+
+			D3D12_ROOT_SIGNATURE_DESC sigDesc;
+			sigDesc.NumParameters = _countof(rootParameters);
+			sigDesc.pParameters = rootParameters;
+			sigDesc.NumStaticSamplers = 0;
+			sigDesc.pStaticSamplers = nullptr;
+			sigDesc.Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT; // can be omitted if IA is not used
+
+			Microsoft::WRL::ComPtr<ID3DBlob> serializedRootSignature = nullptr;
+			Microsoft::WRL::ComPtr<ID3DBlob> error = nullptr;
+			D3D12SerializeRootSignature(
+				&sigDesc,
+				D3D_ROOT_SIGNATURE_VERSION_1, 
+				serializedRootSignature.GetAddressOf(),
+				error.GetAddressOf()
+				);
+
+			if (error != nullptr)
+			{
+				::OutputDebugStringA(static_cast<char*>(error->GetBufferPointer()));
+			}
+
+			HRESULT hr = m_d3dDevice->CreateRootSignature(
+				0,
+				serializedRootSignature->GetBufferPointer(),
+				serializedRootSignature->GetBufferSize(),
+				IID_PPV_ARGS(m_rootSignature.GetAddressOf())
+			);
+
+			assert(hr == S_OK && L"Failed to create root signature");
 		}
 
 		// Fence
