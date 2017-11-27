@@ -78,7 +78,7 @@ namespace Engine
 		// Command List
 		{
 			HRESULT hr = m_d3dDevice->CreateCommandList(
-				0,
+				0, // nodemask is 0 for single GPU. See https://developer.nvidia.com/explicit-multi-gpu-programming-directx-12
 				D3D12_COMMAND_LIST_TYPE_DIRECT,
 				m_cmdAllocator.Get(),
 				nullptr, // Initial PSO
