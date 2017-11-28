@@ -56,10 +56,10 @@ namespace Engine
 		mutable uint32_t m_currentBackBuffer = 0;
 
 		// Cached descriptor size
-		uint32_t m_rtvDescriptorSize;
-		uint32_t m_dsvDescriptorSize;
-		uint32_t m_cbvSrvUavDescriptorSize;
-		uint32_t m_samplerDescriptorSize;
+		uint32_t m_rtvDescriptorSize = 0;
+		uint32_t m_dsvDescriptorSize = 0;
+		uint32_t m_cbvSrvUavDescriptorSize = 0;
+		uint32_t m_samplerDescriptorSize = 0;
 
 		// Descriptor heaps
 		Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_rtvHeap;
@@ -75,6 +75,9 @@ namespace Engine
 
 		// Root signatures
 		Microsoft::WRL::ComPtr<ID3D12RootSignature> m_rootSignature;
+
+		// PSO
+		Microsoft::WRL::ComPtr<ID3D12PipelineState> m_pipelineState;
 
 		// Viewport & Scissor
 		D3D12_VIEWPORT m_viewport;
