@@ -1,5 +1,28 @@
 #include "App.h"
 #include <cassert>
+#include <fstream>
+#include <d3dcompiler.h>
+
+Microsoft::WRL::ComPtr<ID3DBlob> LoadShaderFromFile(const std::wstring& filename)
+{
+	std::ifstream fileHandle(filename, std::ios::binary);
+	assert(fileHandle.good() && L"Error opening file");
+
+	// file size
+	fileHandle.seekg(0, std::ios::end);
+	std::ifstream::pos_type size = fileHandle.tellg();
+	fileHandle.seekg(0, std::ios::beg);
+
+	// serialize bytecode
+	Microsoft::WRL::ComPtr<ID3DBlob> shaderBlob;
+	HRESULT hr = D3DCreateBlob(size, shaderBlob.GetAddressOf());
+	assert(hr == S_OK && L"Failed to create blob");
+	fileHandle.read(static_cast<char*>(shaderBlob->GetBufferPointer()), size);
+
+	fileHandle.close();
+
+	return shaderBlob;
+}
 
 namespace Engine
 {
@@ -279,6 +302,12 @@ namespace Engine
 			);
 
 			assert(hr == S_OK && L"Failed to create root signature");
+		}
+
+		// Shaders
+		{
+			m_vsByteCode = LoadShaderFromFile(L"CompiledShaders\\VertexShader.cso");
+			m_psByteCode = LoadShaderFromFile(L"CompiledShaders\\PixelShader.cso");
 		}
 
 		// Fence

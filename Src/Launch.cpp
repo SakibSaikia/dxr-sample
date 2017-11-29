@@ -4,6 +4,7 @@
 // Link necessary libraries.
 #pragma comment(lib, "D3D12.lib")
 #pragma comment(lib, "dxgi.lib")
+#pragma comment(lib, "D3DCompiler.lib")
 
 // Main window handle for the application. HWND is of type void* and refers to a handle to a window.
 HWND g_wndHandle = nullptr;

@@ -73,6 +73,10 @@ namespace Engine
 		// Constant buffers
 		Microsoft::WRL::ComPtr<ID3D12Resource> m_viewConstantBuffer;
 
+		// Shaders
+		Microsoft::WRL::ComPtr<ID3DBlob> m_vsByteCode;
+		Microsoft::WRL::ComPtr<ID3DBlob> m_psByteCode;
+
 		// Root signatures
 		Microsoft::WRL::ComPtr<ID3D12RootSignature> m_rootSignature;
 
