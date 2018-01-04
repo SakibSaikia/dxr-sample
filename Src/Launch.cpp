@@ -1,38 +1,26 @@
 #include "App.h"
 #include <string>
 
-// Link necessary libraries.
 #pragma comment(lib, "D3D12.lib")
 #pragma comment(lib, "dxgi.lib")
 #pragma comment(lib, "D3DCompiler.lib")
 
-// Main window handle for the application. HWND is of type void* and refers to a handle to a window.
 HWND g_wndHandle = nullptr;
 
-// Initializes the Windows application. HINSTANCE is of type void* and refers to a handle to an instance.
 bool InitWindowsApp(HINSTANCE instanceHandle, int show);
-
-// Wraps the message loop code
 int Run();
-
-// Windows procedure to handle events the window receives. CALLBACK is equivalent to __stdcall (it is used to distinguish it as a callback function)
-// LRESULT is of type __int64.
 LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
-// Main entry point. WINAPI is equivalent __stdcall (callee cleans the stack leading to slightly smaller program sizes)
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR pCmdLine, int nShowCmd)
 {
-	// Initialize the application window
 	if (!InitWindowsApp(hInstance, nShowCmd))
 		return 0;
 	
-	// Enter the message loop, which runs indefinitely until a WM_QUIT message is received.
 	return Run();
 }
 
 bool InitWindowsApp(HINSTANCE instanceHandle, int show)
 {
-	// Describe the window characteristics
 	WNDCLASS desc;
 	desc.style = CS_HREDRAW | CS_VREDRAW;				// Redraws the entire window if the width/height of the client area is changed
 	desc.lpfnWndProc = WndProc;							// Pointer to the window procedure
@@ -45,22 +33,20 @@ bool InitWindowsApp(HINSTANCE instanceHandle, int show)
 	desc.lpszMenuName = nullptr;						// Menu. Not used.
 	desc.lpszClassName = L"D3D12SampleWindow";			// Window class name. Used to identify class by name.
 
-	// Register the above WNDCLASS instance with Windows
 	if (!RegisterClass(&desc))
 	{
 		MessageBox(0, L"Failed to register window", 0, 0);
 		return false;
 	}
 
-	// Create the application window
 	g_wndHandle = CreateWindow(
 		L"D3D12SampleWindow",							// Registered WNDCLASS instance
 		L"D3D12Sample",									// Window title
 		WS_OVERLAPPEDWINDOW,							// Window Style
 		CW_USEDEFAULT,									// X-coordinate
 		CW_USEDEFAULT,									// Y-coordinate
-		Engine::k_screenWidth,							// Width
-		Engine::k_screenHeight,							// Height
+		k_screenWidth,									// Width
+		k_screenHeight,									// Height
 		nullptr,										// Parent Window. Not Used.
 		nullptr,										// Menu. Not Used.
 		instanceHandle,									// App instance
@@ -74,13 +60,8 @@ bool InitWindowsApp(HINSTANCE instanceHandle, int show)
 	}
 	
 
-	// Initialize app
-	Engine::AppInstance()->Init(g_wndHandle);
-
-	// Window is not shown until we call ShowWindow()
+	AppInstance()->Init(g_wndHandle);
 	ShowWindow(g_wndHandle, show);
-
-	// Sends a WM_PAINT message directly to the window procedure of the specified window
 	UpdateWindow(g_wndHandle);
 
 	return true;
@@ -90,7 +71,6 @@ int Run()
 {
 	MSG msg = { 0 };
 
-	// GetMessage returns 0 when a WM_QUIT message is received
 	while (msg.message != WM_QUIT)
 	{
 
@@ -101,9 +81,8 @@ int Run()
 		}
 		else
 		{
-			// Run game code
-			Engine::AppInstance()->Update();
-			Engine::AppInstance()->Render();
+			AppInstance()->Update();
+			AppInstance()->Render();
 		}
 	}
 
@@ -114,9 +93,6 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
 	switch (msg)
 	{
-	case WM_LBUTTONDOWN:
-		MessageBox(0, L"Hello World", L"Hello", MB_OK);
-		return 0;
 	case WM_KEYDOWN:
 		if (wParam == VK_ESCAPE)
 			DestroyWindow(g_wndHandle);
