@@ -2,3 +2,7 @@
 /Src/.vs/
 /Src/x64/
 /Src/CompiledShaders
+/Src/packages
+
+# Files
+/Src/packages.config

@@ -547,67 +547,75 @@ void App::Render()
 	m_gfxCmdAllocators.at(m_gfxBufferIndex)->Reset();
 	m_gfxCmdList->Reset(m_gfxCmdAllocators.at(m_gfxBufferIndex).Get(), nullptr);
 
-	// Transition back buffer from present to render target
-	D3D12_RESOURCE_BARRIER barrierDesc = {};
-	barrierDesc.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-	barrierDesc.Transition.pResource = m_swapChainBuffers.at(m_gfxBufferIndex).Get();
-	barrierDesc.Transition.StateBefore = D3D12_RESOURCE_STATE_PRESENT;
-	barrierDesc.Transition.StateAfter = D3D12_RESOURCE_STATE_RENDER_TARGET;
-	barrierDesc.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
-	m_gfxCmdList->ResourceBarrier(
-		1,
-		&barrierDesc
-	);
+	PIXBeginEvent(m_cmdQueue.Get(), 0, L"_render_frame_");
+	{
+		// Transition back buffer from present to render target
+		D3D12_RESOURCE_BARRIER barrierDesc = {};
+		barrierDesc.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+		barrierDesc.Transition.pResource = m_swapChainBuffers.at(m_gfxBufferIndex).Get();
+		barrierDesc.Transition.StateBefore = D3D12_RESOURCE_STATE_PRESENT;
+		barrierDesc.Transition.StateAfter = D3D12_RESOURCE_STATE_RENDER_TARGET;
+		barrierDesc.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+		m_gfxCmdList->ResourceBarrier(
+			1,
+			&barrierDesc
+		);
 
-	// Clear
-	float clearColor[] = { .8f, 0.8f, 0.8f, 0.f };
-	m_gfxCmdList->ClearRenderTargetView(GetCurrentBackBufferView(), clearColor, 0, nullptr);
-	m_gfxCmdList->ClearDepthStencilView(GetCurrentDepthStencilView(), D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, 1.f, 0, 0, nullptr);
+		// Clear
+		float clearColor[] = { .8f, 0.8f, 0.8f, 0.f };
+		m_gfxCmdList->ClearRenderTargetView(GetCurrentBackBufferView(), clearColor, 0, nullptr);
+		m_gfxCmdList->ClearDepthStencilView(GetCurrentDepthStencilView(), D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, 1.f, 0, 0, nullptr);
 
-	// Set descriptor heaps
-	ID3D12DescriptorHeap* descriptorHeaps[] = { m_cbvHeap.Get() };
-	m_gfxCmdList->SetDescriptorHeaps(std::extent<decltype(descriptorHeaps)>::value, descriptorHeaps);
+		// Set descriptor heaps
+		ID3D12DescriptorHeap* descriptorHeaps[] = { m_cbvHeap.Get() };
+		m_gfxCmdList->SetDescriptorHeaps(std::extent<decltype(descriptorHeaps)>::value, descriptorHeaps);
 
-	// Set root sig
-	m_gfxCmdList->SetGraphicsRootSignature(m_rootSignature.Get());
-	m_gfxCmdList->SetGraphicsRootDescriptorTable(0, m_cbvHeap->GetGPUDescriptorHandleForHeapStart());
+		// Set root sig
+		m_gfxCmdList->SetGraphicsRootSignature(m_rootSignature.Get());
+		m_gfxCmdList->SetGraphicsRootDescriptorTable(0, m_cbvHeap->GetGPUDescriptorHandleForHeapStart());
 
-	// Set state
-	m_gfxCmdList->SetPipelineState(m_pso.Get());
-	m_gfxCmdList->RSSetViewports(1, &m_viewport);
-	m_gfxCmdList->RSSetScissorRects(1, &m_scissorRect);
+		// Set state
+		m_gfxCmdList->SetPipelineState(m_pso.Get());
+		m_gfxCmdList->RSSetViewports(1, &m_viewport);
+		m_gfxCmdList->RSSetScissorRects(1, &m_scissorRect);
 
-	// Set rendertarget
-	D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle = GetCurrentBackBufferView();
-	D3D12_CPU_DESCRIPTOR_HANDLE dsvHandle = GetCurrentDepthStencilView();
-	m_gfxCmdList->OMSetRenderTargets(1, &rtvHandle, FALSE, &dsvHandle);
-	
-	// Set geometry
-	m_gfxCmdList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
-	m_gfxCmdList->IASetVertexBuffers(0, 1, &m_vertexBufferView);
+		// Set rendertarget
+		D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle = GetCurrentBackBufferView();
+		D3D12_CPU_DESCRIPTOR_HANDLE dsvHandle = GetCurrentDepthStencilView();
+		m_gfxCmdList->OMSetRenderTargets(1, &rtvHandle, FALSE, &dsvHandle);
 
-	// Draw
-	m_gfxCmdList->DrawInstanced(4, 1, 0, 0);
+		// Set geometry
+		m_gfxCmdList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
+		m_gfxCmdList->IASetVertexBuffers(0, 1, &m_vertexBufferView);
 
-	// Transition back buffer from render target to present
-	barrierDesc = {};
-	barrierDesc.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-	barrierDesc.Transition.pResource = m_swapChainBuffers.at(m_gfxBufferIndex).Get();
-	barrierDesc.Transition.StateBefore = D3D12_RESOURCE_STATE_RENDER_TARGET;
-	barrierDesc.Transition.StateAfter = D3D12_RESOURCE_STATE_PRESENT;
-	barrierDesc.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
-	m_gfxCmdList->ResourceBarrier(
-		1,
-		&barrierDesc
-	);
+		// Draw
+		m_gfxCmdList->DrawInstanced(4, 1, 0, 0);
 
-	// Execute
-	m_gfxCmdList->Close();
-	ID3D12CommandList* cmdLists[] = { m_gfxCmdList.Get() };
-	m_cmdQueue->ExecuteCommandLists(std::extent<decltype(cmdLists)>::value, cmdLists);
+		// Transition back buffer from render target to present
+		barrierDesc = {};
+		barrierDesc.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+		barrierDesc.Transition.pResource = m_swapChainBuffers.at(m_gfxBufferIndex).Get();
+		barrierDesc.Transition.StateBefore = D3D12_RESOURCE_STATE_RENDER_TARGET;
+		barrierDesc.Transition.StateAfter = D3D12_RESOURCE_STATE_PRESENT;
+		barrierDesc.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+		m_gfxCmdList->ResourceBarrier(
+			1,
+			&barrierDesc
+		);
+
+		// Execute
+		m_gfxCmdList->Close();
+		ID3D12CommandList* cmdLists[] = { m_gfxCmdList.Get() };
+		m_cmdQueue->ExecuteCommandLists(std::extent<decltype(cmdLists)>::value, cmdLists);
+	}
+	PIXEndEvent(m_cmdQueue.Get());
 
 	// Present
-	m_swapChain->Present(0, 0);
+	PIXBeginEvent(0, L"_present_");
+	{
+		m_swapChain->Present(0, 0);
+	}
+	PIXEndEvent();
 
 	// Swap buffers
 	AdvanceGfxFrame();
@@ -629,12 +637,16 @@ D3D12_CPU_DESCRIPTOR_HANDLE App::GetCurrentDepthStencilView() const
 
 void App::FlushCmdQueue()
 {
-	auto& currentFenceValue = m_gfxFenceValues.at(m_gfxBufferIndex);
-	currentFenceValue++;
+	PIXBeginEvent(0, L"_gfx_wait_for_GPU_");
+	{
+		auto& currentFenceValue = m_gfxFenceValues.at(m_gfxBufferIndex);
+		currentFenceValue++;
 
-	m_cmdQueue->Signal(m_gfxFence.Get(), currentFenceValue);
-	m_gfxFence->SetEventOnCompletion(currentFenceValue, m_gfxFenceEvent);
-	WaitForSingleObject(m_gfxFenceEvent, INFINITE);
+		m_cmdQueue->Signal(m_gfxFence.Get(), currentFenceValue);
+		m_gfxFence->SetEventOnCompletion(currentFenceValue, m_gfxFenceEvent);
+		WaitForSingleObject(m_gfxFenceEvent, INFINITE);
+	}
+	PIXEndEvent();
 }
 
 void App::AdvanceGfxFrame()
@@ -646,8 +658,12 @@ void App::AdvanceGfxFrame()
 
 	if (m_gfxFence->GetCompletedValue() < m_gfxFenceValues.at(m_gfxBufferIndex))
 	{
-		m_gfxFence->SetEventOnCompletion(m_gfxFenceValues.at(m_gfxBufferIndex), m_gfxFenceEvent);
-		WaitForSingleObjectEx(m_gfxFenceEvent, INFINITE, FALSE);
+		PIXBeginEvent(0, L"_gfx_wait_on_previous_frame_");
+		{
+			m_gfxFence->SetEventOnCompletion(m_gfxFenceValues.at(m_gfxBufferIndex), m_gfxFenceEvent);
+			WaitForSingleObjectEx(m_gfxFenceEvent, INFINITE, FALSE);
+		}
+		PIXEndEvent();
 	}
 
 	m_gfxFenceValues[m_gfxBufferIndex] = currentFenceValue + 1;
