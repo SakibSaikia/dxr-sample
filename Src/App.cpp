@@ -24,11 +24,6 @@ Microsoft::WRL::ComPtr<ID3DBlob> LoadShaderFromFile(const std::wstring& filename
 	return shaderBlob;
 }
 
-struct ViewConstants
-{
-	DirectX::XMFLOAT4X4 viewProjectionMatrix;
-};
-
 App* AppInstance()
 {
 	static App instance;
@@ -245,24 +240,34 @@ void App::InitDescriptors()
 		heapDesc.Type = D3D12_HEAP_TYPE_UPLOAD; // must be CPU accessible
 		heapDesc.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN; // GPU or system mem
 
-		HRESULT hr = m_d3dDevice->CreateCommittedResource(
-			&heapDesc,
-			D3D12_HEAP_FLAG_NONE,
-			&resDesc,
-			D3D12_RESOURCE_STATE_GENERIC_READ,
-			nullptr,
-			IID_PPV_ARGS(m_viewConstantBuffer.GetAddressOf())
-		);
-		assert(hr == S_OK && L"Failed to create constant buffer");
+		D3D12_CPU_DESCRIPTOR_HANDLE cbvHeapHandle = m_cbvHeap->GetCPUDescriptorHandleForHeapStart();
+		for (auto n = 0; n < k_gfxBufferCount; ++n)
+		{
+			HRESULT hr = m_d3dDevice->CreateCommittedResource(
+				&heapDesc,
+				D3D12_HEAP_FLAG_NONE,
+				&resDesc,
+				D3D12_RESOURCE_STATE_GENERIC_READ,
+				nullptr,
+				IID_PPV_ARGS(m_viewConstantBuffers.at(n).GetAddressOf())
+			);
+			assert(hr == S_OK && L"Failed to create constant buffer");
 
-		D3D12_CONSTANT_BUFFER_VIEW_DESC cbvDesc = {};
-		cbvDesc.BufferLocation = m_viewConstantBuffer->GetGPUVirtualAddress();
-		cbvDesc.SizeInBytes = viewConstantBufferSize;
+			D3D12_CONSTANT_BUFFER_VIEW_DESC cbvDesc = {};
+			cbvDesc.BufferLocation = m_viewConstantBuffers.at(n)->GetGPUVirtualAddress();
+			cbvDesc.SizeInBytes = viewConstantBufferSize;
 
-		m_d3dDevice->CreateConstantBufferView(
-			&cbvDesc,
-			m_cbvHeap->GetCPUDescriptorHandleForHeapStart()
-		);
+			m_d3dDevice->CreateConstantBufferView(
+				&cbvDesc,
+				m_cbvHeap->GetCPUDescriptorHandleForHeapStart()
+			);
+
+			cbvHeapHandle.ptr += m_cbvSrvUavDescriptorSize;
+
+			// Get ptr to mapped resource
+			void** ptr = reinterpret_cast<void**>(&m_ViewConstantBufferPtr.at(n));
+			m_viewConstantBuffers.at(n)->Map(0, nullptr, ptr);
+		}
 	}
 }
 
@@ -272,34 +277,76 @@ void App::InitShaders()
 	m_psByteCode = LoadShaderFromFile(L"CompiledShaders\\PixelShader.cso");
 }
 
-Microsoft::WRL::ComPtr<ID3D12Resource> App::InitGeometry()
+std::pair<Microsoft::WRL::ComPtr<ID3D12Resource>, Microsoft::WRL::ComPtr<ID3D12Resource>> App::InitGeometry()
 {
 	Microsoft::WRL::ComPtr<ID3D12Resource> vertexBufferUpload;
+	Microsoft::WRL::ComPtr<ID3D12Resource> indexBufferUpload;
 
 	struct Vertex
 	{
 		DirectX::XMFLOAT3 position;
-		DirectX::XMFLOAT2 uv;
+		DirectX::XMFLOAT3 normal;
 	};
 
-	Vertex quadVertices[] =
+	Vertex cubeVertices[] =
 	{
-		{ { -0.9f, -0.9f, 0.0f },{ 0.0f, 1.0f } },	// Bottom left.
-	{ { -0.9f, 0.9f, 0.0f },{ 0.0f, 0.0f } },	// Top left.
-	{ { 0.9f, -0.9f, 0.0f },{ 1.0f, 1.0f } },	// Bottom right.
-	{ { 0.9f, 0.9f, 0.0f },{ 1.0f, 0.0f } },	// Top right.
+		{ { -1.f, -1.f, -1.f },{ 0.f, 0.f, -1.f } }, // 0
+		{ { 1.f, -1.f, -1.f }, { 0.f, 0.f, -1.f } }, // 1
+		{ { 1.f, 1.f, -1.f },  { 0.f, 0.f, -1.f } }, // 2
+		{ { -1.f, 1.f, -1.f }, { 0.f, 0.f, -1.f } }, // 3
+
+		{ { -1.f, -1.f, 1.f }, { 0.f, 0.f, 1.f } }, // 4
+		{ { 1.f, -1.f, 1.f },  { 0.f, 0.f, 1.f } }, // 5
+		{ { 1.f, 1.f, 1.f },   { 0.f, 0.f, 1.f } }, // 6
+		{ { -1.f, 1.f, 1.f },  { 0.f, 0.f, 1.f } }, // 7
+
+		{ { -1.f, -1.f, -1.f },{ -1.f, 0.f, 0.f } },// 0
+		{ { -1.f, -1.f, 1.f }, { -1.f, 0.f, 0.f } },// 4
+		{ { -1.f, 1.f, 1.f },  { -1.f, 0.f, 0.f } },// 7
+		{ { -1.f, 1.f, -1.f }, { -1.f, 0.f, 0.f } },// 3
+		
+		{ { 1.f, -1.f, -1.f }, { 1.f, 0.f, 0.f } },// 1
+		{ { 1.f, -1.f, 1.f },  { 1.f, 0.f, 0.f } },// 5
+		{ { 1.f, 1.f, 1.f },   { 1.f, 0.f, 0.f } },// 6
+		{ { 1.f, 1.f, -1.f },  { 1.f, 0.f, 0.f } },// 2
+
+		{ { -1.f, -1.f, -1.f },{ 0.f, -1.f, 0.f } },// 0
+		{ { 1.f, -1.f, -1.f }, { 0.f, -1.f, 0.f } },// 1
+		{ { 1.f, -1.f, 1.f }, { 0.f, -1.f, 0.f } }, // 5
+		{ { -1.f, -1.f, 1.f }, { 0.f, -1.f, 0.f } },// 4
+
+		{ { -1.f, 1.f, -1.f },{ 0.f, 1.f, 0.f } }, // 3
+		{ { 1.f, 1.f, -1.f }, { 0.f, 1.f, 0.f } }, // 2
+		{ { 1.f, 1.f, 1.f },  { 0.f, 1.f, 0.f } }, // 6
+		{ { -1.f, 1.f, 1.f }, { 0.f, 1.f, 0.f } }, // 7
 	};
 
-	// default buffer
-	D3D12_RESOURCE_DESC resDesc = {};
-	resDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
-	resDesc.Width = sizeof(quadVertices);
-	resDesc.Height = 1;
-	resDesc.DepthOrArraySize = 1;
-	resDesc.MipLevels = 1;
-	resDesc.Format = DXGI_FORMAT_UNKNOWN;
-	resDesc.SampleDesc.Count = 1;
-	resDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+	uint16_t cubeIndices[] = 
+	{
+		0, 3, 2,
+		2, 1, 0,
+		7, 4, 6,
+		6, 4, 5,
+		0, 4, 3,
+		3, 4, 7,
+		5, 1, 2,
+		2, 6, 5,
+		0, 1, 4,
+		4, 1, 5,
+		2, 3, 7,
+		7, 6, 2
+	};
+
+	// default vertex buffer
+	D3D12_RESOURCE_DESC vbDesc = {};
+	vbDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
+	vbDesc.Width = sizeof(cubeVertices);
+	vbDesc.Height = 1;
+	vbDesc.DepthOrArraySize = 1;
+	vbDesc.MipLevels = 1;
+	vbDesc.Format = DXGI_FORMAT_UNKNOWN; // must be unknown for Dimension == BUFFER
+	vbDesc.SampleDesc.Count = 1;
+	vbDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
 
 	D3D12_HEAP_PROPERTIES heapProp = {};
 	heapProp.Type = D3D12_HEAP_TYPE_DEFAULT;
@@ -308,7 +355,7 @@ Microsoft::WRL::ComPtr<ID3D12Resource> App::InitGeometry()
 	HRESULT hr = m_d3dDevice->CreateCommittedResource(
 		&heapProp,
 		D3D12_HEAP_FLAG_NONE,
-		&resDesc,
+		&vbDesc,
 		D3D12_RESOURCE_STATE_COPY_DEST,
 		nullptr,
 		IID_PPV_ARGS(m_vertexBuffer.GetAddressOf())
@@ -316,7 +363,29 @@ Microsoft::WRL::ComPtr<ID3D12Resource> App::InitGeometry()
 
 	assert(hr == S_OK && L"Failed to create default vertex buffer");
 
-	// upload buffer
+	// default index buffer
+	D3D12_RESOURCE_DESC ibDesc = {};
+	ibDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
+	ibDesc.Width = sizeof(cubeIndices);
+	ibDesc.Height = 1;
+	ibDesc.DepthOrArraySize = 1;
+	ibDesc.MipLevels = 1;
+	ibDesc.Format = DXGI_FORMAT_UNKNOWN; // must be unknown for Dimension == BUFFER
+	ibDesc.SampleDesc.Count = 1;
+	ibDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+
+	hr = m_d3dDevice->CreateCommittedResource(
+		&heapProp,
+		D3D12_HEAP_FLAG_NONE,
+		&ibDesc,
+		D3D12_RESOURCE_STATE_COPY_DEST,
+		nullptr,
+		IID_PPV_ARGS(m_indexBuffer.GetAddressOf())
+	);
+
+	assert(hr == S_OK && L"Failed to create default index buffer");
+
+	// upload vertex buffer
 	D3D12_HEAP_PROPERTIES uploadHeapProp = {};
 	uploadHeapProp.Type = D3D12_HEAP_TYPE_UPLOAD;
 	uploadHeapProp.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
@@ -324,7 +393,7 @@ Microsoft::WRL::ComPtr<ID3D12Resource> App::InitGeometry()
 	hr = m_d3dDevice->CreateCommittedResource(
 		&uploadHeapProp,
 		D3D12_HEAP_FLAG_NONE,
-		&resDesc,
+		&vbDesc,
 		D3D12_RESOURCE_STATE_GENERIC_READ,
 		nullptr,
 		IID_PPV_ARGS(vertexBufferUpload.GetAddressOf())
@@ -332,29 +401,44 @@ Microsoft::WRL::ComPtr<ID3D12Resource> App::InitGeometry()
 
 	assert(hr == S_OK && L"Failed to create upload vertex buffer");
 
-	// copy to upload buffer
-	D3D12_PLACED_SUBRESOURCE_FOOTPRINT vbLayout;
-	uint32_t vbNumRows;
+	// upload index buffer
+	hr = m_d3dDevice->CreateCommittedResource(
+		&uploadHeapProp,
+		D3D12_HEAP_FLAG_NONE,
+		&ibDesc,
+		D3D12_RESOURCE_STATE_GENERIC_READ,
+		nullptr,
+		IID_PPV_ARGS(indexBufferUpload.GetAddressOf())
+	);
+
+	assert(hr == S_OK && L"Failed to create upload vertex buffer");
+
+	// copy vertex data to upload buffer
 	uint64_t vbRowSizeInBytes;
-	uint64_t requiredSize = 0;
+	D3D12_PLACED_SUBRESOURCE_FOOTPRINT vbLayout;
 	m_d3dDevice->GetCopyableFootprints(
-		&resDesc,
-		0,					// subresource index 
-		1,					// num subresources 
-		0,					// offset  
-		&vbLayout,
-		&vbNumRows,
-		&vbRowSizeInBytes,	// unaligned	
-		&requiredSize);
+		&vbDesc, 
+		0 /*subresource index*/, 1 /* num subresources */, 0 /*offset*/,  
+		&vbLayout, nullptr, &vbRowSizeInBytes, nullptr);
 
 	uint8_t* destPtr;
-	hr = vertexBufferUpload->Map(0, nullptr, reinterpret_cast<void**>(&destPtr));
-	assert(hr == S_OK && L"Failed to map upload vertex buffer");
-
-	const uint8_t* pSrc = reinterpret_cast<const uint8_t*>(quadVertices);
+	vertexBufferUpload->Map(0, nullptr, reinterpret_cast<void**>(&destPtr));
+	const uint8_t* pSrc = reinterpret_cast<const uint8_t*>(cubeVertices);
 	memcpy(destPtr, pSrc, vbRowSizeInBytes);
-
 	vertexBufferUpload->Unmap(0, nullptr);
+
+	// copy index data to upload buffer
+	uint64_t ibRowSizeInBytes;
+	D3D12_PLACED_SUBRESOURCE_FOOTPRINT ibLayout;
+	m_d3dDevice->GetCopyableFootprints(
+		&ibDesc,
+		0 /*subresource index*/, 1 /* num subresources */, 0 /*offset*/,
+		&ibLayout, nullptr, &ibRowSizeInBytes, nullptr);
+
+	indexBufferUpload->Map(0, nullptr, reinterpret_cast<void**>(&destPtr));
+	pSrc = reinterpret_cast<const uint8_t*>(cubeIndices);
+	memcpy(destPtr, pSrc, ibRowSizeInBytes);
+	indexBufferUpload->Unmap(0, nullptr);
 
 	// schedule copy to default vertex buffer
 	m_gfxCmdList->CopyBufferRegion(
@@ -365,24 +449,50 @@ Microsoft::WRL::ComPtr<ID3D12Resource> App::InitGeometry()
 		vbLayout.Footprint.Width
 	);
 
-	// transition default vertex buffer
-	D3D12_RESOURCE_BARRIER barrierDesc = {};
-	barrierDesc.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-	barrierDesc.Transition.pResource = m_vertexBuffer.Get();
-	barrierDesc.Transition.StateBefore = D3D12_RESOURCE_STATE_COPY_DEST;
-	barrierDesc.Transition.StateAfter = D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER;
-	barrierDesc.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
-	m_gfxCmdList->ResourceBarrier(
-		1,
-		&barrierDesc
+	// schedule copy to default index buffer
+	m_gfxCmdList->CopyBufferRegion(
+		m_indexBuffer.Get(),
+		0,
+		indexBufferUpload.Get(),
+		ibLayout.Offset,
+		ibLayout.Footprint.Width
 	);
 
-	// update descriptor
+	// transition default vertex buffer
+	D3D12_RESOURCE_BARRIER vbBarrierDesc = {};
+	vbBarrierDesc.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+	vbBarrierDesc.Transition.pResource = m_vertexBuffer.Get();
+	vbBarrierDesc.Transition.StateBefore = D3D12_RESOURCE_STATE_COPY_DEST;
+	vbBarrierDesc.Transition.StateAfter = D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER;
+	vbBarrierDesc.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+	m_gfxCmdList->ResourceBarrier(
+		1,
+		&vbBarrierDesc
+	);
+
+	// transition default index buffer
+	D3D12_RESOURCE_BARRIER ibBarrierDesc = {};
+	ibBarrierDesc.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+	ibBarrierDesc.Transition.pResource = m_indexBuffer.Get();
+	ibBarrierDesc.Transition.StateBefore = D3D12_RESOURCE_STATE_COPY_DEST;
+	ibBarrierDesc.Transition.StateAfter = D3D12_RESOURCE_STATE_INDEX_BUFFER;
+	ibBarrierDesc.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+	m_gfxCmdList->ResourceBarrier(
+		1,
+		&ibBarrierDesc
+	);
+
+	// VB descriptor
 	m_vertexBufferView.BufferLocation = m_vertexBuffer->GetGPUVirtualAddress();
 	m_vertexBufferView.StrideInBytes = sizeof(Vertex);
-	m_vertexBufferView.SizeInBytes = sizeof(quadVertices);
+	m_vertexBufferView.SizeInBytes = sizeof(cubeVertices);
 
-	return vertexBufferUpload;
+	// IB descriptor
+	m_indexBufferView.BufferLocation = m_indexBuffer->GetGPUVirtualAddress();
+	m_indexBufferView.Format = DXGI_FORMAT_R16_UINT;
+	m_indexBufferView.SizeInBytes = sizeof(cubeIndices);
+
+	return std::make_pair(vertexBufferUpload, indexBufferUpload);
 }
 
 void App::InitStateObjects()
@@ -402,7 +512,7 @@ void App::InitStateObjects()
 		rootParameters[0].DescriptorTable.pDescriptorRanges = &cbvTable;
 
 		D3D12_ROOT_SIGNATURE_DESC sigDesc;
-		sigDesc.NumParameters = _countof(rootParameters);
+		sigDesc.NumParameters = std::extent<decltype(rootParameters)>::value;
 		sigDesc.pParameters = rootParameters;
 		sigDesc.NumStaticSamplers = 0;
 		sigDesc.pStaticSamplers = nullptr;
@@ -440,7 +550,7 @@ void App::InitStateObjects()
 		D3D12_INPUT_ELEMENT_DESC inputElementDescs[] =
 		{
 			{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-		{ "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 12, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 }
+			{ "NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 12, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 }
 		};
 		psoDesc.InputLayout.pInputElementDescs = inputElementDescs;
 		psoDesc.InputLayout.NumElements = std::extent<decltype(inputElementDescs)>::value;
@@ -520,8 +630,12 @@ void App::Init(HWND windowHandle)
 	InitSwapChain(windowHandle);
 	InitDescriptors();
 	InitShaders();
-	auto keepAliveVB = InitGeometry();
+	auto keepAlive = InitGeometry();
 	InitStateObjects();
+
+	float aspectRatio = static_cast<float>(k_screenWidth) / k_screenHeight;
+	DirectX::XMMATRIX proj = DirectX::XMMatrixPerspectiveFovLH(0.25f * k_Pi, aspectRatio, 1.0f, 1000.0f);
+	XMStoreFloat4x4(&m_projMatrix, proj);
 
 	// Finalize init and flush 
 	m_gfxCmdList->Close();
@@ -534,11 +648,31 @@ void App::Destroy()
 {
 	FlushCmdQueue();
 	CloseHandle(m_gfxFenceEvent);
+
+	for (auto cbuffer : m_viewConstantBuffers)
+	{
+		cbuffer->Unmap(0, nullptr);
+	}
 }
 
 void App::Update()
 {
+	// View matrix
+	DirectX::XMVECTOR eye = DirectX::XMVectorSet(5.f, 5.f, -5.f, 1.f);
+	DirectX::XMVECTOR target = DirectX::XMVectorZero();
+	DirectX::XMVECTOR up = DirectX::XMVectorSet(0.f, 1.f, 0.f, 0.f);
+	DirectX::XMMATRIX view = DirectX::XMMatrixLookAtLH(eye, target, up);
+	DirectX::XMStoreFloat4x4(&m_viewMatrix, view);
 
+	// View Projection matrix
+	DirectX::XMMATRIX proj = DirectX::XMLoadFloat4x4(&m_projMatrix);
+	DirectX::XMMATRIX viewProjMatrix = view * proj;
+
+	// Update constant buffer
+	DirectX::XMFLOAT4X4 viewProjMatrixTranspose;
+	XMStoreFloat4x4(&viewProjMatrixTranspose, XMMatrixTranspose(viewProjMatrix));
+	m_ViewConstantBufferPtr.at(m_gfxBufferIndex)->viewMatrix = m_viewMatrix;
+	m_ViewConstantBufferPtr.at(m_gfxBufferIndex)->viewProjectionMatrix = viewProjMatrixTranspose;
 }
 
 void App::Render()
@@ -562,7 +696,7 @@ void App::Render()
 		);
 
 		// Clear
-		float clearColor[] = { .8f, 0.8f, 0.8f, 0.f };
+		float clearColor[] = { .8f, .8f, 1.f, 0.f };
 		m_gfxCmdList->ClearRenderTargetView(GetCurrentBackBufferView(), clearColor, 0, nullptr);
 		m_gfxCmdList->ClearDepthStencilView(GetCurrentDepthStencilView(), D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, 1.f, 0, 0, nullptr);
 
@@ -585,11 +719,12 @@ void App::Render()
 		m_gfxCmdList->OMSetRenderTargets(1, &rtvHandle, FALSE, &dsvHandle);
 
 		// Set geometry
-		m_gfxCmdList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
+		m_gfxCmdList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 		m_gfxCmdList->IASetVertexBuffers(0, 1, &m_vertexBufferView);
+		m_gfxCmdList->IASetIndexBuffer(&m_indexBufferView);
 
 		// Draw
-		m_gfxCmdList->DrawInstanced(4, 1, 0, 0);
+		m_gfxCmdList->DrawIndexedInstanced(36, 1, 0, 0, 0);
 
 		// Transition back buffer from render target to present
 		barrierDesc = {};

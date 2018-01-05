@@ -1,4 +1,11 @@
-float4 main() : SV_TARGET
+struct PSIn
 {
-	return float4(1.0f, 0.0f, 1.0f, 1.0f);
+	float4 ndcPos : SV_POSITION;
+	float4 normal : NORMAL;
+};
+
+float4 main(PSIn p) : SV_TARGET
+{
+	float4 normal = normalize(p.normal);
+	return dot(normal, float4(0.f, 1.f, 0.f, 0.f)) + 0.5f;
 }
