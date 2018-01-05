@@ -312,7 +312,7 @@ std::pair<Microsoft::WRL::ComPtr<ID3D12Resource>, Microsoft::WRL::ComPtr<ID3D12R
 
 		{ { -1.f, -1.f, -1.f },{ 0.f, -1.f, 0.f } },// 0
 		{ { 1.f, -1.f, -1.f }, { 0.f, -1.f, 0.f } },// 1
-		{ { 1.f, -1.f, 1.f }, { 0.f, -1.f, 0.f } }, // 5
+		{ { 1.f, -1.f, 1.f },  { 0.f, -1.f, 0.f } },// 5
 		{ { -1.f, -1.f, 1.f }, { 0.f, -1.f, 0.f } },// 4
 
 		{ { -1.f, 1.f, -1.f },{ 0.f, 1.f, 0.f } }, // 3
@@ -588,12 +588,15 @@ void App::InitStateObjects()
 		}
 
 		// depth stencil state
-		psoDesc.DepthStencilState.DepthEnable = FALSE;
+		psoDesc.DepthStencilState.DepthEnable = TRUE;
+		psoDesc.DepthStencilState.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ALL;
+		psoDesc.DepthStencilState.DepthFunc = D3D12_COMPARISON_FUNC_LESS;
 		psoDesc.DepthStencilState.StencilEnable = FALSE;
 
 		// RTV
 		psoDesc.NumRenderTargets = 1;
 		psoDesc.RTVFormats[0] = k_backBufferFormat;
+		psoDesc.DSVFormat = k_depthStencilFormatDsv;
 
 		// misc
 		psoDesc.SampleMask = UINT_MAX;
