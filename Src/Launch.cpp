@@ -1,5 +1,6 @@
 #include "App.h"
 #include <string>
+#include <WindowsX.h>
 
 #pragma comment(lib, "D3D12.lib")
 #pragma comment(lib, "dxgi.lib")
@@ -99,6 +100,9 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 		return 0;
 	case WM_DESTROY:
 		PostQuitMessage(0);
+		return 0;
+	case WM_MOUSEMOVE:
+		AppInstance()->OnMouseMove(wParam, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
 		return 0;
 	}
 

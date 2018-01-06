@@ -1,11 +1,12 @@
 #pragma once
 
 #include <DirectXMath.h>
+#include <windows.h>
 
 class Camera
 {
 public:
-	void Update(float dt);
+	void Update(const float dt, const POINT mouseDelta);
 	DirectX::XMFLOAT4X4 GetViewMatrix();
 
 private:

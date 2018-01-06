@@ -660,7 +660,9 @@ void App::Destroy()
 
 void App::Update(float dt)
 {
-	m_camera.Update(dt);
+	POINT mouseDelta = { m_currentMousePos.x - m_lastMousePos.x, m_currentMousePos.y - m_lastMousePos.y };
+	m_lastMousePos = m_currentMousePos;
+	m_camera.Update(dt, mouseDelta);
 
 	// View Projection matrix
 	DirectX::XMFLOAT4X4 viewMatrix = m_camera.GetViewMatrix();
@@ -802,4 +804,9 @@ void App::AdvanceGfxFrame()
 	}
 
 	m_gfxFenceValues[m_gfxBufferIndex] = currentFenceValue + 1;
+}
+
+void App::OnMouseMove(WPARAM btnState, int x, int y)
+{
+	m_currentMousePos = { x, y };
 }

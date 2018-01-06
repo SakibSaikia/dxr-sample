@@ -35,6 +35,7 @@ public:
 	void Update(float dt);
 	void Render();
 
+	void OnMouseMove(WPARAM btnState, int x, int y);
 
 private:
 
@@ -51,7 +52,6 @@ private:
 
 	void FlushCmdQueue();
 	void AdvanceGfxFrame();
-
 
 private:
 
@@ -108,6 +108,10 @@ private:
 	// View
 	Camera m_camera;
 	DirectX::XMFLOAT4X4 m_projMatrix;
+
+	// Mouse
+	POINT m_currentMousePos = { 0, 0 };
+	POINT m_lastMousePos = { 0, 0 };
 };
 
 // Singleton

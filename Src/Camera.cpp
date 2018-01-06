@@ -51,7 +51,7 @@ void Camera::RotateWorldY(float angle)
 	m_viewDirty = true;
 }
 
-void Camera::Update(float dt)
+void Camera::Update(const float dt, const POINT mouseDelta)
 {
 	if (GetAsyncKeyState('W') & 0x8000)
 		Walk(10.f * dt);
@@ -64,6 +64,13 @@ void Camera::Update(float dt)
 
 	if (GetAsyncKeyState('D') & 0x8000)
 		Strafe(10.f * dt);
+
+	// Make each pixel correspond to a quarter of a degree.
+	float dx = DirectX::XMConvertToRadians(0.25f*static_cast<float>(mouseDelta.x));
+	float dy = DirectX::XMConvertToRadians(0.25f*static_cast<float>(mouseDelta.y));
+
+	Pitch(dy);
+	RotateWorldY(dx);
 
 	UpdateViewMatrix();
 }
