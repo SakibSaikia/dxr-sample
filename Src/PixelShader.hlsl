@@ -1,3 +1,9 @@
+cbuffer ViewConstants : register(b0)
+{
+	float4x4 viewMatrix;
+	float4x4 viewProjectionMatrix;
+};
+
 struct PSIn
 {
 	float4 ndcPos : SV_POSITION;
@@ -7,5 +13,6 @@ struct PSIn
 float4 main(PSIn p) : SV_TARGET
 {
 	float4 normal = normalize(p.normal);
-	return dot(normal, float4(0.f, 1.f, 0.f, 0.f)) + 0.5f;
+	float4 light = normalize(mul(float4(1.f, 1.f, 0.f, 0.f), viewMatrix));
+	return max(dot(normal, light), 0.f) + 0.1f;
 }
