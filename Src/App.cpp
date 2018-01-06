@@ -658,23 +658,20 @@ void App::Destroy()
 	}
 }
 
-void App::Update()
+void App::Update(float dt)
 {
-	// View matrix
-	DirectX::XMVECTOR eye = DirectX::XMVectorSet(5.f, 5.f, -5.f, 1.f);
-	DirectX::XMVECTOR target = DirectX::XMVectorZero();
-	DirectX::XMVECTOR up = DirectX::XMVectorSet(0.f, 1.f, 0.f, 0.f);
-	DirectX::XMMATRIX view = DirectX::XMMatrixLookAtLH(eye, target, up);
-	DirectX::XMStoreFloat4x4(&m_viewMatrix, view);
+	m_camera.Update(dt);
 
 	// View Projection matrix
+	DirectX::XMFLOAT4X4 viewMatrix = m_camera.GetViewMatrix();
+	DirectX::XMMATRIX view = DirectX::XMLoadFloat4x4(&viewMatrix);
 	DirectX::XMMATRIX proj = DirectX::XMLoadFloat4x4(&m_projMatrix);
 	DirectX::XMMATRIX viewProjMatrix = view * proj;
 
 	// Update constant buffer
 	DirectX::XMFLOAT4X4 viewProjMatrixTranspose;
 	XMStoreFloat4x4(&viewProjMatrixTranspose, XMMatrixTranspose(viewProjMatrix));
-	m_ViewConstantBufferPtr.at(m_gfxBufferIndex)->viewMatrix = m_viewMatrix;
+	m_ViewConstantBufferPtr.at(m_gfxBufferIndex)->viewMatrix = viewMatrix;
 	m_ViewConstantBufferPtr.at(m_gfxBufferIndex)->viewProjectionMatrix = viewProjMatrixTranspose;
 }
 

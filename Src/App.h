@@ -8,6 +8,8 @@
 #include <pix3.h>
 #include <array>
 
+#include "Camera.h"
+
 constexpr float k_Pi = 3.1415926535f;
 
 constexpr size_t k_gfxBufferCount = 2;
@@ -30,7 +32,7 @@ public:
 
 	void Init(HWND windowHandle);
 	void Destroy();
-	void Update();
+	void Update(float dt);
 	void Render();
 
 
@@ -103,8 +105,8 @@ private:
 	D3D12_VIEWPORT m_viewport;
 	D3D12_RECT m_scissorRect;
 
-	// Transforms
-	DirectX::XMFLOAT4X4 m_viewMatrix;
+	// View
+	Camera m_camera;
 	DirectX::XMFLOAT4X4 m_projMatrix;
 };
 

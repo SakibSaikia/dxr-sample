@@ -81,7 +81,7 @@ int Run()
 		}
 		else
 		{
-			AppInstance()->Update();
+			AppInstance()->Update(0.0166f);
 			AppInstance()->Render();
 		}
 	}
