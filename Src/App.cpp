@@ -751,7 +751,7 @@ void App::Render()
 	// Present
 	PIXBeginEvent(0, L"_present_");
 	{
-		m_swapChain->Present(0, 0);
+		m_swapChain->Present(1, 0);
 	}
 	PIXEndEvent();
 
