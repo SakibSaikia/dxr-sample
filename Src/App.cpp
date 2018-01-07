@@ -342,13 +342,8 @@ void App::InitStateObjects()
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc = {};
 
 		// input layout
-		D3D12_INPUT_ELEMENT_DESC inputElementDescs[] =
-		{
-			{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-			{ "NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 12, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 }
-		};
-		psoDesc.InputLayout.pInputElementDescs = inputElementDescs;
-		psoDesc.InputLayout.NumElements = std::extent<decltype(inputElementDescs)>::value;
+		psoDesc.InputLayout.pInputElementDescs = StaticMesh::VertexType::InputLayout::s_desc;
+		psoDesc.InputLayout.NumElements = StaticMesh::VertexType::InputLayout::s_num;
 
 		// root sig
 		psoDesc.pRootSignature = m_rootSignature.Get();

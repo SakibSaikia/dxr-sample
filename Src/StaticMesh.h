@@ -6,6 +6,18 @@
 class StaticMesh
 {
 public:
+	struct VertexType
+	{
+		DirectX::XMFLOAT3 position;
+		DirectX::XMFLOAT3 normal;
+
+		struct InputLayout
+		{
+			static const uint32_t s_num = 2;
+			static D3D12_INPUT_ELEMENT_DESC s_desc[s_num];
+		};
+	};
+
 	using keep_alive_type = std::pair<Microsoft::WRL::ComPtr<ID3D12Resource>, Microsoft::WRL::ComPtr<ID3D12Resource>>;
 
 	StaticMesh();

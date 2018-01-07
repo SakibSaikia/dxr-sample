@@ -3,6 +3,12 @@
 #include <memory>
 #include "StaticMesh.h"
 
+D3D12_INPUT_ELEMENT_DESC StaticMesh::VertexType::InputLayout::s_desc[StaticMesh::VertexType::InputLayout::s_num] =
+{
+	{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+	{ "NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 12, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 }
+};
+
 StaticMesh::StaticMesh()
 {
 
@@ -13,13 +19,7 @@ StaticMesh::keep_alive_type StaticMesh::Init(ID3D12Device* device, ID3D12Graphic
 	Microsoft::WRL::ComPtr<ID3D12Resource> vertexBufferUpload;
 	Microsoft::WRL::ComPtr<ID3D12Resource> indexBufferUpload;
 
-	struct Vertex
-	{
-		DirectX::XMFLOAT3 position;
-		DirectX::XMFLOAT3 normal;
-	};
-
-	Vertex cubeVertices[] =
+	VertexType cubeVertices[] =
 	{
 		{ { -1.f, -1.f, -1.f },{ 0.f, 0.f, -1.f } },
 		{ { 1.f, -1.f, -1.f },{ 0.f, 0.f, -1.f } },
@@ -217,7 +217,7 @@ StaticMesh::keep_alive_type StaticMesh::Init(ID3D12Device* device, ID3D12Graphic
 
 	// VB descriptor
 	m_vertexBufferView.BufferLocation = m_vertexBuffer->GetGPUVirtualAddress();
-	m_vertexBufferView.StrideInBytes = sizeof(Vertex);
+	m_vertexBufferView.StrideInBytes = sizeof(VertexType);
 	m_vertexBufferView.SizeInBytes = sizeof(cubeVertices);
 
 	// IB descriptor
