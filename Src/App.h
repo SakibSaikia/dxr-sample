@@ -7,8 +7,11 @@
 #include <DirectXMath.h>
 #include <pix3.h>
 #include <array>
+#include <vector>
+#include <memory>
 
 #include "Camera.h"
+#include "StaticMesh.h"
 
 constexpr float k_Pi = 3.1415926535f;
 
@@ -44,7 +47,7 @@ private:
 	void InitSwapChain(HWND windowHandle);
 	void InitDescriptors();
 	void InitShaders();
-	std::pair<Microsoft::WRL::ComPtr<ID3D12Resource>, Microsoft::WRL::ComPtr<ID3D12Resource>> InitGeometry();
+	std::vector<StaticMesh::keep_alive_type> InitScene();
 	void InitStateObjects();
 
 	D3D12_CPU_DESCRIPTOR_HANDLE GetCurrentBackBufferView() const;
@@ -93,11 +96,8 @@ private:
 	Microsoft::WRL::ComPtr<ID3DBlob> m_vsByteCode;
 	Microsoft::WRL::ComPtr<ID3DBlob> m_psByteCode;
 
-	// Geometry
-	Microsoft::WRL::ComPtr<ID3D12Resource> m_vertexBuffer;
-	Microsoft::WRL::ComPtr<ID3D12Resource> m_indexBuffer;
-	D3D12_VERTEX_BUFFER_VIEW m_vertexBufferView;
-	D3D12_INDEX_BUFFER_VIEW m_indexBufferView;
+	// Scene
+	std::vector<std::unique_ptr<StaticMesh>> m_scene;
 
 	// State Objects
 	Microsoft::WRL::ComPtr<ID3D12RootSignature> m_rootSignature;
