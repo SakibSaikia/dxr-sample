@@ -1,3 +1,5 @@
+#pragma pack_matrix( row_major )
+
 cbuffer ViewConstants : register(b0)
 {
 	float4x4 viewMatrix;

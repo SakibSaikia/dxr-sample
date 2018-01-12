@@ -290,6 +290,12 @@ std::vector<StaticMesh::keep_alive_type> App::InitScene()
 	return ret;
 }
 
+void App::InitCamera()
+{
+	float aspectRatio = static_cast<float>(k_screenWidth) / k_screenHeight;
+	m_camera.Init(aspectRatio);
+}
+
 void App::InitStateObjects()
 {
 	// Root signature
@@ -425,10 +431,7 @@ void App::Init(HWND windowHandle)
 	InitShaders();
 	auto keepAlive = InitScene();
 	InitStateObjects();
-
-	float aspectRatio = static_cast<float>(k_screenWidth) / k_screenHeight;
-	DirectX::XMMATRIX proj = DirectX::XMMatrixPerspectiveFovLH(0.25f * k_Pi, aspectRatio, 1.0f, 1000.0f);
-	XMStoreFloat4x4(&m_projMatrix, proj);
+	InitCamera();
 
 	// Finalize init and flush 
 	m_gfxCmdList->Close();
@@ -454,17 +457,9 @@ void App::Update(float dt)
 	m_lastMousePos = m_currentMousePos;
 	m_camera.Update(dt, mouseDelta);
 
-	// View Projection matrix
-	DirectX::XMFLOAT4X4 viewMatrix = m_camera.GetViewMatrix();
-	DirectX::XMMATRIX view = DirectX::XMLoadFloat4x4(&viewMatrix);
-	DirectX::XMMATRIX proj = DirectX::XMLoadFloat4x4(&m_projMatrix);
-	DirectX::XMMATRIX viewProjMatrix = view * proj;
-
 	// Update constant buffer
-	DirectX::XMFLOAT4X4 viewProjMatrixTranspose;
-	XMStoreFloat4x4(&viewProjMatrixTranspose, XMMatrixTranspose(viewProjMatrix));
-	m_ViewConstantBufferPtr.at(m_gfxBufferIndex)->viewMatrix = viewMatrix;
-	m_ViewConstantBufferPtr.at(m_gfxBufferIndex)->viewProjectionMatrix = viewProjMatrixTranspose;
+	m_ViewConstantBufferPtr.at(m_gfxBufferIndex)->viewMatrix = m_camera.GetViewMatrix();
+	m_ViewConstantBufferPtr.at(m_gfxBufferIndex)->viewProjectionMatrix = m_camera.GetViewProjectionMatrix();
 }
 
 void App::Render()

@@ -51,6 +51,12 @@ void Camera::RotateWorldY(float angle)
 	m_viewDirty = true;
 }
 
+void Camera::Init(const float aspectRatio)
+{
+	DirectX::XMMATRIX proj = DirectX::XMMatrixPerspectiveFovLH(0.25f * 3.1415926535f, aspectRatio, 1.0f, 1000.0f);
+	XMStoreFloat4x4(&m_projMatrix, proj);
+}
+
 void Camera::Update(const float dt, const POINT mouseDelta)
 {
 	if (GetAsyncKeyState('W') & 0x8000)
@@ -118,10 +124,26 @@ void Camera::UpdateViewMatrix()
 		m_viewMatrix(3, 3) = 1.0f;
 
 		m_viewDirty = false;
+
+		// View projection matrix
+		DirectX::XMMATRIX proj = DirectX::XMLoadFloat4x4(&m_projMatrix);
+		DirectX::XMMATRIX view = DirectX::XMLoadFloat4x4(&m_viewMatrix);
+		DirectX::XMMATRIX viewProjMatrix = view * proj;
+		XMStoreFloat4x4(&m_viewProjMatrix, viewProjMatrix);
 	}
 }
 
 DirectX::XMFLOAT4X4 Camera::GetViewMatrix()
 {
 	return m_viewMatrix;
+}
+
+DirectX::XMFLOAT4X4 Camera::GetProjectionMatrix()
+{
+	return m_projMatrix;
+}
+
+DirectX::XMFLOAT4X4 Camera::GetViewProjectionMatrix()
+{
+	return m_viewProjMatrix;
 }

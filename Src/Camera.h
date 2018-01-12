@@ -6,8 +6,11 @@
 class Camera
 {
 public:
+	void Init(const float aspectRatio);
 	void Update(const float dt, const POINT mouseDelta);
 	DirectX::XMFLOAT4X4 GetViewMatrix();
+	DirectX::XMFLOAT4X4 GetProjectionMatrix();
+	DirectX::XMFLOAT4X4 GetViewProjectionMatrix();
 
 private:
 	void Strafe(float d);
@@ -24,4 +27,6 @@ private:
 
 	bool m_viewDirty = false;
 	DirectX::XMFLOAT4X4 m_viewMatrix;
+	DirectX::XMFLOAT4X4 m_projMatrix;
+	DirectX::XMFLOAT4X4 m_viewProjMatrix;
 };

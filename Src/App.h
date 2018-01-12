@@ -47,6 +47,7 @@ private:
 	void InitSwapChain(HWND windowHandle);
 	void InitDescriptors();
 	void InitShaders();
+	void InitCamera();
 	std::vector<StaticMesh::keep_alive_type> InitScene();
 	void InitStateObjects();
 
@@ -107,7 +108,6 @@ private:
 
 	// View
 	Camera m_camera;
-	DirectX::XMFLOAT4X4 m_projMatrix;
 
 	// Mouse
 	POINT m_currentMousePos = { 0, 0 };
