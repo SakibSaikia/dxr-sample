@@ -142,7 +142,7 @@ void App::InitDescriptors()
 		assert(hr == S_OK && L"Failed to create DSV heap");
 
 		D3D12_DESCRIPTOR_HEAP_DESC cbvHeapDesc = {};
-		cbvHeapDesc.NumDescriptors = k_gfxBufferCount;
+		cbvHeapDesc.NumDescriptors = k_cbvSrvUavDescriptorCount;
 		cbvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
 		cbvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
 		hr = m_d3dDevice->CreateDescriptorHeap(&cbvHeapDesc, IID_PPV_ARGS(m_cbvHeap.GetAddressOf()));
@@ -240,7 +240,6 @@ void App::InitDescriptors()
 		heapDesc.Type = D3D12_HEAP_TYPE_UPLOAD; // must be CPU accessible
 		heapDesc.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN; // GPU or system mem
 
-		D3D12_CPU_DESCRIPTOR_HANDLE cbvHeapHandle = m_cbvHeap->GetCPUDescriptorHandleForHeapStart();
 		for (auto n = 0; n < k_gfxBufferCount; ++n)
 		{
 			HRESULT hr = m_d3dDevice->CreateCommittedResource(
@@ -259,10 +258,8 @@ void App::InitDescriptors()
 
 			m_d3dDevice->CreateConstantBufferView(
 				&cbvDesc,
-				m_cbvHeap->GetCPUDescriptorHandleForHeapStart()
+				GetConstantBufferDescriptorCPU(ConstantBufferId::View, n)
 			);
-
-			cbvHeapHandle.ptr += m_cbvSrvUavDescriptorSize;
 
 			// Get ptr to mapped resource
 			void** ptr = reinterpret_cast<void**>(&m_ViewConstantBufferPtr.at(n));
@@ -300,17 +297,29 @@ void App::InitStateObjects()
 {
 	// Root signature
 	{
-		D3D12_DESCRIPTOR_RANGE cbvTable = {};
-		cbvTable.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_CBV;
-		cbvTable.NumDescriptors = 1; // Table of single CBV
-		cbvTable.BaseShaderRegister = 0; // corresponds to b0 in shader
-		cbvTable.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
+		D3D12_ROOT_PARAMETER rootParameters[2];
 
-		D3D12_ROOT_PARAMETER rootParameters[1];
+		D3D12_DESCRIPTOR_RANGE viewCbvTable = {};
+		viewCbvTable.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_CBV;
+		viewCbvTable.NumDescriptors = 1; // Table of single CBV
+		viewCbvTable.BaseShaderRegister = 0; // corresponds to b0 in shader
+		viewCbvTable.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
+
 		rootParameters[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE; // can be root table, root descriptor or root constant
 		rootParameters[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
 		rootParameters[0].DescriptorTable.NumDescriptorRanges = 1;
-		rootParameters[0].DescriptorTable.pDescriptorRanges = &cbvTable;
+		rootParameters[0].DescriptorTable.pDescriptorRanges = &viewCbvTable;
+
+		D3D12_DESCRIPTOR_RANGE sceneCbvTable = {};
+		sceneCbvTable.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_CBV;
+		sceneCbvTable.NumDescriptors = 1; // Table of single CBV
+		sceneCbvTable.BaseShaderRegister = 1; // corresponds to b1 in shader
+		sceneCbvTable.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
+
+		rootParameters[1].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE; // can be root table, root descriptor or root constant
+		rootParameters[1].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+		rootParameters[1].DescriptorTable.NumDescriptorRanges = 1;
+		rootParameters[1].DescriptorTable.pDescriptorRanges = &sceneCbvTable;
 
 		D3D12_ROOT_SIGNATURE_DESC sigDesc;
 		sigDesc.NumParameters = std::extent<decltype(rootParameters)>::value;
@@ -506,10 +515,14 @@ void App::Render()
 
 		// Render scene
 		m_gfxCmdList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+		m_gfxCmdList->SetGraphicsRootDescriptorTable(0, GetConstantBufferDescriptorGPU(ConstantBufferId::View, m_gfxBufferIndex));
+
+		int meshId = 0;
 		for(auto& mesh : m_scene)
 		{
-			m_gfxCmdList->SetGraphicsRootDescriptorTable(0, m_cbvHeap->GetGPUDescriptorHandleForHeapStart());
+			m_gfxCmdList->SetGraphicsRootDescriptorTable(1, GetConstantBufferDescriptorGPU(ConstantBufferId::Scene, meshId));
 			mesh->Render(m_gfxCmdList.Get());
+			++meshId;
 		}
 
 		// Transition back buffer from render target to present
@@ -553,6 +566,24 @@ D3D12_CPU_DESCRIPTOR_HANDLE App::GetCurrentDepthStencilView() const
 {
 	D3D12_CPU_DESCRIPTOR_HANDLE hnd;
 	hnd.ptr = m_dsvHeap->GetCPUDescriptorHandleForHeapStart().ptr + m_gfxBufferIndex * m_dsvDescriptorSize;
+	return hnd;
+}
+
+D3D12_CPU_DESCRIPTOR_HANDLE App::GetConstantBufferDescriptorCPU(ConstantBufferId id, const uint32_t offset) const
+{
+	uint32_t descriptorOffset = static_cast<uint32_t>(id) + offset;
+
+	D3D12_CPU_DESCRIPTOR_HANDLE hnd;
+	hnd.ptr = m_cbvHeap->GetCPUDescriptorHandleForHeapStart().ptr + descriptorOffset * m_cbvSrvUavDescriptorSize;
+	return hnd;
+}
+
+D3D12_GPU_DESCRIPTOR_HANDLE App::GetConstantBufferDescriptorGPU(ConstantBufferId id, const uint32_t offset) const
+{
+	uint32_t descriptorOffset = static_cast<uint32_t>(id) + offset;
+
+	D3D12_GPU_DESCRIPTOR_HANDLE hnd;
+	hnd.ptr = m_cbvHeap->GetGPUDescriptorHandleForHeapStart().ptr + descriptorOffset * m_cbvSrvUavDescriptorSize;
 	return hnd;
 }
 
