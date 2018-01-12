@@ -96,7 +96,10 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 	{
 	case WM_KEYDOWN:
 		if (wParam == VK_ESCAPE)
+		{
+			AppInstance()->Destroy();
 			DestroyWindow(g_wndHandle);
+		}
 		return 0;
 	case WM_DESTROY:
 		PostQuitMessage(0);
