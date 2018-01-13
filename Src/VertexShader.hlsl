@@ -26,7 +26,7 @@ struct VSOut
 VSOut main( VSIn v )
 {
 	VSOut o;
-	float4 worldPos = float4(v.pos, 1.f);// mul(float4(v.pos, 1.f), localToWorldMatrix);
+	float4 worldPos = mul(float4(v.pos, 1.f), localToWorldMatrix);
 	o.ndcPos = mul(worldPos, viewProjectionMatrix);
 	o.normal = mul(float4(v.normal, 0.f), viewMatrix);
 

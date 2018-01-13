@@ -16,6 +16,8 @@ StaticMesh::StaticMesh()
 
 StaticMesh::keep_alive_type StaticMesh::Init(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList)
 {
+	XMStoreFloat4x4(&m_localToWorld, DirectX::XMMatrixScaling(2.0f, 2.0f, 2.0f) * DirectX::XMMatrixTranslation(0.0f, 0.5f, 0.0f));
+
 	Microsoft::WRL::ComPtr<ID3D12Resource> vertexBufferUpload;
 	Microsoft::WRL::ComPtr<ID3D12Resource> indexBufferUpload;
 
@@ -233,4 +235,9 @@ void StaticMesh::Render(ID3D12GraphicsCommandList* cmdList)
 	cmdList->IASetVertexBuffers(0, 1, &m_vertexBufferView);
 	cmdList->IASetIndexBuffer(&m_indexBufferView);
 	cmdList->DrawIndexedInstanced(m_numIndices, 1, 0, 0, 0);
+}
+
+DirectX::XMFLOAT4X4 StaticMesh::GetLocalToWorldMatrix()
+{
+	return m_localToWorld;
 }

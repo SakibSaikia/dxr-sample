@@ -221,7 +221,7 @@ void App::InitDescriptors()
 		}
 	}
 
-	// Constant Buffer
+	// View Constant Buffer
 	{
 		// 256 byte aligned
 		uint32_t viewConstantBufferSize = (sizeof(ViewConstants) + 0xff) & ~0xff;
@@ -252,15 +252,6 @@ void App::InitDescriptors()
 			);
 			assert(hr == S_OK && L"Failed to create constant buffer");
 
-			D3D12_CONSTANT_BUFFER_VIEW_DESC cbvDesc = {};
-			cbvDesc.BufferLocation = m_viewConstantBuffers.at(n)->GetGPUVirtualAddress();
-			cbvDesc.SizeInBytes = viewConstantBufferSize;
-
-			m_d3dDevice->CreateConstantBufferView(
-				&cbvDesc,
-				GetConstantBufferDescriptorCPU(ConstantBufferId::View, n)
-			);
-
 			// Get ptr to mapped resource
 			void** ptr = reinterpret_cast<void**>(&m_ViewConstantBufferPtr.at(n));
 			m_viewConstantBuffers.at(n)->Map(0, nullptr, ptr);
@@ -284,6 +275,43 @@ std::vector<StaticMesh::keep_alive_type> App::InitScene()
 	m_scene.emplace_back(std::move(mesh));
 	ret.emplace_back(keepAlive);
 
+	// Scene Constant Buffer
+	{
+		// 256 byte aligned
+		uint32_t sceneConstantsSize = sizeof(SceneConstants);
+
+		D3D12_RESOURCE_DESC resDesc = {};
+		resDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
+		resDesc.Width = sceneConstantsSize * m_scene.size();
+		resDesc.Height = 1;
+		resDesc.DepthOrArraySize = 1;
+		resDesc.MipLevels = 1;
+		resDesc.Format = DXGI_FORMAT_UNKNOWN;
+		resDesc.SampleDesc.Count = 1;
+		resDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+
+		D3D12_HEAP_PROPERTIES heapDesc = {};
+		heapDesc.Type = D3D12_HEAP_TYPE_UPLOAD; // must be CPU accessible
+		heapDesc.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN; // GPU or system mem
+
+		for (auto n = 0; n < k_gfxBufferCount; ++n)
+		{
+			HRESULT hr = m_d3dDevice->CreateCommittedResource(
+				&heapDesc,
+				D3D12_HEAP_FLAG_NONE,
+				&resDesc,
+				D3D12_RESOURCE_STATE_GENERIC_READ,
+				nullptr,
+				IID_PPV_ARGS(m_sceneConstantBuffers.at(n).GetAddressOf())
+			);
+			assert(hr == S_OK && L"Failed to create constant buffer");
+
+			// Get ptr to mapped resource
+			void** ptr = reinterpret_cast<void**>(&m_sceneConstantBufferPtr.at(n));
+			m_sceneConstantBuffers.at(n)->Map(0, nullptr, ptr);
+		}
+	}
+
 	return ret;
 }
 
@@ -299,27 +327,15 @@ void App::InitStateObjects()
 	{
 		D3D12_ROOT_PARAMETER rootParameters[2];
 
-		D3D12_DESCRIPTOR_RANGE viewCbvTable = {};
-		viewCbvTable.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_CBV;
-		viewCbvTable.NumDescriptors = 1; // Table of single CBV
-		viewCbvTable.BaseShaderRegister = 0; // corresponds to b0 in shader
-		viewCbvTable.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
-
-		rootParameters[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE; // can be root table, root descriptor or root constant
+		rootParameters[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
 		rootParameters[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
-		rootParameters[0].DescriptorTable.NumDescriptorRanges = 1;
-		rootParameters[0].DescriptorTable.pDescriptorRanges = &viewCbvTable;
+		rootParameters[0].Descriptor.RegisterSpace = 0;
+		rootParameters[0].Descriptor.ShaderRegister = 0;
 
-		D3D12_DESCRIPTOR_RANGE sceneCbvTable = {};
-		sceneCbvTable.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_CBV;
-		sceneCbvTable.NumDescriptors = 1; // Table of single CBV
-		sceneCbvTable.BaseShaderRegister = 1; // corresponds to b1 in shader
-		sceneCbvTable.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
-
-		rootParameters[1].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE; // can be root table, root descriptor or root constant
+		rootParameters[1].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
 		rootParameters[1].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
-		rootParameters[1].DescriptorTable.NumDescriptorRanges = 1;
-		rootParameters[1].DescriptorTable.pDescriptorRanges = &sceneCbvTable;
+		rootParameters[1].Descriptor.RegisterSpace = 0;
+		rootParameters[1].Descriptor.ShaderRegister = 1;
 
 		D3D12_ROOT_SIGNATURE_DESC sigDesc;
 		sigDesc.NumParameters = std::extent<decltype(rootParameters)>::value;
@@ -466,9 +482,17 @@ void App::Update(float dt)
 	m_lastMousePos = m_currentMousePos;
 	m_camera.Update(dt, mouseDelta);
 
-	// Update constant buffer
+	// Update view constant buffer
 	m_ViewConstantBufferPtr.at(m_gfxBufferIndex)->viewMatrix = m_camera.GetViewMatrix();
 	m_ViewConstantBufferPtr.at(m_gfxBufferIndex)->viewProjectionMatrix = m_camera.GetViewProjectionMatrix();
+
+	// Update scene constant buffer
+	SceneConstants* meshConstants = m_sceneConstantBufferPtr.at(m_gfxBufferIndex);
+	for (const auto& mesh : m_scene)
+	{
+		meshConstants->localToWorldMatrix = mesh->GetLocalToWorldMatrix();
+		meshConstants++;
+	}
 }
 
 void App::Render()
@@ -515,12 +539,12 @@ void App::Render()
 
 		// Render scene
 		m_gfxCmdList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-		m_gfxCmdList->SetGraphicsRootDescriptorTable(0, GetConstantBufferDescriptorGPU(ConstantBufferId::View, m_gfxBufferIndex));
+		m_gfxCmdList->SetGraphicsRootConstantBufferView(0, m_viewConstantBuffers.at(m_gfxBufferIndex)->GetGPUVirtualAddress());
 
 		int meshId = 0;
 		for(auto& mesh : m_scene)
 		{
-			m_gfxCmdList->SetGraphicsRootDescriptorTable(1, GetConstantBufferDescriptorGPU(ConstantBufferId::Scene, meshId));
+			m_gfxCmdList->SetGraphicsRootConstantBufferView(1, m_sceneConstantBuffers.at(m_gfxBufferIndex)->GetGPUVirtualAddress() + meshId * sizeof(SceneConstants));
 			mesh->Render(m_gfxCmdList.Get());
 			++meshId;
 		}

@@ -30,6 +30,12 @@ struct ViewConstants
 	DirectX::XMFLOAT4X4 viewProjectionMatrix;
 };
 
+__declspec(align(256))
+struct SceneConstants
+{
+	DirectX::XMFLOAT4X4 localToWorldMatrix;
+};
+
 enum class ConstantBufferId : uint32_t
 {
 	View = 0, // double-buffered
@@ -108,7 +114,8 @@ private:
 
 	// Scene
 	std::vector<std::unique_ptr<StaticMesh>> m_scene;
-	Microsoft::WRL::ComPtr<ID3D12Resource> m_sceneConstantBuffer;
+	std::array<Microsoft::WRL::ComPtr<ID3D12Resource>, k_gfxBufferCount> m_sceneConstantBuffers;
+	std::array<SceneConstants*, k_gfxBufferCount> m_sceneConstantBufferPtr;
 
 	// State Objects
 	Microsoft::WRL::ComPtr<ID3D12RootSignature> m_rootSignature;
