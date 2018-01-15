@@ -267,52 +267,7 @@ void App::InitShaders()
 
 std::vector<StaticMesh::keep_alive_type> App::InitScene()
 {
-	std::vector<StaticMesh::keep_alive_type> ret;
-
-	auto mesh = std::make_unique<StaticMesh>();
-	auto keepAlive = mesh->Init(m_d3dDevice.Get(), m_gfxCmdList.Get());
-
-	m_scene.emplace_back(std::move(mesh));
-	ret.emplace_back(keepAlive);
-
-	// Scene Constant Buffer
-	{
-		// 256 byte aligned
-		uint32_t sceneConstantsSize = sizeof(SceneConstants);
-
-		D3D12_RESOURCE_DESC resDesc = {};
-		resDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
-		resDesc.Width = sceneConstantsSize * m_scene.size();
-		resDesc.Height = 1;
-		resDesc.DepthOrArraySize = 1;
-		resDesc.MipLevels = 1;
-		resDesc.Format = DXGI_FORMAT_UNKNOWN;
-		resDesc.SampleDesc.Count = 1;
-		resDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
-
-		D3D12_HEAP_PROPERTIES heapDesc = {};
-		heapDesc.Type = D3D12_HEAP_TYPE_UPLOAD; // must be CPU accessible
-		heapDesc.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN; // GPU or system mem
-
-		for (auto n = 0; n < k_gfxBufferCount; ++n)
-		{
-			HRESULT hr = m_d3dDevice->CreateCommittedResource(
-				&heapDesc,
-				D3D12_HEAP_FLAG_NONE,
-				&resDesc,
-				D3D12_RESOURCE_STATE_GENERIC_READ,
-				nullptr,
-				IID_PPV_ARGS(m_sceneConstantBuffers.at(n).GetAddressOf())
-			);
-			assert(hr == S_OK && L"Failed to create constant buffer");
-
-			// Get ptr to mapped resource
-			void** ptr = reinterpret_cast<void**>(&m_sceneConstantBufferPtr.at(n));
-			m_sceneConstantBuffers.at(n)->Map(0, nullptr, ptr);
-		}
-	}
-
-	return ret;
+	return m_scene.Init(1, m_d3dDevice.Get(), m_gfxCmdList.Get());
 }
 
 void App::InitCamera()
@@ -486,13 +441,8 @@ void App::Update(float dt)
 	m_ViewConstantBufferPtr.at(m_gfxBufferIndex)->viewMatrix = m_camera.GetViewMatrix();
 	m_ViewConstantBufferPtr.at(m_gfxBufferIndex)->viewProjectionMatrix = m_camera.GetViewProjectionMatrix();
 
-	// Update scene constant buffer
-	SceneConstants* meshConstants = m_sceneConstantBufferPtr.at(m_gfxBufferIndex);
-	for (const auto& mesh : m_scene)
-	{
-		meshConstants->localToWorldMatrix = mesh->GetLocalToWorldMatrix();
-		meshConstants++;
-	}
+	// Update scene 
+	m_scene.Update(m_gfxBufferIndex);
 }
 
 void App::Render()
@@ -540,14 +490,7 @@ void App::Render()
 		// Render scene
 		m_gfxCmdList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 		m_gfxCmdList->SetGraphicsRootConstantBufferView(0, m_viewConstantBuffers.at(m_gfxBufferIndex)->GetGPUVirtualAddress());
-
-		int meshId = 0;
-		for(auto& mesh : m_scene)
-		{
-			m_gfxCmdList->SetGraphicsRootConstantBufferView(1, m_sceneConstantBuffers.at(m_gfxBufferIndex)->GetGPUVirtualAddress() + meshId * sizeof(SceneConstants));
-			mesh->Render(m_gfxCmdList.Get());
-			++meshId;
-		}
+		m_scene.Render(m_gfxCmdList.Get(), m_gfxBufferIndex);
 
 		// Transition back buffer from render target to present
 		barrierDesc = {};

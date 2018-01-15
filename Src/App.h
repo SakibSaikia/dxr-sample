@@ -11,11 +11,10 @@
 #include <memory>
 
 #include "Camera.h"
-#include "StaticMesh.h"
+#include "Scene.h"
 
 constexpr float k_Pi = 3.1415926535f;
 
-constexpr size_t k_gfxBufferCount = 2;
 constexpr size_t k_screenWidth = 1280;
 constexpr size_t k_screenHeight = 720;
 constexpr size_t k_cbvSrvUavDescriptorCount = 16;
@@ -28,12 +27,6 @@ struct ViewConstants
 {
 	DirectX::XMFLOAT4X4 viewMatrix;
 	DirectX::XMFLOAT4X4 viewProjectionMatrix;
-};
-
-__declspec(align(256))
-struct SceneConstants
-{
-	DirectX::XMFLOAT4X4 localToWorldMatrix;
 };
 
 enum class ConstantBufferId : uint32_t
@@ -113,9 +106,7 @@ private:
 	Microsoft::WRL::ComPtr<ID3DBlob> m_psByteCode;
 
 	// Scene
-	std::vector<std::unique_ptr<StaticMesh>> m_scene;
-	std::array<Microsoft::WRL::ComPtr<ID3D12Resource>, k_gfxBufferCount> m_sceneConstantBuffers;
-	std::array<SceneConstants*, k_gfxBufferCount> m_sceneConstantBufferPtr;
+	Scene m_scene;
 
 	// State Objects
 	Microsoft::WRL::ComPtr<ID3D12RootSignature> m_rootSignature;
