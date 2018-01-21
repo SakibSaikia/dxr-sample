@@ -265,9 +265,9 @@ void App::InitShaders()
 	m_psByteCode = LoadShaderFromFile(L"CompiledShaders\\PixelShader.cso");
 }
 
-std::vector<StaticMesh::keep_alive_type> App::InitScene()
+void App::InitScene()
 {
-	return m_scene.Init(1, m_d3dDevice.Get(), m_gfxCmdList.Get());
+	m_scene.Init(1, m_d3dDevice.Get(), m_gfxCmdList.Get());
 }
 
 void App::InitCamera()
@@ -409,7 +409,7 @@ void App::Init(HWND windowHandle)
 	InitSwapChain(windowHandle);
 	InitDescriptors();
 	InitShaders();
-	auto keepAlive = InitScene();
+	InitScene();
 	InitStateObjects();
 	InitCamera();
 
@@ -552,6 +552,14 @@ D3D12_GPU_DESCRIPTOR_HANDLE App::GetConstantBufferDescriptorGPU(ConstantBufferId
 	D3D12_GPU_DESCRIPTOR_HANDLE hnd;
 	hnd.ptr = m_cbvHeap->GetGPUDescriptorHandleForHeapStart().ptr + descriptorOffset * m_cbvSrvUavDescriptorSize;
 	return hnd;
+}
+
+void App::SubmitCommands()
+{
+	m_gfxCmdList->Close();
+	ID3D12CommandList* cmdLists[] = { m_gfxCmdList.Get() };
+	m_cmdQueue->ExecuteCommandLists(std::extent<decltype(cmdLists)>::value, cmdLists);
+	m_gfxCmdList->Reset(m_gfxCmdAllocators.at(m_gfxBufferIndex).Get(), nullptr);
 }
 
 void App::FlushCmdQueue()

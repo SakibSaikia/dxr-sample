@@ -11,6 +11,10 @@ public:
 		DirectX::XMFLOAT3 position;
 		DirectX::XMFLOAT3 normal;
 
+		VertexType() {}
+		VertexType(DirectX::XMFLOAT3 inPos, DirectX::XMFLOAT3 inNormal) :
+			position(inPos), normal(inNormal) {}
+
 		struct InputLayout
 		{
 			static const uint32_t s_num = 2;
@@ -18,10 +22,8 @@ public:
 		};
 	};
 
-	using keep_alive_type = std::pair<Microsoft::WRL::ComPtr<ID3D12Resource>, Microsoft::WRL::ComPtr<ID3D12Resource>>;
-
 	StaticMesh();
-	keep_alive_type Init(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList);
+	void Init(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList, std::vector<StaticMesh::VertexType> vertexData, std::vector<uint16_t> indexData);
 	void Render(ID3D12GraphicsCommandList* cmdList);
 
 private:

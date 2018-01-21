@@ -20,9 +20,12 @@ class Scene
 	};
 
 public:
-	std::vector<StaticMesh::keep_alive_type> Init(const uint32_t cbvRootParamIndex, ID3D12Device* device, ID3D12GraphicsCommandList* cmdList);
+	void Init(const uint32_t cbvRootParamIndex, ID3D12Device* device, ID3D12GraphicsCommandList* cmdList);
 	void Update(uint32_t bufferIndex);
 	void Render(ID3D12GraphicsCommandList* cmdList, uint32_t bufferIndex);
+
+private:
+	void LoadMeshes(const struct aiScene* loader, ID3D12Device* device, ID3D12GraphicsCommandList* cmdList);
 
 private:
 	std::vector<std::unique_ptr<StaticMesh>> m_meshes;

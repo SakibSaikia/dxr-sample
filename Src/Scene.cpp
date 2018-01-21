@@ -3,7 +3,43 @@
 #include <assimp\scene.h>
 #include <assimp\postprocess.h>
 
-std::vector<StaticMesh::keep_alive_type> Scene::Init(const uint32_t cbvRootParamIndex, ID3D12Device* device, ID3D12GraphicsCommandList* cmdList)
+void Scene::LoadMeshes(const aiScene* loader, ID3D12Device* device, ID3D12GraphicsCommandList* cmdList)
+{
+	for (auto meshIdx = 0u; meshIdx < loader->mNumMeshes; meshIdx++)
+	{
+		const aiMesh* srcMesh = loader->mMeshes[meshIdx];
+
+		// vertex data
+		std::vector<StaticMesh::VertexType> vertexData;
+		for (auto vertIdx = 0u; vertIdx < srcMesh->mNumVertices; vertIdx++)
+		{
+			const aiVector3D& vertPos = srcMesh->mVertices[vertIdx];
+			const aiVector3D& vertNormal = srcMesh->mNormals[vertIdx];
+
+			vertexData.emplace_back(
+				DirectX::XMFLOAT3(vertPos.x, vertPos.y, vertPos.z),
+				DirectX::XMFLOAT3(vertNormal.x, vertNormal.y, vertNormal.z)
+			);
+		}
+
+		// index data
+		std::vector<uint16_t> indexData;
+		for (auto primIdx = 0u; primIdx<srcMesh->mNumFaces; primIdx++)
+		{
+			const aiFace& primitive = srcMesh->mFaces[primIdx];
+			for (auto index = 0u; index < primitive.mNumIndices; index++)
+			{
+				indexData.push_back(primitive.mIndices[index]);
+			}
+		}
+
+		auto mesh = std::make_unique<StaticMesh>();
+		mesh->Init(device, cmdList, std::move(vertexData), std::move(indexData));
+		m_meshes.push_back(std::move(mesh));
+	}
+}
+
+void Scene::Init(const uint32_t cbvRootParamIndex, ID3D12Device* device, ID3D12GraphicsCommandList* cmdList)
 {
 	m_objectCBVRootParameterIndex = cbvRootParamIndex;
 
@@ -21,18 +57,11 @@ std::vector<StaticMesh::keep_alive_type> Scene::Init(const uint32_t cbvRootParam
 		);
 
 		assert(scene != nullptr && L"Failed to load scene");
+
+		LoadMeshes(scene, device, cmdList);
 	}
 
-
-	std::vector<StaticMesh::keep_alive_type> ret;
-
-	auto mesh = std::make_unique<StaticMesh>();
-	auto keepAlive = mesh->Init(device, cmdList);
-
-	m_meshes.push_back(std::move(mesh));
-	ret.push_back(keepAlive);
-
-	m_meshEntities.emplace_back(m_meshes.size() - 1, DirectX::XMMatrixScaling(2.0f, 2.0f, 2.0f) * DirectX::XMMatrixTranslation(0.0f, 0.5f, 0.0f));
+	m_meshEntities.emplace_back(0, DirectX::XMMatrixScaling(2.0f, 2.0f, 2.0f) * DirectX::XMMatrixTranslation(0.0f, 0.5f, 0.0f));
 
 	// Object Constant Buffer
 	{
@@ -69,8 +98,6 @@ std::vector<StaticMesh::keep_alive_type> Scene::Init(const uint32_t cbvRootParam
 			m_objectConstantBuffers.at(n)->Map(0, nullptr, ptr);
 		}
 	}
-
-	return ret;
 }
 
 void Scene::Update(uint32_t bufferIndex)

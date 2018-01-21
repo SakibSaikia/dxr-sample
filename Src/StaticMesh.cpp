@@ -1,7 +1,8 @@
 #include <d3d12.h>
 #include <DirectXMath.h>
 #include <memory>
-#include "StaticMesh.h"
+#include <vector>
+#include "App.h"
 
 D3D12_INPUT_ELEMENT_DESC StaticMesh::VertexType::InputLayout::s_desc[StaticMesh::VertexType::InputLayout::s_num] =
 {
@@ -14,66 +15,17 @@ StaticMesh::StaticMesh()
 
 }
 
-StaticMesh::keep_alive_type StaticMesh::Init(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList)
+void StaticMesh::Init(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList, std::vector<StaticMesh::VertexType> vertexData, std::vector<uint16_t> indexData)
 {
 	Microsoft::WRL::ComPtr<ID3D12Resource> vertexBufferUpload;
 	Microsoft::WRL::ComPtr<ID3D12Resource> indexBufferUpload;
 
-	VertexType cubeVertices[] =
-	{
-		{ { -1.f, -1.f, -1.f },{ 0.f, 0.f, -1.f } },
-		{ { 1.f, -1.f, -1.f },{ 0.f, 0.f, -1.f } },
-		{ { 1.f, 1.f, -1.f },{ 0.f, 0.f, -1.f } },
-		{ { -1.f, 1.f, -1.f },{ 0.f, 0.f, -1.f } },
-
-		{ { -1.f, -1.f, 1.f },{ 0.f, 0.f, 1.f } },
-		{ { 1.f, -1.f, 1.f },{ 0.f, 0.f, 1.f } },
-		{ { 1.f, 1.f, 1.f },{ 0.f, 0.f, 1.f } },
-		{ { -1.f, 1.f, 1.f },{ 0.f, 0.f, 1.f } },
-
-		{ { -1.f, -1.f, -1.f },{ -1.f, 0.f, 0.f } },
-		{ { -1.f, -1.f, 1.f },{ -1.f, 0.f, 0.f } },
-		{ { -1.f, 1.f, 1.f },{ -1.f, 0.f, 0.f } },
-		{ { -1.f, 1.f, -1.f },{ -1.f, 0.f, 0.f } },
-
-		{ { 1.f, -1.f, -1.f },{ 1.f, 0.f, 0.f } },
-		{ { 1.f, -1.f, 1.f },{ 1.f, 0.f, 0.f } },
-		{ { 1.f, 1.f, 1.f },{ 1.f, 0.f, 0.f } },
-		{ { 1.f, 1.f, -1.f },{ 1.f, 0.f, 0.f } },
-
-		{ { -1.f, -1.f, -1.f },{ 0.f, -1.f, 0.f } },
-		{ { 1.f, -1.f, -1.f },{ 0.f, -1.f, 0.f } },
-		{ { 1.f, -1.f, 1.f },{ 0.f, -1.f, 0.f } },
-		{ { -1.f, -1.f, 1.f },{ 0.f, -1.f, 0.f } },
-
-		{ { -1.f, 1.f, -1.f },{ 0.f, 1.f, 0.f } },
-		{ { 1.f, 1.f, -1.f },{ 0.f, 1.f, 0.f } },
-		{ { 1.f, 1.f, 1.f },{ 0.f, 1.f, 0.f } },
-		{ { -1.f, 1.f, 1.f },{ 0.f, 1.f, 0.f } },
-	};
-
-	uint16_t cubeIndices[] =
-	{
-		0, 3, 2,
-		2, 1, 0,
-		7, 4, 6,
-		6, 4, 5,
-		8, 9, 11,
-		11, 9, 10,
-		13, 12, 15,
-		15, 14, 13,
-		16, 17, 19,
-		19, 17, 18,
-		21, 20, 23,
-		23, 22, 21
-	};
-
-	m_numIndices = std::extent<decltype(cubeIndices)>::value;
+	m_numIndices = indexData.size();
 
 	// default vertex buffer
 	D3D12_RESOURCE_DESC vbDesc = {};
 	vbDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
-	vbDesc.Width = sizeof(cubeVertices);
+	vbDesc.Width = vertexData.size() * sizeof(VertexType);
 	vbDesc.Height = 1;
 	vbDesc.DepthOrArraySize = 1;
 	vbDesc.MipLevels = 1;
@@ -99,7 +51,7 @@ StaticMesh::keep_alive_type StaticMesh::Init(ID3D12Device* device, ID3D12Graphic
 	// default index buffer
 	D3D12_RESOURCE_DESC ibDesc = {};
 	ibDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
-	ibDesc.Width = sizeof(cubeIndices);
+	ibDesc.Width = indexData.size() * sizeof(uint16_t);
 	ibDesc.Height = 1;
 	ibDesc.DepthOrArraySize = 1;
 	ibDesc.MipLevels = 1;
@@ -156,7 +108,7 @@ StaticMesh::keep_alive_type StaticMesh::Init(ID3D12Device* device, ID3D12Graphic
 
 	uint8_t* destPtr;
 	vertexBufferUpload->Map(0, nullptr, reinterpret_cast<void**>(&destPtr));
-	const uint8_t* pSrc = reinterpret_cast<const uint8_t*>(cubeVertices);
+	const uint8_t* pSrc = reinterpret_cast<const uint8_t*>(vertexData.data());
 	memcpy(destPtr, pSrc, vbRowSizeInBytes);
 	vertexBufferUpload->Unmap(0, nullptr);
 
@@ -169,7 +121,7 @@ StaticMesh::keep_alive_type StaticMesh::Init(ID3D12Device* device, ID3D12Graphic
 		&ibLayout, nullptr, &ibRowSizeInBytes, nullptr);
 
 	indexBufferUpload->Map(0, nullptr, reinterpret_cast<void**>(&destPtr));
-	pSrc = reinterpret_cast<const uint8_t*>(cubeIndices);
+	pSrc = reinterpret_cast<const uint8_t*>(indexData.data());
 	memcpy(destPtr, pSrc, ibRowSizeInBytes);
 	indexBufferUpload->Unmap(0, nullptr);
 
@@ -218,14 +170,18 @@ StaticMesh::keep_alive_type StaticMesh::Init(ID3D12Device* device, ID3D12Graphic
 	// VB descriptor
 	m_vertexBufferView.BufferLocation = m_vertexBuffer->GetGPUVirtualAddress();
 	m_vertexBufferView.StrideInBytes = sizeof(VertexType);
-	m_vertexBufferView.SizeInBytes = sizeof(cubeVertices);
+	m_vertexBufferView.SizeInBytes = vertexData.size() * sizeof(VertexType);
 
 	// IB descriptor
 	m_indexBufferView.BufferLocation = m_indexBuffer->GetGPUVirtualAddress();
 	m_indexBufferView.Format = DXGI_FORMAT_R16_UINT;
-	m_indexBufferView.SizeInBytes = sizeof(cubeIndices);
+	m_indexBufferView.SizeInBytes = indexData.size() * sizeof(uint16_t);
 
-	return std::make_pair(vertexBufferUpload, indexBufferUpload);
+	// Flush here so that the upload buffers do not go out of scope
+	// TODO - do not create and destroy upload buffers for each mesh. 
+	// Instead have a common upload buffer(s) that is large enough.
+	AppInstance()->SubmitCommands();
+	AppInstance()->FlushCmdQueue();
 }
 
 void StaticMesh::Render(ID3D12GraphicsCommandList* cmdList)

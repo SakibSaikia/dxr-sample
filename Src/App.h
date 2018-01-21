@@ -50,6 +50,9 @@ public:
 
 	void OnMouseMove(WPARAM btnState, int x, int y);
 
+	void SubmitCommands();
+	void FlushCmdQueue();
+
 private:
 
 	void InitBaseD3D();
@@ -58,7 +61,7 @@ private:
 	void InitDescriptors();
 	void InitShaders();
 	void InitCamera();
-	std::vector<StaticMesh::keep_alive_type> InitScene();
+	void InitScene();
 	void InitStateObjects();
 
 	D3D12_CPU_DESCRIPTOR_HANDLE GetCurrentBackBufferView() const;
@@ -66,7 +69,6 @@ private:
 	D3D12_CPU_DESCRIPTOR_HANDLE GetConstantBufferDescriptorCPU(ConstantBufferId id, const uint32_t offset) const;
 	D3D12_GPU_DESCRIPTOR_HANDLE GetConstantBufferDescriptorGPU(ConstantBufferId id, const uint32_t offset) const;
 
-	void FlushCmdQueue();
 	void AdvanceGfxFrame();
 
 private:
