@@ -21,15 +21,25 @@ public:
 	using keep_alive_type = std::pair<Microsoft::WRL::ComPtr<ID3D12Resource>, Microsoft::WRL::ComPtr<ID3D12Resource>>;
 
 	StaticMesh();
-	DirectX::XMFLOAT4X4 GetLocalToWorldMatrix();
 	keep_alive_type Init(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList);
 	void Render(ID3D12GraphicsCommandList* cmdList);
 
 private:
-	DirectX::XMFLOAT4X4 m_localToWorld;
 	Microsoft::WRL::ComPtr<ID3D12Resource> m_vertexBuffer;
 	Microsoft::WRL::ComPtr<ID3D12Resource> m_indexBuffer;
 	D3D12_VERTEX_BUFFER_VIEW m_vertexBufferView;
 	D3D12_INDEX_BUFFER_VIEW m_indexBufferView;
 	uint32_t m_numIndices;
+};
+
+class StaticMeshEntity
+{
+public:
+	StaticMeshEntity() = delete;
+	StaticMeshEntity(const uint64_t meshIndex, const DirectX::XMMATRIX& localToWorld);
+	DirectX::XMFLOAT4X4 GetLocalToWorldMatrix() const;
+	uint64_t GetMeshIndex() const;
+private:
+	uint64_t m_meshIndex;
+	DirectX::XMFLOAT4X4 m_localToWorld;
 };

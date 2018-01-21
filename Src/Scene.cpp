@@ -1,16 +1,38 @@
 #include "Scene.h"
+#include <assimp\Importer.hpp>
+#include <assimp\scene.h>
+#include <assimp\postprocess.h>
 
 std::vector<StaticMesh::keep_alive_type> Scene::Init(const uint32_t cbvRootParamIndex, ID3D12Device* device, ID3D12GraphicsCommandList* cmdList)
 {
 	m_objectCBVRootParameterIndex = cbvRootParamIndex;
+
+	// Load scene
+	{
+		Assimp::Importer importer;
+		const aiScene* scene = importer.ReadFile("..\\Content\\Sponza\\obj\\sponza.obj",
+			aiProcess_CalcTangentSpace |
+			aiProcess_Triangulate |
+			aiProcess_JoinIdenticalVertices |
+			aiProcess_SortByPType |
+			aiProcess_MakeLeftHanded |
+			aiProcess_FlipWindingOrder |
+			aiProcess_FlipUVs
+		);
+
+		assert(scene != nullptr && L"Failed to load scene");
+	}
+
 
 	std::vector<StaticMesh::keep_alive_type> ret;
 
 	auto mesh = std::make_unique<StaticMesh>();
 	auto keepAlive = mesh->Init(device, cmdList);
 
-	m_meshes.emplace_back(std::move(mesh));
-	ret.emplace_back(keepAlive);
+	m_meshes.push_back(std::move(mesh));
+	ret.push_back(keepAlive);
+
+	m_meshEntities.emplace_back(m_meshes.size() - 1, DirectX::XMMatrixScaling(2.0f, 2.0f, 2.0f) * DirectX::XMMatrixTranslation(0.0f, 0.5f, 0.0f));
 
 	// Object Constant Buffer
 	{
@@ -18,7 +40,7 @@ std::vector<StaticMesh::keep_alive_type> Scene::Init(const uint32_t cbvRootParam
 
 		D3D12_RESOURCE_DESC resDesc = {};
 		resDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
-		resDesc.Width = objectConstantsSize * m_meshes.size();
+		resDesc.Width = objectConstantsSize * m_meshEntities.size();
 		resDesc.Height = 1;
 		resDesc.DepthOrArraySize = 1;
 		resDesc.MipLevels = 1;
@@ -54,24 +76,25 @@ std::vector<StaticMesh::keep_alive_type> Scene::Init(const uint32_t cbvRootParam
 void Scene::Update(uint32_t bufferIndex)
 {
 	ObjectConstants* c = m_objectConstantBufferPtr.at(bufferIndex);
-	for (const auto& mesh : m_meshes)
+	for (const auto& meshEntity : m_meshEntities)
 	{
-		c->localToWorldMatrix = mesh->GetLocalToWorldMatrix();
+		c->localToWorldMatrix = meshEntity.GetLocalToWorldMatrix();
 		c++;
 	}
 }
 
 void Scene::Render(ID3D12GraphicsCommandList* cmdList, uint32_t bufferIndex)
 {
-	int meshId = 0;
-	for (auto& mesh : m_meshes)
+	int entityId = 0;
+	for (auto& meshEntity : m_meshEntities)
 	{
 		cmdList->SetGraphicsRootConstantBufferView(
-			m_objectCBVRootParameterIndex, 
+			m_objectCBVRootParameterIndex,
 			m_objectConstantBuffers.at(bufferIndex)->GetGPUVirtualAddress() +
-			meshId * sizeof(ObjectConstants));
+			entityId * sizeof(ObjectConstants)
+		);
 
-		mesh->Render(cmdList);
-		++meshId;
+		m_meshes.at(meshEntity.GetMeshIndex())->Render(cmdList);
+		++entityId;
 	}
 }

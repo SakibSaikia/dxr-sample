@@ -26,6 +26,7 @@ public:
 
 private:
 	std::vector<std::unique_ptr<StaticMesh>> m_meshes;
+	std::vector<StaticMeshEntity> m_meshEntities;
 
 	uint32_t m_objectCBVRootParameterIndex;
 	std::array<Microsoft::WRL::ComPtr<ID3D12Resource>, k_gfxBufferCount> m_objectConstantBuffers;
