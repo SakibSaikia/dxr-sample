@@ -15,7 +15,7 @@ StaticMesh::StaticMesh()
 
 }
 
-void StaticMesh::Init(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList, std::vector<StaticMesh::VertexType> vertexData, std::vector<uint16_t> indexData)
+void StaticMesh::Init(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList, std::vector<StaticMesh::VertexType> vertexData, std::vector<StaticMesh::IndexType> indexData)
 {
 	Microsoft::WRL::ComPtr<ID3D12Resource> vertexBufferUpload;
 	Microsoft::WRL::ComPtr<ID3D12Resource> indexBufferUpload;
@@ -51,7 +51,7 @@ void StaticMesh::Init(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList, 
 	// default index buffer
 	D3D12_RESOURCE_DESC ibDesc = {};
 	ibDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
-	ibDesc.Width = indexData.size() * sizeof(uint16_t);
+	ibDesc.Width = indexData.size() * sizeof(StaticMesh::IndexType);
 	ibDesc.Height = 1;
 	ibDesc.DepthOrArraySize = 1;
 	ibDesc.MipLevels = 1;
@@ -175,7 +175,7 @@ void StaticMesh::Init(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList, 
 	// IB descriptor
 	m_indexBufferView.BufferLocation = m_indexBuffer->GetGPUVirtualAddress();
 	m_indexBufferView.Format = DXGI_FORMAT_R16_UINT;
-	m_indexBufferView.SizeInBytes = indexData.size() * sizeof(uint16_t);
+	m_indexBufferView.SizeInBytes = indexData.size() * sizeof(StaticMesh::IndexType);
 
 	// Flush here so that the upload buffers do not go out of scope
 	// TODO - do not create and destroy upload buffers for each mesh. 

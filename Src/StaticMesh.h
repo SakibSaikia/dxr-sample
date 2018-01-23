@@ -22,8 +22,10 @@ public:
 		};
 	};
 
+	using IndexType = uint16_t;
+
 	StaticMesh();
-	void Init(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList, std::vector<StaticMesh::VertexType> vertexData, std::vector<uint16_t> indexData);
+	void Init(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList, std::vector<StaticMesh::VertexType> vertexData, std::vector<StaticMesh::IndexType> indexData);
 	void Render(ID3D12GraphicsCommandList* cmdList);
 
 private:

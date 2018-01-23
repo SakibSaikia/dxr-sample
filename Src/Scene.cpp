@@ -23,7 +23,7 @@ void Scene::LoadMeshes(const aiScene* loader, ID3D12Device* device, ID3D12Graphi
 		}
 
 		// index data
-		std::vector<uint16_t> indexData;
+		std::vector<StaticMesh::IndexType> indexData;
 		for (auto primIdx = 0u; primIdx<srcMesh->mNumFaces; primIdx++)
 		{
 			const aiFace& primitive = srcMesh->mFaces[primIdx];
