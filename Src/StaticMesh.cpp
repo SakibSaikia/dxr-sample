@@ -191,10 +191,9 @@ void StaticMesh::Render(ID3D12GraphicsCommandList* cmdList)
 	cmdList->DrawIndexedInstanced(m_numIndices, 1, 0, 0, 0);
 }
 
-StaticMeshEntity::StaticMeshEntity(const uint64_t meshIndex, const DirectX::XMMATRIX& localToWorld) :
-	m_meshIndex(meshIndex)
+StaticMeshEntity::StaticMeshEntity(const uint64_t meshIndex, const DirectX::XMFLOAT4X4& localToWorld) :
+	m_meshIndex(meshIndex), m_localToWorld(localToWorld)
 {
-	DirectX::XMStoreFloat4x4(&m_localToWorld, localToWorld);
 }
 
 uint64_t StaticMeshEntity::GetMeshIndex() const

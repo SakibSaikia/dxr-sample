@@ -26,6 +26,7 @@ public:
 
 private:
 	void LoadMeshes(const struct aiScene* loader, ID3D12Device* device, ID3D12GraphicsCommandList* cmdList);
+	void LoadEntities(const struct aiNode* node);
 
 private:
 	std::vector<std::unique_ptr<StaticMesh>> m_meshes;

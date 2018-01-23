@@ -39,6 +39,32 @@ void Scene::LoadMeshes(const aiScene* loader, ID3D12Device* device, ID3D12Graphi
 	}
 }
 
+void Scene::LoadEntities(const struct aiNode* node)
+{
+	const aiMatrix4x4& parentTransform = node->mTransformation;
+
+	for (auto childIdx = 0u; childIdx < node->mNumChildren; childIdx++)
+	{
+		const aiNode* childNode = node->mChildren[childIdx];
+
+		if (childNode->mChildren == 0)
+		{
+			const aiMatrix4x4& localTransform = childNode->mTransformation;
+			aiMatrix4x4 localToWorldTransform = parentTransform * localTransform;
+			DirectX::XMFLOAT4X4 localToWorld(reinterpret_cast<float*>(&localToWorldTransform));
+
+			for (auto meshIdx = 0u; meshIdx < childNode->mNumMeshes; meshIdx++)
+			{
+				m_meshEntities.emplace_back(childNode->mMeshes[meshIdx], localToWorld);
+			}
+		}
+		else
+		{
+			LoadEntities(childNode);
+		}
+	}
+}
+
 void Scene::Init(const uint32_t cbvRootParamIndex, ID3D12Device* device, ID3D12GraphicsCommandList* cmdList)
 {
 	m_objectCBVRootParameterIndex = cbvRootParamIndex;
@@ -59,9 +85,8 @@ void Scene::Init(const uint32_t cbvRootParamIndex, ID3D12Device* device, ID3D12G
 		assert(scene != nullptr && L"Failed to load scene");
 
 		LoadMeshes(scene, device, cmdList);
+		LoadEntities(scene->mRootNode);
 	}
-
-	m_meshEntities.emplace_back(0, DirectX::XMMatrixScaling(2.0f, 2.0f, 2.0f) * DirectX::XMMatrixTranslation(0.0f, 0.5f, 0.0f));
 
 	// Object Constant Buffer
 	{

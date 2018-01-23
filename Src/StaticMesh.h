@@ -40,7 +40,7 @@ class StaticMeshEntity
 {
 public:
 	StaticMeshEntity() = delete;
-	StaticMeshEntity(const uint64_t meshIndex, const DirectX::XMMATRIX& localToWorld);
+	StaticMeshEntity(const uint64_t meshIndex, const DirectX::XMFLOAT4X4& localToWorld);
 	DirectX::XMFLOAT4X4 GetLocalToWorldMatrix() const;
 	uint64_t GetMeshIndex() const;
 private:
