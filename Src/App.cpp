@@ -451,8 +451,9 @@ void App::Render()
 	m_gfxCmdAllocators.at(m_gfxBufferIndex)->Reset();
 	m_gfxCmdList->Reset(m_gfxCmdAllocators.at(m_gfxBufferIndex).Get(), nullptr);
 
-	PIXBeginEvent(m_cmdQueue.Get(), 0, L"_render_frame_");
 	{
+		PIXScopedEvent(0, L"render_frame");
+
 		// Transition back buffer from present to render target
 		D3D12_RESOURCE_BARRIER barrierDesc = {};
 		barrierDesc.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
@@ -503,20 +504,18 @@ void App::Render()
 			1,
 			&barrierDesc
 		);
-
-		// Execute
-		m_gfxCmdList->Close();
-		ID3D12CommandList* cmdLists[] = { m_gfxCmdList.Get() };
-		m_cmdQueue->ExecuteCommandLists(std::extent<decltype(cmdLists)>::value, cmdLists);
 	}
-	PIXEndEvent(m_cmdQueue.Get());
+
+	// Execute
+	m_gfxCmdList->Close();
+	ID3D12CommandList* cmdLists[] = { m_gfxCmdList.Get() };
+	m_cmdQueue->ExecuteCommandLists(std::extent<decltype(cmdLists)>::value, cmdLists);
 
 	// Present
-	PIXBeginEvent(0, L"_present_");
 	{
+		PIXScopedEvent(0, L"present");
 		m_swapChain->Present(1, 0);
 	}
-	PIXEndEvent();
 
 	// Swap buffers
 	AdvanceGfxFrame();
@@ -564,16 +563,13 @@ void App::SubmitCommands()
 
 void App::FlushCmdQueue()
 {
-	PIXBeginEvent(0, L"_gfx_wait_for_GPU_");
-	{
-		auto& currentFenceValue = m_gfxFenceValues.at(m_gfxBufferIndex);
-		currentFenceValue++;
+	PIXScopedEvent(0, L"gfx_wait_for_GPU");
+	auto& currentFenceValue = m_gfxFenceValues.at(m_gfxBufferIndex);
+	currentFenceValue++;
 
-		m_cmdQueue->Signal(m_gfxFence.Get(), currentFenceValue);
-		m_gfxFence->SetEventOnCompletion(currentFenceValue, m_gfxFenceEvent);
-		WaitForSingleObject(m_gfxFenceEvent, INFINITE);
-	}
-	PIXEndEvent();
+	m_cmdQueue->Signal(m_gfxFence.Get(), currentFenceValue);
+	m_gfxFence->SetEventOnCompletion(currentFenceValue, m_gfxFenceEvent);
+	WaitForSingleObject(m_gfxFenceEvent, INFINITE);
 }
 
 void App::AdvanceGfxFrame()
@@ -585,12 +581,9 @@ void App::AdvanceGfxFrame()
 
 	if (m_gfxFence->GetCompletedValue() < m_gfxFenceValues.at(m_gfxBufferIndex))
 	{
-		PIXBeginEvent(0, L"_gfx_wait_on_previous_frame_");
-		{
-			m_gfxFence->SetEventOnCompletion(m_gfxFenceValues.at(m_gfxBufferIndex), m_gfxFenceEvent);
-			WaitForSingleObjectEx(m_gfxFenceEvent, INFINITE, FALSE);
-		}
-		PIXEndEvent();
+		PIXBeginEvent(0, L"gfx_wait_on_previous_frame");
+		m_gfxFence->SetEventOnCompletion(m_gfxFenceValues.at(m_gfxBufferIndex), m_gfxFenceEvent);
+		WaitForSingleObjectEx(m_gfxFenceEvent, INFINITE, FALSE);
 	}
 
 	m_gfxFenceValues[m_gfxBufferIndex] = currentFenceValue + 1;

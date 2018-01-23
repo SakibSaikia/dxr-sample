@@ -1,4 +1,5 @@
 #include "Scene.h"
+#include <pix3.h>
 #include <assimp\Importer.hpp>
 #include <assimp\scene.h>
 #include <assimp\postprocess.h>
@@ -137,6 +138,8 @@ void Scene::Update(uint32_t bufferIndex)
 
 void Scene::Render(ID3D12GraphicsCommandList* cmdList, uint32_t bufferIndex)
 {
+	PIXScopedEvent(0, L"render_scene");
+
 	int entityId = 0;
 	for (auto& meshEntity : m_meshEntities)
 	{
