@@ -59,11 +59,23 @@ bool InitWindowsApp(HINSTANCE instanceHandle, int show)
 		MessageBox(0, L"Failed to create window", 0, 0);
 		return false;
 	}
-	
 
 	AppInstance()->Init(g_wndHandle);
 	ShowWindow(g_wndHandle, show);
 	UpdateWindow(g_wndHandle);
+
+	// Hide cursor
+	ShowCursor(FALSE);
+
+	// Lock cursor to screen
+	RECT screenRect;
+	GetWindowRect(g_wndHandle, &screenRect);
+	ClipCursor(&screenRect);
+
+	// Set cursor to window center
+	int windowCenterX = screenRect.left + (screenRect.right - screenRect.left) / 2;
+	int windowCenterY = screenRect.top + (screenRect.bottom - screenRect.top) / 2;
+	SetCursorPos(windowCenterX, windowCenterY);
 
 	return true;
 }

@@ -53,27 +53,27 @@ void Camera::RotateWorldY(float angle)
 
 void Camera::Init(const float aspectRatio)
 {
-	DirectX::XMMATRIX proj = DirectX::XMMatrixPerspectiveFovLH(0.25f * 3.1415926535f, aspectRatio, 1.0f, 1000.0f);
+	DirectX::XMMATRIX proj = DirectX::XMMatrixPerspectiveFovLH(0.25f * 3.1415926535f, aspectRatio, 1.0f, 10000.0f);
 	XMStoreFloat4x4(&m_projMatrix, proj);
 }
 
 void Camera::Update(const float dt, const POINT mouseDelta)
 {
 	if (GetAsyncKeyState('W') & 0x8000)
-		Walk(10.f * dt);
+		Walk(100.f * dt);
 
 	if (GetAsyncKeyState('S') & 0x8000)
-		Walk(- 10.f * dt);
+		Walk(- 100.f * dt);
 
 	if (GetAsyncKeyState('A') & 0x8000)
-		Strafe(-10.f * dt);
+		Strafe(-100.f * dt);
 
 	if (GetAsyncKeyState('D') & 0x8000)
-		Strafe(10.f * dt);
+		Strafe(100.f * dt);
 
-	// Make each pixel correspond to a quarter of a degree.
-	float dx = DirectX::XMConvertToRadians(0.25f*static_cast<float>(mouseDelta.x));
-	float dy = DirectX::XMConvertToRadians(0.25f*static_cast<float>(mouseDelta.y));
+	// Make each pixel correspond to a degree.
+	float dx = DirectX::XMConvertToRadians(1.f*static_cast<float>(mouseDelta.x));
+	float dy = DirectX::XMConvertToRadians(1.f*static_cast<float>(mouseDelta.y));
 
 	Pitch(dy);
 	RotateWorldY(dx);
