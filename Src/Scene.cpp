@@ -35,8 +35,23 @@ void Scene::LoadMeshes(const aiScene* loader, ID3D12Device* device, ID3D12Graphi
 		}
 
 		auto mesh = std::make_unique<StaticMesh>();
-		mesh->Init(device, cmdList, std::move(vertexData), std::move(indexData));
+		mesh->Init(device, cmdList, std::move(vertexData), std::move(indexData), srcMesh->mMaterialIndex);
 		m_meshes.push_back(std::move(mesh));
+	}
+}
+
+void Scene::LoadMaterials(const aiScene* loader, ID3D12Device* device)
+{
+	for (auto matIdx = 0u; matIdx < loader->mNumMaterials; matIdx++)
+	{
+		const aiMaterial* srcMat = loader->mMaterials[matIdx];
+		auto mat = std::make_unique<Material>();
+
+		aiString name;
+		srcMat->Get(AI_MATKEY_NAME, name);
+
+		mat->Init(std::string(name.C_Str()));
+		m_materials.push_back(std::move(mat));
 	}
 }
 
@@ -86,6 +101,7 @@ void Scene::Init(const uint32_t cbvRootParamIndex, ID3D12Device* device, ID3D12G
 		assert(scene != nullptr && L"Failed to load scene");
 
 		LoadMeshes(scene, device, cmdList);
+		LoadMaterials(scene, device);
 		LoadEntities(scene->mRootNode);
 	}
 

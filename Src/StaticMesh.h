@@ -25,7 +25,7 @@ public:
 	using IndexType = uint16_t;
 
 	StaticMesh();
-	void Init(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList, std::vector<StaticMesh::VertexType> vertexData, std::vector<StaticMesh::IndexType> indexData);
+	void Init(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList, std::vector<StaticMesh::VertexType> vertexData, std::vector<StaticMesh::IndexType> indexData, const uint32_t matIndex);
 	void Render(ID3D12GraphicsCommandList* cmdList);
 
 private:
@@ -33,6 +33,7 @@ private:
 	Microsoft::WRL::ComPtr<ID3D12Resource> m_indexBuffer;
 	D3D12_VERTEX_BUFFER_VIEW m_vertexBufferView;
 	D3D12_INDEX_BUFFER_VIEW m_indexBufferView;
+	uint32_t m_materialIndex;
 	uint32_t m_numIndices;
 };
 

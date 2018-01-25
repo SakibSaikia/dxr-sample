@@ -15,12 +15,13 @@ StaticMesh::StaticMesh()
 
 }
 
-void StaticMesh::Init(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList, std::vector<StaticMesh::VertexType> vertexData, std::vector<StaticMesh::IndexType> indexData)
+void StaticMesh::Init(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList, std::vector<StaticMesh::VertexType> vertexData, std::vector<StaticMesh::IndexType> indexData, const uint32_t matIndex)
 {
 	Microsoft::WRL::ComPtr<ID3D12Resource> vertexBufferUpload;
 	Microsoft::WRL::ComPtr<ID3D12Resource> indexBufferUpload;
 
 	m_numIndices = indexData.size();
+	m_materialIndex = matIndex;
 
 	// default vertex buffer
 	D3D12_RESOURCE_DESC vbDesc = {};

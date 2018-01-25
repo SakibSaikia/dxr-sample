@@ -8,7 +8,11 @@
 #include <array>
 #include <vector>
 #include <memory>
+#include <unordered_map>
+#include <string>
 #include "StaticMesh.h"
+#include "Material.h"
+#include "Texture.h"
 
 constexpr size_t k_gfxBufferCount = 2;
 
@@ -26,11 +30,15 @@ public:
 
 private:
 	void LoadMeshes(const struct aiScene* loader, ID3D12Device* device, ID3D12GraphicsCommandList* cmdList);
+	void LoadMaterials(const struct aiScene* loader, ID3D12Device* device);
 	void LoadEntities(const struct aiNode* node);
 
 private:
 	std::vector<std::unique_ptr<StaticMesh>> m_meshes;
+	std::vector<std::unique_ptr<Material>> m_materials;
 	std::vector<StaticMeshEntity> m_meshEntities;
+	std::vector<std::unique_ptr<Texture>> m_textures;
+	std::unordered_map<std::string, uint32_t> m_textureDirectory;
 
 	uint32_t m_objectCBVRootParameterIndex;
 	std::array<Microsoft::WRL::ComPtr<ID3D12Resource>, k_gfxBufferCount> m_objectConstantBuffers;
