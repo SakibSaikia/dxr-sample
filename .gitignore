@@ -5,3 +5,5 @@
 /Src/packages
 
 # Files
+*.tga
+*.tif
