@@ -267,7 +267,7 @@ void App::InitShaders()
 
 void App::InitScene()
 {
-	m_scene.Init(1, m_d3dDevice.Get(), m_gfxCmdList.Get());
+	m_scene.Init(1, m_d3dDevice.Get(), m_cmdQueue.Get(), m_gfxCmdList.Get());
 }
 
 void App::InitCamera()

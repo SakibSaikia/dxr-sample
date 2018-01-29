@@ -24,13 +24,13 @@ class Scene
 	};
 
 public:
-	void Init(const uint32_t cbvRootParamIndex, ID3D12Device* device, ID3D12GraphicsCommandList* cmdList);
+	void Init(const uint32_t cbvRootParamIndex, ID3D12Device* device, ID3D12CommandQueue* cmdQueue, ID3D12GraphicsCommandList* cmdList);
 	void Update(uint32_t bufferIndex);
 	void Render(ID3D12GraphicsCommandList* cmdList, uint32_t bufferIndex);
 
 private:
 	void LoadMeshes(const struct aiScene* loader, ID3D12Device* device, ID3D12GraphicsCommandList* cmdList);
-	void LoadMaterials(const struct aiScene* loader, ID3D12Device* device);
+	void LoadMaterials(const struct aiScene* loader, ID3D12Device* device, ID3D12CommandQueue* cmdQueue);
 	void LoadEntities(const struct aiNode* node);
 
 private:
@@ -38,7 +38,7 @@ private:
 	std::vector<std::unique_ptr<Material>> m_materials;
 	std::vector<StaticMeshEntity> m_meshEntities;
 	std::vector<std::unique_ptr<Texture>> m_textures;
-	std::unordered_map<std::string, uint32_t> m_textureDirectory;
+	std::unordered_map<std::wstring, uint32_t> m_textureDirectory;
 
 	uint32_t m_objectCBVRootParameterIndex;
 	std::array<Microsoft::WRL::ComPtr<ID3D12Resource>, k_gfxBufferCount> m_objectConstantBuffers;

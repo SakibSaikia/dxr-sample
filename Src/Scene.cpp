@@ -1,5 +1,6 @@
 #include "Scene.h"
 #include <pix3.h>
+#include <ResourceUploadBatch.h>
 #include <assimp\Importer.hpp>
 #include <assimp\scene.h>
 #include <assimp\postprocess.h>
@@ -40,19 +41,54 @@ void Scene::LoadMeshes(const aiScene* loader, ID3D12Device* device, ID3D12Graphi
 	}
 }
 
-void Scene::LoadMaterials(const aiScene* loader, ID3D12Device* device)
+void Scene::LoadMaterials(const aiScene* loader, ID3D12Device* device, ID3D12CommandQueue* cmdQueue)
 {
+	// Used to batch texture uploads
+	DirectX::ResourceUploadBatch resourceUpload(device);
+	resourceUpload.Begin();
+
 	for (auto matIdx = 0u; matIdx < loader->mNumMaterials; matIdx++)
 	{
 		const aiMaterial* srcMat = loader->mMaterials[matIdx];
 		auto mat = std::make_unique<Material>();
 
-		aiString name;
-		srcMat->Get(AI_MATKEY_NAME, name);
+		aiString materialName;
+		srcMat->Get(AI_MATKEY_NAME, materialName);
 
-		mat->Init(std::string(name.C_Str()));
-		m_materials.push_back(std::move(mat));
+		aiString textureNameStr;
+		aiReturn ret = srcMat->Get(AI_MATKEY_TEXTURE(aiTextureType_DIFFUSE, 0), textureNameStr);
+		if (ret == aiReturn_SUCCESS)
+		{
+			// Convert UTF-8 string to wchar (See: http://forums.codeguru.com/showthread.php?t=231165 )
+			int size_needed = MultiByteToWideChar(CP_UTF8, 0, &textureNameStr.data[0], static_cast<int>(textureNameStr.length), NULL, 0);
+			std::wstring diffuseTextureName(textureNameStr.length, 0);
+			MultiByteToWideChar(CP_UTF8, 0, &textureNameStr.data[0], static_cast<int>(textureNameStr.length), &diffuseTextureName[0], size_needed);
+
+			uint32_t diffuseTextureIndex;
+			const auto iter = m_textureDirectory.find(diffuseTextureName);
+			if (iter != m_textureDirectory.cend())
+			{
+				diffuseTextureIndex = iter->second;
+			}
+			else
+			{
+				auto newTexture = std::make_unique<Texture>();
+				newTexture->Init(device, resourceUpload, diffuseTextureName);
+				m_textures.push_back(std::move(newTexture));
+				diffuseTextureIndex = m_textures.size() - 1;
+				m_textureDirectory[diffuseTextureName] = diffuseTextureIndex;
+			}
+
+			mat->Init(std::string(materialName.C_Str()), diffuseTextureIndex);
+			m_materials.push_back(std::move(mat));
+		}
 	}
+
+	// Upload the resources to the GPU.
+	auto uploadResourcesFinished = resourceUpload.End(cmdQueue);
+
+	// Wait for the upload thread to terminate
+	uploadResourcesFinished.wait();
 }
 
 void Scene::LoadEntities(const struct aiNode* node)
@@ -81,7 +117,7 @@ void Scene::LoadEntities(const struct aiNode* node)
 	}
 }
 
-void Scene::Init(const uint32_t cbvRootParamIndex, ID3D12Device* device, ID3D12GraphicsCommandList* cmdList)
+void Scene::Init(const uint32_t cbvRootParamIndex, ID3D12Device* device, ID3D12CommandQueue* cmdQueue, ID3D12GraphicsCommandList* cmdList)
 {
 	m_objectCBVRootParameterIndex = cbvRootParamIndex;
 
@@ -101,7 +137,7 @@ void Scene::Init(const uint32_t cbvRootParamIndex, ID3D12Device* device, ID3D12G
 		assert(scene != nullptr && L"Failed to load scene");
 
 		LoadMeshes(scene, device, cmdList);
-		LoadMaterials(scene, device);
+		LoadMaterials(scene, device, cmdQueue);
 		LoadEntities(scene->mRootNode);
 	}
 
