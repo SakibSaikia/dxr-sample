@@ -59,10 +59,7 @@ void Scene::LoadMaterials(const aiScene* loader, ID3D12Device* device, ID3D12Com
 		aiReturn ret = srcMat->Get(AI_MATKEY_TEXTURE(aiTextureType_DIFFUSE, 0), textureNameStr);
 		if (ret == aiReturn_SUCCESS)
 		{
-			// Convert UTF-8 string to wchar (See: http://forums.codeguru.com/showthread.php?t=231165 )
-			int size_needed = MultiByteToWideChar(CP_UTF8, 0, &textureNameStr.data[0], static_cast<int>(textureNameStr.length), NULL, 0);
-			std::wstring diffuseTextureName(textureNameStr.length, 0);
-			MultiByteToWideChar(CP_UTF8, 0, &textureNameStr.data[0], static_cast<int>(textureNameStr.length), &diffuseTextureName[0], size_needed);
+			std::string diffuseTextureName(textureNameStr.C_Str());
 
 			uint32_t diffuseTextureIndex;
 			const auto iter = m_textureDirectory.find(diffuseTextureName);

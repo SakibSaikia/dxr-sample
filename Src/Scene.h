@@ -38,7 +38,7 @@ private:
 	std::vector<std::unique_ptr<Material>> m_materials;
 	std::vector<StaticMeshEntity> m_meshEntities;
 	std::vector<std::unique_ptr<Texture>> m_textures;
-	std::unordered_map<std::wstring, uint32_t> m_textureDirectory;
+	std::unordered_map<std::string, uint32_t> m_textureDirectory;
 
 	uint32_t m_objectCBVRootParameterIndex;
 	std::array<Microsoft::WRL::ComPtr<ID3D12Resource>, k_gfxBufferCount> m_objectConstantBuffers;
