@@ -1,15 +1,4 @@
 #pragma once
-
-#include <windows.h>
-#include <wrl.h>
-#include <dxgi1_4.h>
-#include <d3d12.h>
-#include <DirectXMath.h>
-#include <pix3.h>
-#include <array>
-#include <vector>
-#include <memory>
-
 #include "Camera.h"
 #include "Scene.h"
 

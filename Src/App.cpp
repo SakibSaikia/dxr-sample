@@ -1,7 +1,5 @@
+#include "stdafx.h"
 #include "App.h"
-#include <cassert>
-#include <fstream>
-#include <d3dcompiler.h>
 
 Microsoft::WRL::ComPtr<ID3DBlob> LoadShaderFromFile(const std::wstring& filename)
 {

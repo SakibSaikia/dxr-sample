@@ -1,5 +1,5 @@
+#include "stdafx.h"
 #include "Camera.h"
-#include "windows.h"
 
 void Camera::Strafe(float d)
 {

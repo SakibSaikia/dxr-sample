@@ -1,3 +1,4 @@
+#include "stdafx.h"
 #include "Material.h"
 
 void Material::Init(std::string&& name, const uint32_t diffuseIdx) 

@@ -1,15 +1,5 @@
 #pragma once
 
-#include <windows.h>
-#include <wrl.h>
-#include <dxgi1_4.h>
-#include <d3d12.h>
-#include <DirectXMath.h>
-#include <array>
-#include <vector>
-#include <memory>
-#include <unordered_map>
-#include <string>
 #include "StaticMesh.h"
 #include "Material.h"
 #include "Texture.h"
@@ -29,9 +19,9 @@ public:
 	void Render(ID3D12GraphicsCommandList* cmdList, uint32_t bufferIndex);
 
 private:
-	void LoadMeshes(const struct aiScene* loader, ID3D12Device* device, ID3D12GraphicsCommandList* cmdList);
-	void LoadMaterials(const struct aiScene* loader, ID3D12Device* device, ID3D12CommandQueue* cmdQueue);
-	void LoadEntities(const struct aiNode* node);
+	void LoadMeshes(const aiScene* loader, ID3D12Device* device, ID3D12GraphicsCommandList* cmdList);
+	void LoadMaterials(const aiScene* loader, ID3D12Device* device, ID3D12CommandQueue* cmdQueue);
+	void LoadEntities(const aiNode* node);
 
 private:
 	std::vector<std::unique_ptr<StaticMesh>> m_meshes;

@@ -1,8 +1,5 @@
 #pragma once
 
-#include <DirectXMath.h>
-#include <windows.h>
-
 class Camera
 {
 public:

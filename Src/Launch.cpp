@@ -1,3 +1,4 @@
+#include "stdafx.h"
 #include "App.h"
 #include <string>
 #include <WindowsX.h>

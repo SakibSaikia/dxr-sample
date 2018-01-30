@@ -1,9 +1,5 @@
+#include "stdafx.h"
 #include "Scene.h"
-#include <pix3.h>
-#include <ResourceUploadBatch.h>
-#include <assimp\Importer.hpp>
-#include <assimp\scene.h>
-#include <assimp\postprocess.h>
 
 void Scene::LoadMeshes(const aiScene* loader, ID3D12Device* device, ID3D12GraphicsCommandList* cmdList)
 {
@@ -88,7 +84,7 @@ void Scene::LoadMaterials(const aiScene* loader, ID3D12Device* device, ID3D12Com
 	uploadResourcesFinished.wait();
 }
 
-void Scene::LoadEntities(const struct aiNode* node)
+void Scene::LoadEntities(const aiNode* node)
 {
 	const aiMatrix4x4& parentTransform = node->mTransformation;
 

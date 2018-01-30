@@ -1,5 +1,4 @@
-#include <DDSTextureLoader.h>
-#include <cassert>
+#include "stdafx.h"
 #include "Texture.h"
 
 void Texture::Init(ID3D12Device* device, DirectX::ResourceUploadBatch& resourceUpload, const std::string& name)
@@ -19,5 +18,5 @@ void Texture::Init(ID3D12Device* device, DirectX::ResourceUploadBatch& resourceU
 		m_resource.ReleaseAndGetAddressOf()
 	);
 
-	assert(hr == S_OK);
+	//assert(hr == S_OK);
 }

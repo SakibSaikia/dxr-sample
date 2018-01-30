@@ -1,7 +1,5 @@
-#include <d3d12.h>
-#include <DirectXMath.h>
-#include <memory>
-#include <vector>
+#include "stdafx.h"
+#include "StaticMesh.h"
 #include "App.h"
 
 D3D12_INPUT_ELEMENT_DESC StaticMesh::VertexType::InputLayout::s_desc[StaticMesh::VertexType::InputLayout::s_num] =
