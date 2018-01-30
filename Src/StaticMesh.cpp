@@ -10,11 +10,6 @@ D3D12_INPUT_ELEMENT_DESC StaticMesh::VertexType::InputLayout::s_desc[StaticMesh:
 	{ "NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 12, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 }
 };
 
-StaticMesh::StaticMesh()
-{
-
-}
-
 void StaticMesh::Init(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList, std::vector<StaticMesh::VertexType> vertexData, std::vector<StaticMesh::IndexType> indexData, const uint32_t matIndex)
 {
 	Microsoft::WRL::ComPtr<ID3D12Resource> vertexBufferUpload;
@@ -109,7 +104,7 @@ void StaticMesh::Init(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList, 
 
 	uint8_t* destPtr;
 	vertexBufferUpload->Map(0, nullptr, reinterpret_cast<void**>(&destPtr));
-	const uint8_t* pSrc = reinterpret_cast<const uint8_t*>(vertexData.data());
+	const auto* pSrc = reinterpret_cast<const uint8_t*>(vertexData.data());
 	memcpy(destPtr, pSrc, vbRowSizeInBytes);
 	vertexBufferUpload->Unmap(0, nullptr);
 
@@ -179,7 +174,7 @@ void StaticMesh::Init(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList, 
 	m_indexBufferView.SizeInBytes = indexData.size() * sizeof(StaticMesh::IndexType);
 
 	// Flush here so that the upload buffers do not go out of scope
-	// TODO - do not create and destroy upload buffers for each mesh. 
+	// TODO(sakib): do not create and destroy upload buffers for each mesh. 
 	// Instead have a common upload buffer(s) that is large enough.
 	AppInstance()->SubmitCommands();
 	AppInstance()->FlushCmdQueue();

@@ -11,7 +11,7 @@ public:
 		DirectX::XMFLOAT3 position;
 		DirectX::XMFLOAT3 normal;
 
-		VertexType() {}
+		VertexType() = default;
 		VertexType(DirectX::XMFLOAT3 inPos, DirectX::XMFLOAT3 inNormal) :
 			position(inPos), normal(inNormal) {}
 
@@ -24,8 +24,8 @@ public:
 
 	using IndexType = uint16_t;
 
-	StaticMesh();
-	void Init(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList, std::vector<StaticMesh::VertexType> vertexData, std::vector<StaticMesh::IndexType> indexData, const uint32_t matIndex);
+	StaticMesh() = default;
+	void Init(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList, std::vector<StaticMesh::VertexType> vertexData, std::vector<StaticMesh::IndexType> indexData, uint32_t matIndex);
 	void Render(ID3D12GraphicsCommandList* cmdList);
 
 private:
@@ -41,7 +41,7 @@ class StaticMeshEntity
 {
 public:
 	StaticMeshEntity() = delete;
-	StaticMeshEntity(const uint64_t meshIndex, const DirectX::XMFLOAT4X4& localToWorld);
+	StaticMeshEntity(uint64_t meshIndex, const DirectX::XMFLOAT4X4& localToWorld);
 	DirectX::XMFLOAT4X4 GetLocalToWorldMatrix() const;
 	uint64_t GetMeshIndex() const;
 private:

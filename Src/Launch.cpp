@@ -12,10 +12,12 @@ bool InitWindowsApp(HINSTANCE instanceHandle, int show);
 int Run();
 LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
-int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR pCmdLine, int nShowCmd)
+int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR pCmdLine, int nShowCmd)
 {
 	if (!InitWindowsApp(hInstance, nShowCmd))
+	{
 		return 0;
+	}
 	
 	return Run();
 }
@@ -28,15 +30,15 @@ bool InitWindowsApp(HINSTANCE instanceHandle, int show)
 	desc.cbClsExtra = 0;								// Not used
 	desc.cbWndExtra = 0;								// Not used
 	desc.hInstance = instanceHandle;					// Handle to the application instance
-	desc.hIcon = LoadIcon(0, IDI_APPLICATION);			// Default application handle
-	desc.hCursor = LoadCursor(0, IDC_ARROW);			// Default arrow cursor
-	desc.hbrBackground = (HBRUSH)COLOR_WINDOW;			// Background color for client area of window
+	desc.hIcon = LoadIcon(nullptr, IDI_APPLICATION);	// Default application handle
+	desc.hCursor = LoadCursor(nullptr, IDC_ARROW);		// Default arrow cursor
+	desc.hbrBackground = reinterpret_cast<HBRUSH>(COLOR_WINDOW); // Background color for client area of window
 	desc.lpszMenuName = nullptr;						// Menu. Not used.
 	desc.lpszClassName = L"D3D12SampleWindow";			// Window class name. Used to identify class by name.
 
 	if (!RegisterClass(&desc))
 	{
-		MessageBox(0, L"Failed to register window", 0, 0);
+		MessageBox(nullptr, L"Failed to register window", nullptr, 0);
 		return false;
 	}
 
@@ -56,7 +58,7 @@ bool InitWindowsApp(HINSTANCE instanceHandle, int show)
 
 	if (g_wndHandle == nullptr)
 	{
-		MessageBox(0, L"Failed to create window", 0, 0);
+		MessageBox(nullptr, L"Failed to create window", nullptr, 0);
 		return false;
 	}
 
@@ -82,12 +84,12 @@ bool InitWindowsApp(HINSTANCE instanceHandle, int show)
 
 int Run()
 {
-	MSG msg = { 0 };
+	MSG msg = { nullptr };
 
 	while (msg.message != WM_QUIT)
 	{
 
-		if (PeekMessage(&msg, 0, 0, 0, PM_REMOVE))
+		if (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE))
 		{
 			TranslateMessage(&msg);
 			DispatchMessage(&msg);

@@ -59,17 +59,25 @@ void Camera::Init(const float aspectRatio)
 
 void Camera::Update(const float dt, const POINT mouseDelta)
 {
-	if (GetAsyncKeyState('W') & 0x8000)
+	if ((GetAsyncKeyState('W') & 0x8000) != 0)
+	{
 		Walk(100.f * dt);
+	}
 
-	if (GetAsyncKeyState('S') & 0x8000)
-		Walk(- 100.f * dt);
+	if ((GetAsyncKeyState('S') & 0x8000) != 0)
+	{
+		Walk(-100.f * dt);
+	}
 
-	if (GetAsyncKeyState('A') & 0x8000)
+	if ((GetAsyncKeyState('A') & 0x8000) != 0)
+	{
 		Strafe(-100.f * dt);
+	}
 
-	if (GetAsyncKeyState('D') & 0x8000)
+	if ((GetAsyncKeyState('D') & 0x8000) != 0)
+	{
 		Strafe(100.f * dt);
+	}
 
 	// Make each pixel correspond to a degree.
 	float dx = DirectX::XMConvertToRadians(1.f*static_cast<float>(mouseDelta.x));

@@ -66,8 +66,8 @@ private:
 
 	D3D12_CPU_DESCRIPTOR_HANDLE GetCurrentBackBufferView() const;
 	D3D12_CPU_DESCRIPTOR_HANDLE GetCurrentDepthStencilView() const;
-	D3D12_CPU_DESCRIPTOR_HANDLE GetConstantBufferDescriptorCPU(ConstantBufferId id, const uint32_t offset) const;
-	D3D12_GPU_DESCRIPTOR_HANDLE GetConstantBufferDescriptorGPU(ConstantBufferId id, const uint32_t offset) const;
+	D3D12_CPU_DESCRIPTOR_HANDLE GetConstantBufferDescriptorCPU(ConstantBufferId id, uint32_t offset) const;
+	D3D12_GPU_DESCRIPTOR_HANDLE GetConstantBufferDescriptorGPU(ConstantBufferId id, uint32_t offset) const;
 
 	void AdvanceGfxFrame();
 

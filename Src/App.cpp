@@ -95,7 +95,7 @@ void App::InitCommandObjects()
 	// Fence
 	hr = m_d3dDevice->CreateFence(m_gfxFenceValues.at(m_gfxBufferIndex), D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(m_gfxFence.GetAddressOf()));
 	assert(hr == S_OK && L"Failed to create fence");
-	m_gfxFenceEvent = CreateEventEx(nullptr, false, false, EVENT_ALL_ACCESS);
+	m_gfxFenceEvent = CreateEventEx(nullptr, nullptr, 0, EVENT_ALL_ACCESS);
 }
 
 void App::InitSwapChain(HWND windowHandle)
@@ -112,7 +112,7 @@ void App::InitSwapChain(HWND windowHandle)
 	scDesc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
 	scDesc.BufferCount = k_gfxBufferCount;
 	scDesc.OutputWindow = windowHandle;
-	scDesc.Windowed = true;
+	scDesc.Windowed = TRUE;
 	scDesc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
 	scDesc.Flags = DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH;
 
@@ -253,7 +253,7 @@ void App::InitDescriptors()
 			assert(hr == S_OK && L"Failed to create constant buffer");
 
 			// Get ptr to mapped resource
-			void** ptr = reinterpret_cast<void**>(&m_ViewConstantBufferPtr.at(n));
+			auto** ptr = reinterpret_cast<void**>(&m_ViewConstantBufferPtr.at(n));
 			m_viewConstantBuffers.at(n)->Map(0, nullptr, ptr);
 		}
 	}
@@ -356,11 +356,11 @@ void App::InitStateObjects()
 		// blend state
 		psoDesc.BlendState.AlphaToCoverageEnable = FALSE;
 		psoDesc.BlendState.IndependentBlendEnable = FALSE;
-		for (uint32_t i = 0; i < D3D12_SIMULTANEOUS_RENDER_TARGET_COUNT; i++)
+		for (auto& rt : psoDesc.BlendState.RenderTarget)
 		{
-			psoDesc.BlendState.RenderTarget[i].BlendEnable = FALSE;
-			psoDesc.BlendState.RenderTarget[i].LogicOpEnable = FALSE;
-			psoDesc.BlendState.RenderTarget[i].RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL;
+			rt.BlendEnable = FALSE;
+			rt.LogicOpEnable = FALSE;
+			rt.RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL;
 		}
 
 		// depth stencil state

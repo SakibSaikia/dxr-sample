@@ -6,8 +6,8 @@
 class Camera
 {
 public:
-	void Init(const float aspectRatio);
-	void Update(const float dt, const POINT mouseDelta);
+	void Init(float aspectRatio);
+	void Update(float dt, POINT mouseDelta);
 	DirectX::XMFLOAT4X4 GetViewMatrix();
 	DirectX::XMFLOAT4X4 GetProjectionMatrix();
 	DirectX::XMFLOAT4X4 GetViewProjectionMatrix();

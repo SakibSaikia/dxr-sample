@@ -96,7 +96,7 @@ void Scene::LoadEntities(const struct aiNode* node)
 	{
 		const aiNode* childNode = node->mChildren[childIdx];
 
-		if (childNode->mChildren == 0)
+		if (childNode->mChildren == nullptr)
 		{
 			const aiMatrix4x4& localTransform = childNode->mTransformation;
 			aiMatrix4x4 localToWorldTransform = parentTransform * localTransform;
@@ -121,7 +121,7 @@ void Scene::Init(const uint32_t cbvRootParamIndex, ID3D12Device* device, ID3D12C
 	// Load scene
 	{
 		Assimp::Importer importer;
-		const aiScene* scene = importer.ReadFile("..\\Content\\Sponza\\obj\\sponza.obj",
+		const aiScene* scene = importer.ReadFile(R"(..\Content\Sponza\obj\sponza.obj)",
 			aiProcess_CalcTangentSpace |
 			aiProcess_Triangulate |
 			aiProcess_JoinIdenticalVertices |
@@ -169,7 +169,7 @@ void Scene::Init(const uint32_t cbvRootParamIndex, ID3D12Device* device, ID3D12C
 			assert(hr == S_OK && L"Failed to create constant buffer");
 
 			// Get ptr to mapped resource
-			void** ptr = reinterpret_cast<void**>(&m_objectConstantBufferPtr.at(n));
+			auto** ptr = reinterpret_cast<void**>(&m_objectConstantBufferPtr.at(n));
 			m_objectConstantBuffers.at(n)->Map(0, nullptr, ptr);
 		}
 	}

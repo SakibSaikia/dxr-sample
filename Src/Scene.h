@@ -24,7 +24,7 @@ class Scene
 	};
 
 public:
-	void Init(const uint32_t cbvRootParamIndex, ID3D12Device* device, ID3D12CommandQueue* cmdQueue, ID3D12GraphicsCommandList* cmdList);
+	void Init(uint32_t cbvRootParamIndex, ID3D12Device* device, ID3D12CommandQueue* cmdQueue, ID3D12GraphicsCommandList* cmdList);
 	void Update(uint32_t bufferIndex);
 	void Render(ID3D12GraphicsCommandList* cmdList, uint32_t bufferIndex);
 
