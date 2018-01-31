@@ -19,6 +19,8 @@ public:
 	void Update(uint32_t bufferIndex);
 	void Render(ID3D12GraphicsCommandList* cmdList, uint32_t bufferIndex);
 
+	const size_t GetNumTextures() const;
+
 private:
 	void LoadMeshes(const aiScene* loader, ID3D12Device* device, ID3D12GraphicsCommandList* cmdList);
 	void LoadMaterials(const aiScene* loader, ID3D12Device* device, ID3D12CommandQueue* cmdQueue);

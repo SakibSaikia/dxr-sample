@@ -173,7 +173,10 @@ void Scene::InitResources(const uint32_t cbvRootParamIndex, ID3D12Device* device
 
 void Scene::InitDescriptors()
 {
-
+	for (const auto& mat : m_materials)
+	{
+		const Texture* tex = m_textures.at(mat->GetDiffuseTextureIndex()).get();
+	}
 }
 
 void Scene::Update(uint32_t bufferIndex)
@@ -202,4 +205,9 @@ void Scene::Render(ID3D12GraphicsCommandList* cmdList, uint32_t bufferIndex)
 		m_meshes.at(meshEntity.GetMeshIndex())->Render(cmdList);
 		++entityId;
 	}
+}
+
+const size_t Scene::GetNumTextures() const
+{
+	return m_textures.size();
 }

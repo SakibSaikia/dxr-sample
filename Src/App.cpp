@@ -210,12 +210,29 @@ void App::InitDescriptors()
 	// CBV/SRV/UAV heap
 	{
 		D3D12_DESCRIPTOR_HEAP_DESC cbvSrvUavHeapDesc = {};
-		cbvSrvUavHeapDesc.NumDescriptors = k_cbvSrvUavDescriptorCount;
+		cbvSrvUavHeapDesc.NumDescriptors = k_cbvCount + m_scene.GetNumTextures();
 		cbvSrvUavHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
 		cbvSrvUavHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
 		HRESULT hr = m_d3dDevice->CreateDescriptorHeap(&cbvSrvUavHeapDesc, IID_PPV_ARGS(m_cbvSrvUavHeap.GetAddressOf()));
 		assert(hr == S_OK && L"Failed to create CBV heap");
 	}
+}
+
+void App::InitShaders()
+{
+	m_vsByteCode = LoadShaderFromFile(L"CompiledShaders\\VertexShader.cso");
+	m_psByteCode = LoadShaderFromFile(L"CompiledShaders\\PixelShader.cso");
+}
+
+void App::InitScene()
+{
+	m_scene.InitResources(1, m_d3dDevice.Get(), m_cmdQueue.Get(), m_gfxCmdList.Get());
+}
+
+void App::InitView()
+{
+	float aspectRatio = static_cast<float>(k_screenWidth) / k_screenHeight;
+	m_camera.Init(aspectRatio);
 
 	// View Constant Buffer
 	{
@@ -233,8 +250,8 @@ void App::InitDescriptors()
 		resDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
 
 		D3D12_HEAP_PROPERTIES heapDesc = {};
-		heapDesc.Type = D3D12_HEAP_TYPE_UPLOAD; 
-		heapDesc.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN; 
+		heapDesc.Type = D3D12_HEAP_TYPE_UPLOAD;
+		heapDesc.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
 
 		for (auto n = 0; n < k_gfxBufferCount; ++n)
 		{
@@ -253,23 +270,6 @@ void App::InitDescriptors()
 			m_viewConstantBuffers.at(n)->Map(0, nullptr, ptr);
 		}
 	}
-}
-
-void App::InitShaders()
-{
-	m_vsByteCode = LoadShaderFromFile(L"CompiledShaders\\VertexShader.cso");
-	m_psByteCode = LoadShaderFromFile(L"CompiledShaders\\PixelShader.cso");
-}
-
-void App::InitScene()
-{
-	m_scene.InitResources(1, m_d3dDevice.Get(), m_cmdQueue.Get(), m_gfxCmdList.Get());
-}
-
-void App::InitCamera()
-{
-	float aspectRatio = static_cast<float>(k_screenWidth) / k_screenHeight;
-	m_camera.Init(aspectRatio);
 }
 
 void App::InitStateObjects()
@@ -407,7 +407,7 @@ void App::Init(HWND windowHandle)
 	InitScene();
 	InitDescriptors();
 	InitStateObjects();
-	InitCamera();
+	InitView();
 
 	// Finalize init and flush 
 	m_gfxCmdList->Close();
