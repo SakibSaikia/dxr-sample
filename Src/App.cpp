@@ -53,6 +53,12 @@ void App::InitBaseD3D()
 	);
 
 	assert(hr == S_OK && L"Failed to create D3D Device");
+
+	// Cached descriptor size
+	m_rtvDescriptorSize = m_d3dDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
+	m_dsvDescriptorSize = m_d3dDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_DSV);
+	m_cbvSrvUavDescriptorSize = m_d3dDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+	m_samplerDescriptorSize = m_d3dDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER);
 }
 
 void App::InitCommandObjects()
@@ -121,39 +127,18 @@ void App::InitSwapChain(HWND windowHandle)
 	);
 
 	assert(hr == S_OK && L"Failed to create swap chain");
-}
 
-void App::InitDescriptors()
-{
-	// Descriptor Heaps
-	{
-		D3D12_DESCRIPTOR_HEAP_DESC rtvHeapDesc = {};
-		rtvHeapDesc.NumDescriptors = k_gfxBufferCount;
-		rtvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
-		HRESULT hr = m_d3dDevice->CreateDescriptorHeap(&rtvHeapDesc, IID_PPV_ARGS(m_rtvHeap.GetAddressOf()));
-		assert(hr == S_OK && L"Failed to create RTV heap");
+	D3D12_DESCRIPTOR_HEAP_DESC rtvHeapDesc = {};
+	rtvHeapDesc.NumDescriptors = k_gfxBufferCount;
+	rtvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
+	hr = m_d3dDevice->CreateDescriptorHeap(&rtvHeapDesc, IID_PPV_ARGS(m_rtvHeap.GetAddressOf()));
+	assert(hr == S_OK && L"Failed to create RTV heap");
 
-		D3D12_DESCRIPTOR_HEAP_DESC dsvHeapDesc = {};
-		dsvHeapDesc.NumDescriptors = k_gfxBufferCount;
-		dsvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_DSV;
-		hr = m_d3dDevice->CreateDescriptorHeap(&dsvHeapDesc, IID_PPV_ARGS(m_dsvHeap.GetAddressOf()));
-		assert(hr == S_OK && L"Failed to create DSV heap");
-
-		D3D12_DESCRIPTOR_HEAP_DESC cbvHeapDesc = {};
-		cbvHeapDesc.NumDescriptors = k_cbvSrvUavDescriptorCount;
-		cbvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
-		cbvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
-		hr = m_d3dDevice->CreateDescriptorHeap(&cbvHeapDesc, IID_PPV_ARGS(m_cbvHeap.GetAddressOf()));
-		assert(hr == S_OK && L"Failed to create CBV heap");
-	}
-
-	// Cached descriptor size
-	{
-		m_rtvDescriptorSize = m_d3dDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
-		m_dsvDescriptorSize = m_d3dDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_DSV);
-		m_cbvSrvUavDescriptorSize = m_d3dDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
-		m_samplerDescriptorSize = m_d3dDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER);
-	}
+	D3D12_DESCRIPTOR_HEAP_DESC dsvHeapDesc = {};
+	dsvHeapDesc.NumDescriptors = k_gfxBufferCount;
+	dsvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_DSV;
+	hr = m_d3dDevice->CreateDescriptorHeap(&dsvHeapDesc, IID_PPV_ARGS(m_dsvHeap.GetAddressOf()));
+	assert(hr == S_OK && L"Failed to create DSV heap");
 
 	// RTVs
 	{
@@ -218,6 +203,19 @@ void App::InitDescriptors()
 			dsvHeapHandle.ptr += m_dsvDescriptorSize;
 		}
 	}
+}
+
+void App::InitDescriptors()
+{
+	// Descriptor Heaps
+	{
+		D3D12_DESCRIPTOR_HEAP_DESC cbvSrvUavHeapDesc = {};
+		cbvSrvUavHeapDesc.NumDescriptors = k_cbvSrvUavDescriptorCount;
+		cbvSrvUavHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
+		cbvSrvUavHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
+		HRESULT hr = m_d3dDevice->CreateDescriptorHeap(&cbvSrvUavHeapDesc, IID_PPV_ARGS(m_cbvSrvUavHeap.GetAddressOf()));
+		assert(hr == S_OK && L"Failed to create CBV heap");
+	}
 
 	// View Constant Buffer
 	{
@@ -235,8 +233,8 @@ void App::InitDescriptors()
 		resDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
 
 		D3D12_HEAP_PROPERTIES heapDesc = {};
-		heapDesc.Type = D3D12_HEAP_TYPE_UPLOAD; // must be CPU accessible
-		heapDesc.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN; // GPU or system mem
+		heapDesc.Type = D3D12_HEAP_TYPE_UPLOAD; 
+		heapDesc.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN; 
 
 		for (auto n = 0; n < k_gfxBufferCount; ++n)
 		{
@@ -470,7 +468,7 @@ void App::Render()
 		m_gfxCmdList->ClearDepthStencilView(GetCurrentDepthStencilView(), D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, 1.f, 0, 0, nullptr);
 
 		// Set descriptor heaps
-		ID3D12DescriptorHeap* descriptorHeaps[] = { m_cbvHeap.Get() };
+		ID3D12DescriptorHeap* descriptorHeaps[] = { m_cbvSrvUavHeap.Get() };
 		m_gfxCmdList->SetDescriptorHeaps(std::extent<decltype(descriptorHeaps)>::value, descriptorHeaps);
 
 		// Set root sig
@@ -538,7 +536,7 @@ D3D12_CPU_DESCRIPTOR_HANDLE App::GetConstantBufferDescriptorCPU(ConstantBufferId
 	uint32_t descriptorOffset = static_cast<uint32_t>(id) + offset;
 
 	D3D12_CPU_DESCRIPTOR_HANDLE hnd;
-	hnd.ptr = m_cbvHeap->GetCPUDescriptorHandleForHeapStart().ptr + descriptorOffset * m_cbvSrvUavDescriptorSize;
+	hnd.ptr = m_cbvSrvUavHeap->GetCPUDescriptorHandleForHeapStart().ptr + descriptorOffset * m_cbvSrvUavDescriptorSize;
 	return hnd;
 }
 
@@ -547,7 +545,7 @@ D3D12_GPU_DESCRIPTOR_HANDLE App::GetConstantBufferDescriptorGPU(ConstantBufferId
 	uint32_t descriptorOffset = static_cast<uint32_t>(id) + offset;
 
 	D3D12_GPU_DESCRIPTOR_HANDLE hnd;
-	hnd.ptr = m_cbvHeap->GetGPUDescriptorHandleForHeapStart().ptr + descriptorOffset * m_cbvSrvUavDescriptorSize;
+	hnd.ptr = m_cbvSrvUavHeap->GetGPUDescriptorHandleForHeapStart().ptr + descriptorOffset * m_cbvSrvUavDescriptorSize;
 	return hnd;
 }
 

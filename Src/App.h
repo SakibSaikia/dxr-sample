@@ -86,7 +86,7 @@ private:
 	// Descriptors
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_rtvHeap;
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_dsvHeap;
-	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_cbvHeap;
+	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_cbvSrvUavHeap;
 	uint32_t m_rtvDescriptorSize = 0;
 	uint32_t m_dsvDescriptorSize = 0;
 	uint32_t m_cbvSrvUavDescriptorSize = 0;
