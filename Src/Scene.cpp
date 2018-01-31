@@ -171,11 +171,28 @@ void Scene::InitResources(const uint32_t cbvRootParamIndex, ID3D12Device* device
 	}
 }
 
-void Scene::InitDescriptors()
+void Scene::InitDescriptors(ID3D12Device* device, ID3D12DescriptorHeap* srvHeap, const size_t startOffset, const uint32_t descriptorSize)
 {
-	for (const auto& mat : m_materials)
+	auto descriptorIdx = 0;
+
+	for (const auto& tex : m_textures)
 	{
-		const Texture* tex = m_textures.at(mat->GetDiffuseTextureIndex()).get();
+		size_t descriptorOffset = startOffset + descriptorIdx;
+
+		D3D12_CPU_DESCRIPTOR_HANDLE hnd;
+		hnd.ptr = srvHeap->GetCPUDescriptorHandleForHeapStart().ptr + descriptorOffset * descriptorSize;
+
+		D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
+		srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+		srvDesc.Format = tex->GetResource()->GetDesc().Format;
+		srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+		srvDesc.Texture2D.MostDetailedMip = 0;
+		srvDesc.Texture2D.MipLevels = tex->GetResource()->GetDesc().MipLevels;
+		srvDesc.Texture2D.ResourceMinLODClamp = 0.0f;
+
+		device->CreateShaderResourceView(tex->GetResource(), &srvDesc, hnd);
+
+		descriptorIdx++;
 	}
 }
 

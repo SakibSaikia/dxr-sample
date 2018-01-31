@@ -18,5 +18,10 @@ void Texture::Init(ID3D12Device* device, DirectX::ResourceUploadBatch& resourceU
 		m_resource.ReleaseAndGetAddressOf()
 	);
 
-	//assert(hr == S_OK);
+	assert(hr == S_OK);
+}
+
+ID3D12Resource* Texture::GetResource() const
+{
+	return m_resource.Get();
 }

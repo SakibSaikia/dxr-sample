@@ -15,7 +15,7 @@ class Scene
 
 public:
 	void InitResources(uint32_t cbvRootParamIndex, ID3D12Device* device, ID3D12CommandQueue* cmdQueue, ID3D12GraphicsCommandList* cmdList);
-	void InitDescriptors();
+	void InitDescriptors(ID3D12Device* device, ID3D12DescriptorHeap* srvHeap, size_t startOffset, uint32_t descriptorSize);
 	void Update(uint32_t bufferIndex);
 	void Render(ID3D12GraphicsCommandList* cmdList, uint32_t bufferIndex);
 

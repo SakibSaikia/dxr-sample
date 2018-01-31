@@ -216,6 +216,8 @@ void App::InitDescriptors()
 		HRESULT hr = m_d3dDevice->CreateDescriptorHeap(&cbvSrvUavHeapDesc, IID_PPV_ARGS(m_cbvSrvUavHeap.GetAddressOf()));
 		assert(hr == S_OK && L"Failed to create CBV heap");
 	}
+
+	m_scene.InitDescriptors(m_d3dDevice.Get(), m_cbvSrvUavHeap.Get(), k_cbvCount, m_cbvSrvUavDescriptorSize);
 }
 
 void App::InitShaders()
