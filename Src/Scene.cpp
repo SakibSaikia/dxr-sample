@@ -110,7 +110,7 @@ void Scene::LoadEntities(const aiNode* node)
 	}
 }
 
-void Scene::Init(const uint32_t cbvRootParamIndex, ID3D12Device* device, ID3D12CommandQueue* cmdQueue, ID3D12GraphicsCommandList* cmdList)
+void Scene::InitResources(const uint32_t cbvRootParamIndex, ID3D12Device* device, ID3D12CommandQueue* cmdQueue, ID3D12GraphicsCommandList* cmdList)
 {
 	m_objectCBVRootParameterIndex = cbvRootParamIndex;
 
@@ -169,6 +169,11 @@ void Scene::Init(const uint32_t cbvRootParamIndex, ID3D12Device* device, ID3D12C
 			m_objectConstantBuffers.at(n)->Map(0, nullptr, ptr);
 		}
 	}
+}
+
+void Scene::InitDescriptors()
+{
+
 }
 
 void Scene::Update(uint32_t bufferIndex)

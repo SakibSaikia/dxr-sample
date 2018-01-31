@@ -207,7 +207,7 @@ void App::InitSwapChain(HWND windowHandle)
 
 void App::InitDescriptors()
 {
-	// Descriptor Heaps
+	// CBV/SRV/UAV heap
 	{
 		D3D12_DESCRIPTOR_HEAP_DESC cbvSrvUavHeapDesc = {};
 		cbvSrvUavHeapDesc.NumDescriptors = k_cbvSrvUavDescriptorCount;
@@ -263,7 +263,7 @@ void App::InitShaders()
 
 void App::InitScene()
 {
-	m_scene.Init(1, m_d3dDevice.Get(), m_cmdQueue.Get(), m_gfxCmdList.Get());
+	m_scene.InitResources(1, m_d3dDevice.Get(), m_cmdQueue.Get(), m_gfxCmdList.Get());
 }
 
 void App::InitCamera()
@@ -403,9 +403,9 @@ void App::Init(HWND windowHandle)
 	InitBaseD3D();
 	InitCommandObjects();
 	InitSwapChain(windowHandle);
-	InitDescriptors();
 	InitShaders();
 	InitScene();
+	InitDescriptors();
 	InitStateObjects();
 	InitCamera();
 
