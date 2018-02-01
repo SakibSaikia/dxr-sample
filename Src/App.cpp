@@ -228,7 +228,7 @@ void App::InitShaders()
 
 void App::InitScene()
 {
-	m_scene.InitResources(1, m_d3dDevice.Get(), m_cmdQueue.Get(), m_gfxCmdList.Get());
+	m_scene.InitResources(m_d3dDevice.Get(), m_cmdQueue.Get(), m_gfxCmdList.Get());
 }
 
 void App::InitView()
@@ -278,21 +278,22 @@ void App::InitStateObjects()
 {
 	// Root signature
 	{
-		D3D12_ROOT_PARAMETER rootParameters[2];
+		std::vector<D3D12_ROOT_PARAMETER> rootParams;
 
-		rootParameters[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
-		rootParameters[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
-		rootParameters[0].Descriptor.RegisterSpace = 0;
-		rootParameters[0].Descriptor.ShaderRegister = 0;
+		// View constants
+		D3D12_ROOT_PARAMETER param;
+		param.ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
+		param.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+		param.Descriptor.RegisterSpace = 0;
+		param.Descriptor.ShaderRegister = 0;
+		rootParams.push_back(std::move(param));
 
-		rootParameters[1].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
-		rootParameters[1].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
-		rootParameters[1].Descriptor.RegisterSpace = 0;
-		rootParameters[1].Descriptor.ShaderRegister = 1;
+		StaticMeshEntity::AppendRootParameters(rootParams);
+		Material::AppendRootParameters(rootParams);
 
 		D3D12_ROOT_SIGNATURE_DESC sigDesc;
-		sigDesc.NumParameters = std::extent<decltype(rootParameters)>::value;
-		sigDesc.pParameters = rootParameters;
+		sigDesc.NumParameters = rootParams.size();
+		sigDesc.pParameters = rootParams.data();
 		sigDesc.NumStaticSamplers = 0;
 		sigDesc.pStaticSamplers = nullptr;
 		sigDesc.Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT; // can be omitted if IA is not used

@@ -25,6 +25,8 @@ public:
 	void Init(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList, std::vector<StaticMesh::VertexType> vertexData, std::vector<StaticMesh::IndexType> indexData, uint32_t matIndex);
 	void Render(ID3D12GraphicsCommandList* cmdList);
 
+	const uint32_t GetMaterialIndex() const;
+
 private:
 	Microsoft::WRL::ComPtr<ID3D12Resource> m_vertexBuffer;
 	Microsoft::WRL::ComPtr<ID3D12Resource> m_indexBuffer;
@@ -39,9 +41,14 @@ class StaticMeshEntity
 public:
 	StaticMeshEntity() = delete;
 	StaticMeshEntity(uint64_t meshIndex, const DirectX::XMFLOAT4X4& localToWorld);
+
 	DirectX::XMFLOAT4X4 GetLocalToWorldMatrix() const;
 	uint64_t GetMeshIndex() const;
+
+	static void AppendRootParameters(std::vector<D3D12_ROOT_PARAMETER>& rootParams);
+	static uint32_t GetObjectConstantsRootParamIndex();
 private:
 	uint64_t m_meshIndex;
 	DirectX::XMFLOAT4X4 m_localToWorld;
+	static uint32_t s_objectConstantsRootParamIndex;
 };

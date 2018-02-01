@@ -73,8 +73,9 @@ void Scene::LoadMaterials(const aiScene* loader, ID3D12Device* device, ID3D12Com
 			}
 
 			mat->Init(std::string(materialName.C_Str()), diffuseTextureIndex);
-			m_materials.push_back(std::move(mat));
 		}
+
+		m_materials.push_back(std::move(mat));
 	}
 
 	// Upload the resources to the GPU.
@@ -110,10 +111,8 @@ void Scene::LoadEntities(const aiNode* node)
 	}
 }
 
-void Scene::InitResources(const uint32_t cbvRootParamIndex, ID3D12Device* device, ID3D12CommandQueue* cmdQueue, ID3D12GraphicsCommandList* cmdList)
+void Scene::InitResources(ID3D12Device* device, ID3D12CommandQueue* cmdQueue, ID3D12GraphicsCommandList* cmdList)
 {
-	m_objectCBVRootParameterIndex = cbvRootParamIndex;
-
 	// Load scene
 	{
 		Assimp::Importer importer;
@@ -213,13 +212,24 @@ void Scene::Render(ID3D12GraphicsCommandList* cmdList, uint32_t bufferIndex)
 	int entityId = 0;
 	for (auto& meshEntity : m_meshEntities)
 	{
+		StaticMesh* sm = m_meshes.at(meshEntity.GetMeshIndex()).get();
+		Material* mat = m_materials.at(sm->GetMaterialIndex()).get();
+
 		cmdList->SetGraphicsRootConstantBufferView(
-			m_objectCBVRootParameterIndex,
+			StaticMeshEntity::GetObjectConstantsRootParamIndex(),
 			m_objectConstantBuffers.at(bufferIndex)->GetGPUVirtualAddress() +
 			entityId * sizeof(ObjectConstants)
 		);
 
-		m_meshes.at(meshEntity.GetMeshIndex())->Render(cmdList);
+		// Need to convert this to use descriptor table (root descriptors only supported for buffers)
+		cmdList->SetGraphicsRootShaderResourceView(
+			Material::GetDiffusemapRootParamIndex(),
+			m_textures.at(mat->GetDiffuseTextureIndex())->GetResource()->GetGPUVirtualAddress()
+		);
+
+		mat->Bind(cmdList);
+		sm->Render(cmdList);
+
 		++entityId;
 	}
 }

@@ -14,7 +14,7 @@ class Scene
 	};
 
 public:
-	void InitResources(uint32_t cbvRootParamIndex, ID3D12Device* device, ID3D12CommandQueue* cmdQueue, ID3D12GraphicsCommandList* cmdList);
+	void InitResources(ID3D12Device* device, ID3D12CommandQueue* cmdQueue, ID3D12GraphicsCommandList* cmdList);
 	void InitDescriptors(ID3D12Device* device, ID3D12DescriptorHeap* srvHeap, size_t startOffset, uint32_t descriptorSize);
 	void Update(uint32_t bufferIndex);
 	void Render(ID3D12GraphicsCommandList* cmdList, uint32_t bufferIndex);
@@ -33,7 +33,6 @@ private:
 	std::vector<std::unique_ptr<Texture>> m_textures;
 	std::unordered_map<std::string, uint32_t> m_textureDirectory;
 
-	uint32_t m_objectCBVRootParameterIndex;
 	std::array<Microsoft::WRL::ComPtr<ID3D12Resource>, k_gfxBufferCount> m_objectConstantBuffers;
 	std::array<ObjectConstants*, k_gfxBufferCount> m_objectConstantBufferPtr;
 };

@@ -1,5 +1,7 @@
 #pragma pack_matrix( row_major )
 
+Texture2D diffuseMap : register(t0);
+
 cbuffer ViewConstants : register(b0)
 {
 	float4x4 viewMatrix;
