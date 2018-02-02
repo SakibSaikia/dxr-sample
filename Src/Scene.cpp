@@ -174,12 +174,12 @@ void Scene::InitDescriptors(ID3D12Device* device, ID3D12DescriptorHeap* srvHeap,
 {
 	auto descriptorIdx = 0;
 
-	for (const auto& tex : m_textures)
+	for (auto& tex : m_textures)
 	{
 		size_t descriptorOffset = startOffset + descriptorIdx;
 
-		D3D12_CPU_DESCRIPTOR_HANDLE hnd;
-		hnd.ptr = srvHeap->GetCPUDescriptorHandleForHeapStart().ptr + descriptorOffset * descriptorSize;
+		D3D12_CPU_DESCRIPTOR_HANDLE cpuHnd;
+		cpuHnd.ptr = srvHeap->GetCPUDescriptorHandleForHeapStart().ptr + descriptorOffset * descriptorSize;
 
 		D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
 		srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
@@ -188,8 +188,11 @@ void Scene::InitDescriptors(ID3D12Device* device, ID3D12DescriptorHeap* srvHeap,
 		srvDesc.Texture2D.MostDetailedMip = 0;
 		srvDesc.Texture2D.MipLevels = tex->GetResource()->GetDesc().MipLevels;
 		srvDesc.Texture2D.ResourceMinLODClamp = 0.0f;
+		device->CreateShaderResourceView(tex->GetResource(), &srvDesc, cpuHnd);
 
-		device->CreateShaderResourceView(tex->GetResource(), &srvDesc, hnd);
+		D3D12_GPU_DESCRIPTOR_HANDLE gpuHnd;
+		gpuHnd.ptr = srvHeap->GetGPUDescriptorHandleForHeapStart().ptr + descriptorOffset * descriptorSize;
+		tex->SetDescriptor(gpuHnd);
 
 		descriptorIdx++;
 	}
@@ -221,10 +224,9 @@ void Scene::Render(ID3D12GraphicsCommandList* cmdList, uint32_t bufferIndex)
 			entityId * sizeof(ObjectConstants)
 		);
 
-		// Need to convert this to use descriptor table (root descriptors only supported for buffers)
-		cmdList->SetGraphicsRootShaderResourceView(
+		cmdList->SetGraphicsRootDescriptorTable(
 			Material::GetDiffusemapRootParamIndex(),
-			m_textures.at(mat->GetDiffuseTextureIndex())->GetResource()->GetGPUVirtualAddress()
+			m_textures.at(mat->GetDiffuseTextureIndex())->GetDescriptor()
 		);
 
 		mat->Bind(cmdList);

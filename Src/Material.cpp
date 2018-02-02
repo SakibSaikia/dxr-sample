@@ -2,6 +2,7 @@
 #include "Material.h"
 
 uint32_t Material::s_diffusemapRootParamIndex;
+D3D12_DESCRIPTOR_RANGE Material::s_diffusemapRootDescriptorTable = { D3D12_DESCRIPTOR_RANGE_TYPE_SRV , 1, 0, 0, D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND };
 
 void Material::Init(std::string&& name, const uint32_t diffuseIdx) 
 {
@@ -22,10 +23,10 @@ const uint32_t Material::GetDiffuseTextureIndex() const
 void Material::AppendRootParameters(std::vector<D3D12_ROOT_PARAMETER>& rootParams)
 {
 	D3D12_ROOT_PARAMETER param;
-	param.ParameterType = D3D12_ROOT_PARAMETER_TYPE_SRV;
+	param.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
 	param.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
-	param.Descriptor.RegisterSpace = 0;
-	param.Descriptor.ShaderRegister = 0;
+	param.DescriptorTable.NumDescriptorRanges = 1;
+	param.DescriptorTable.pDescriptorRanges = &s_diffusemapRootDescriptorTable;
 	rootParams.push_back(std::move(param));
 
 	s_diffusemapRootParamIndex = rootParams.size() - 1;

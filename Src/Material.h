@@ -14,4 +14,5 @@ private:
 	std::string m_name;
 	uint32_t m_diffuseTextureIndex;
 	static uint32_t s_diffusemapRootParamIndex;
+	static D3D12_DESCRIPTOR_RANGE s_diffusemapRootDescriptorTable;
 };

@@ -25,3 +25,12 @@ ID3D12Resource* Texture::GetResource() const
 {
 	return m_resource.Get();
 }
+
+void Texture::SetDescriptor(const D3D12_GPU_DESCRIPTOR_HANDLE descriptor)
+{
+	m_srv = descriptor;
+}
+D3D12_GPU_DESCRIPTOR_HANDLE Texture::GetDescriptor() const
+{
+	return m_srv;
+}
