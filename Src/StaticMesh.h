@@ -7,14 +7,15 @@ public:
 	{
 		DirectX::XMFLOAT3 position;
 		DirectX::XMFLOAT3 normal;
+		DirectX::XMFLOAT2 uv;
 
 		VertexType() = default;
-		VertexType(DirectX::XMFLOAT3 inPos, DirectX::XMFLOAT3 inNormal) :
-			position(inPos), normal(inNormal) {}
+		VertexType(DirectX::XMFLOAT3 inPos, DirectX::XMFLOAT3 inNormal, DirectX::XMFLOAT2 inUV) :
+			position(inPos), normal(inNormal), uv(inUV) {}
 
 		struct InputLayout
 		{
-			static const uint32_t s_num = 2;
+			static const uint32_t s_num = 3;
 			static D3D12_INPUT_ELEMENT_DESC s_desc[s_num];
 		};
 	};

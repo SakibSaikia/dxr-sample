@@ -279,6 +279,7 @@ void App::InitStateObjects()
 	// Root signature
 	{
 		std::vector<D3D12_ROOT_PARAMETER> rootParams;
+		std::vector<D3D12_STATIC_SAMPLER_DESC> staticSamplers;
 
 		// View constants
 		D3D12_ROOT_PARAMETER param;
@@ -290,12 +291,13 @@ void App::InitStateObjects()
 
 		StaticMeshEntity::AppendRootParameters(rootParams);
 		Material::AppendRootParameters(rootParams);
+		Material::AppendStaticSamplers(staticSamplers);
 
 		D3D12_ROOT_SIGNATURE_DESC sigDesc;
 		sigDesc.NumParameters = rootParams.size();
 		sigDesc.pParameters = rootParams.data();
-		sigDesc.NumStaticSamplers = 0;
-		sigDesc.pStaticSamplers = nullptr;
+		sigDesc.NumStaticSamplers = staticSamplers.size();
+		sigDesc.pStaticSamplers = staticSamplers.data();
 		sigDesc.Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT; // can be omitted if IA is not used
 
 		Microsoft::WRL::ComPtr<ID3DBlob> serializedRootSignature = nullptr;

@@ -32,6 +32,23 @@ void Material::AppendRootParameters(std::vector<D3D12_ROOT_PARAMETER>& rootParam
 	s_diffusemapRootParamIndex = rootParams.size() - 1;
 }
 
+void Material::AppendStaticSamplers(std::vector<D3D12_STATIC_SAMPLER_DESC>& staticSamplers)
+{
+	D3D12_STATIC_SAMPLER_DESC sampler = {};
+	sampler.Filter = D3D12_FILTER_ANISOTROPIC;
+	sampler.AddressU = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
+	sampler.AddressV = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
+	sampler.AddressW = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
+	sampler.ShaderRegister = 0;
+	sampler.MaxAnisotropy = 8;
+	sampler.MinLOD = 0;
+	sampler.MaxLOD = D3D12_FLOAT32_MAX;
+	sampler.BorderColor = D3D12_STATIC_BORDER_COLOR_OPAQUE_WHITE;
+	sampler.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+
+	staticSamplers.push_back(std::move(sampler));
+}
+
 uint32_t Material::GetDiffusemapRootParamIndex()
 {
 	return s_diffusemapRootParamIndex;

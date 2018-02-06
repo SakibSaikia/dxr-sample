@@ -8,6 +8,7 @@ public:
 	const uint32_t GetDiffuseTextureIndex() const;
 
 	static void AppendRootParameters(std::vector<D3D12_ROOT_PARAMETER>& rootParams);
+	static void AppendStaticSamplers(std::vector<D3D12_STATIC_SAMPLER_DESC>& staticSamplers);
 	static uint32_t GetDiffusemapRootParamIndex();
 
 private:
