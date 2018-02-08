@@ -45,6 +45,16 @@ void App::InitBaseD3D()
 	hr = CreateDXGIFactory1(IID_PPV_ARGS(m_dxgiFactory.GetAddressOf()));
 	assert(hr == S_OK && L"Failed to create DXGI factory");
 
+	// Enable SM6
+	static const GUID D3D12ExperimentalShaderModelsID = { /* 76f5573e-f13a-40f5-b297-81ce9e18933f */
+		0x76f5573e,
+		0xf13a,
+		0x40f5,
+		{ 0xb2, 0x97, 0x81, 0xce, 0x9e, 0x18, 0x93, 0x3f }
+	};
+
+	D3D12EnableExperimentalFeatures(1, &D3D12ExperimentalShaderModelsID, nullptr, nullptr);
+
 	// Device
 	hr = D3D12CreateDevice(
 		nullptr,
