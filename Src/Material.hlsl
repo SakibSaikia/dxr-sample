@@ -1,5 +1,12 @@
 #include "Common.hlsl"
 
+#define args	"RootFlags(ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT)," \
+				"CBV(b0)," \
+				"CBV(b1, visibility = SHADER_VISIBILITY_VERTEX)," \
+				"DescriptorTable(SRV(t0, numDescriptors = 1), visibility = SHADER_VISIBILITY_PIXEL)," \
+				"StaticSampler(s0, visibility = SHADER_VISIBILITY_PIXEL, filter = FILTER_ANISOTROPIC, maxAnisotropy = 8, addressU = TEXTURE_ADDRESS_WRAP, addressV = TEXTURE_ADDRESS_WRAP, borderColor = STATIC_BORDER_COLOR_OPAQUE_WHITE)"
+				
+
 struct VsToPs
 {
 	float4 ndcPos	: SV_POSITION;
@@ -21,6 +28,7 @@ struct VsIn
 	float2 uv		: IA_TEXCOORD0;
 };
 
+[RootSignature(args)]
 VsToPs vs_main( VsIn v )
 {
 	VsToPs o;
@@ -38,6 +46,7 @@ VsToPs vs_main( VsIn v )
 Texture2D diffuseMap : register(t0);
 SamplerState anisoSampler : register(s0);
 
+[RootSignature(args)]
 float4 ps_main(VsToPs p) : SV_TARGET
 {
 	float4 normal = normalize(p.normal);

@@ -46,10 +46,8 @@ public:
 	DirectX::XMFLOAT4X4 GetLocalToWorldMatrix() const;
 	uint64_t GetMeshIndex() const;
 
-	static void AppendRootParameters(std::vector<D3D12_ROOT_PARAMETER>& rootParams);
 	static uint32_t GetObjectConstantsRootParamIndex();
 private:
 	uint64_t m_meshIndex;
 	DirectX::XMFLOAT4X4 m_localToWorld;
-	static uint32_t s_objectConstantsRootParamIndex;
 };

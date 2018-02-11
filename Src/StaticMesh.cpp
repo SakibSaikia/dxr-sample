@@ -2,8 +2,6 @@
 #include "StaticMesh.h"
 #include "App.h"
 
-uint32_t StaticMeshEntity::s_objectConstantsRootParamIndex;
-
 D3D12_INPUT_ELEMENT_DESC StaticMesh::VertexType::InputLayout::s_desc[StaticMesh::VertexType::InputLayout::s_num] =
 {
 	{ "IA_POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
@@ -208,19 +206,7 @@ DirectX::XMFLOAT4X4 StaticMeshEntity::GetLocalToWorldMatrix() const
 	return m_localToWorld;
 }
 
-void StaticMeshEntity::AppendRootParameters(std::vector<D3D12_ROOT_PARAMETER>& rootParams)
-{
-	D3D12_ROOT_PARAMETER param;
-	param.ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
-	param.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
-	param.Descriptor.RegisterSpace = 0;
-	param.Descriptor.ShaderRegister = 1;
-	rootParams.push_back(std::move(param));
-
-	s_objectConstantsRootParamIndex = rootParams.size() - 1;
-}
-
 uint32_t StaticMeshEntity::GetObjectConstantsRootParamIndex()
 {
-	return s_objectConstantsRootParamIndex;
+	return 1;
 }

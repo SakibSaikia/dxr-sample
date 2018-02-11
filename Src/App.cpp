@@ -1,7 +1,7 @@
 #include "stdafx.h"
 #include "App.h"
 
-Microsoft::WRL::ComPtr<ID3DBlob> LoadShaderFromFile(const std::wstring& filename)
+Microsoft::WRL::ComPtr<ID3DBlob> LoadBlob(const std::string& filename)
 {
 	std::ifstream fileHandle(filename, std::ios::binary);
 	assert(fileHandle.good() && L"Error opening file");
@@ -12,14 +12,14 @@ Microsoft::WRL::ComPtr<ID3DBlob> LoadShaderFromFile(const std::wstring& filename
 	fileHandle.seekg(0, std::ios::beg);
 
 	// serialize bytecode
-	Microsoft::WRL::ComPtr<ID3DBlob> shaderBlob;
-	HRESULT hr = D3DCreateBlob(size, shaderBlob.GetAddressOf());
+	Microsoft::WRL::ComPtr<ID3DBlob> blob;
+	HRESULT hr = D3DCreateBlob(size, blob.GetAddressOf());
 	assert(hr == S_OK && L"Failed to create blob");
-	fileHandle.read(static_cast<char*>(shaderBlob->GetBufferPointer()), size);
+	fileHandle.read(static_cast<char*>(blob->GetBufferPointer()), size);
 
 	fileHandle.close();
 
-	return shaderBlob;
+	return blob;
 }
 
 App* AppInstance()
@@ -232,8 +232,8 @@ void App::InitDescriptors()
 
 void App::InitShaders()
 {
-	m_vsByteCode = LoadShaderFromFile(L"CompiledShaders\\VertexShader.cso");
-	m_psByteCode = LoadShaderFromFile(L"CompiledShaders\\PixelShader.cso");
+	m_vsByteCode = LoadBlob(R"(CompiledShaders\VertexShader.cso)");
+	m_psByteCode = LoadBlob(R"(CompiledShaders\PixelShader.cso)");
 }
 
 void App::InitScene()
@@ -288,46 +288,11 @@ void App::InitStateObjects()
 {
 	// Root signature
 	{
-		std::vector<D3D12_ROOT_PARAMETER> rootParams;
-		std::vector<D3D12_STATIC_SAMPLER_DESC> staticSamplers;
-
-		// View constants
-		D3D12_ROOT_PARAMETER param;
-		param.ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
-		param.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
-		param.Descriptor.RegisterSpace = 0;
-		param.Descriptor.ShaderRegister = 0;
-		rootParams.push_back(std::move(param));
-
-		StaticMeshEntity::AppendRootParameters(rootParams);
-		Material::AppendRootParameters(rootParams);
-		Material::AppendStaticSamplers(staticSamplers);
-
-		D3D12_ROOT_SIGNATURE_DESC sigDesc;
-		sigDesc.NumParameters = rootParams.size();
-		sigDesc.pParameters = rootParams.data();
-		sigDesc.NumStaticSamplers = staticSamplers.size();
-		sigDesc.pStaticSamplers = staticSamplers.data();
-		sigDesc.Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT; // can be omitted if IA is not used
-
-		Microsoft::WRL::ComPtr<ID3DBlob> serializedRootSignature = nullptr;
-		Microsoft::WRL::ComPtr<ID3DBlob> error = nullptr;
-		D3D12SerializeRootSignature(
-			&sigDesc,
-			D3D_ROOT_SIGNATURE_VERSION_1,
-			serializedRootSignature.GetAddressOf(),
-			error.GetAddressOf()
-		);
-
-		if (error != nullptr)
-		{
-			::OutputDebugStringA(static_cast<char*>(error->GetBufferPointer()));
-		}
-
+		Microsoft::WRL::ComPtr<ID3DBlob> rsBytecode = LoadBlob(R"(CompiledShaders\Material.sig)");
 		HRESULT hr = m_d3dDevice->CreateRootSignature(
 			0,
-			serializedRootSignature->GetBufferPointer(),
-			serializedRootSignature->GetBufferSize(),
+			rsBytecode->GetBufferPointer(),
+			rsBytecode->GetBufferSize(),
 			IID_PPV_ARGS(m_rootSignature.GetAddressOf())
 		);
 
@@ -342,8 +307,8 @@ void App::InitStateObjects()
 		psoDesc.InputLayout.pInputElementDescs = StaticMesh::VertexType::InputLayout::s_desc;
 		psoDesc.InputLayout.NumElements = StaticMesh::VertexType::InputLayout::s_num;
 
-		// root sig
-		psoDesc.pRootSignature = m_rootSignature.Get();
+		// root sig specified in shader
+		psoDesc.pRootSignature = nullptr;
 
 		// shaders
 		psoDesc.VS.pShaderBytecode = m_vsByteCode.Get()->GetBufferPointer();
