@@ -1,5 +1,6 @@
 #include "stdafx.h"
 #include "Scene.h"
+#include "View.h"
 
 void Scene::LoadMeshes(const aiScene* loader, ID3D12Device* device, ID3D12GraphicsCommandList* cmdList)
 {
@@ -39,7 +40,7 @@ void Scene::LoadMeshes(const aiScene* loader, ID3D12Device* device, ID3D12Graphi
 	}
 }
 
-void Scene::LoadMaterials(const aiScene* loader, ID3D12Device* device, ID3D12CommandQueue* cmdQueue)
+void Scene::LoadMaterials(const aiScene* loader, ID3D12Device* device, ID3D12CommandQueue* cmdQueue, const D3D12_GRAPHICS_PIPELINE_STATE_DESC& psoDesc)
 {
 	// Used to batch texture uploads
 	DirectX::ResourceUploadBatch resourceUpload(device);
@@ -74,7 +75,7 @@ void Scene::LoadMaterials(const aiScene* loader, ID3D12Device* device, ID3D12Com
 				m_textureDirectory[diffuseTextureName] = diffuseTextureIndex;
 			}
 
-			mat->Init(std::string(materialName.C_Str()), diffuseTextureIndex);
+			mat->Init(device, psoDesc, std::string(materialName.C_Str()), diffuseTextureIndex);
 		}
 
 		m_materials.push_back(std::move(mat));
@@ -113,7 +114,7 @@ void Scene::LoadEntities(const aiNode* node)
 	}
 }
 
-void Scene::InitResources(ID3D12Device* device, ID3D12CommandQueue* cmdQueue, ID3D12GraphicsCommandList* cmdList)
+void Scene::InitResources(ID3D12Device* device, ID3D12CommandQueue* cmdQueue, ID3D12GraphicsCommandList* cmdList, const D3D12_GRAPHICS_PIPELINE_STATE_DESC& psoDesc)
 {
 	// Load scene
 	{
@@ -131,7 +132,7 @@ void Scene::InitResources(ID3D12Device* device, ID3D12CommandQueue* cmdQueue, ID
 		assert(scene != nullptr && L"Failed to load scene");
 
 		LoadMeshes(scene, device, cmdList);
-		LoadMaterials(scene, device, cmdQueue);
+		LoadMaterials(scene, device, cmdQueue, psoDesc);
 		LoadEntities(scene->mRootNode);
 	}
 
@@ -210,7 +211,7 @@ void Scene::Update(uint32_t bufferIndex)
 	}
 }
 
-void Scene::Render(ID3D12GraphicsCommandList* cmdList, uint32_t bufferIndex)
+void Scene::Render(ID3D12GraphicsCommandList* cmdList, uint32_t bufferIndex, const View& view)
 {
 	PIXScopedEvent(0, L"render_scene");
 
@@ -220,19 +221,26 @@ void Scene::Render(ID3D12GraphicsCommandList* cmdList, uint32_t bufferIndex)
 		StaticMesh* sm = m_meshes.at(meshEntity.GetMeshIndex()).get();
 		Material* mat = m_materials.at(sm->GetMaterialIndex()).get();
 
-		cmdList->SetGraphicsRootConstantBufferView(
-			StaticMeshEntity::GetObjectConstantsRootParamIndex(),
-			m_objectConstantBuffers.at(bufferIndex)->GetGPUVirtualAddress() +
-			entityId * sizeof(ObjectConstants)
-		);
+		if (mat->IsValid())
+		{
+			// Root signature set by the material
+			mat->Bind(cmdList);
 
-		cmdList->SetGraphicsRootDescriptorTable(
-			Material::GetDiffusemapRootParamIndex(),
-			m_textures.at(mat->GetDiffuseTextureIndex())->GetDescriptor()
-		);
+			cmdList->SetGraphicsRootConstantBufferView(0, view.GetConstantBuffer(bufferIndex)->GetGPUVirtualAddress());
 
-		mat->Bind(cmdList);
-		sm->Render(cmdList);
+			cmdList->SetGraphicsRootConstantBufferView(
+				StaticMeshEntity::GetObjectConstantsRootParamIndex(),
+				m_objectConstantBuffers.at(bufferIndex)->GetGPUVirtualAddress() +
+				entityId * sizeof(ObjectConstants)
+			);
+
+			cmdList->SetGraphicsRootDescriptorTable(
+				Material::GetDiffusemapRootParamIndex(),
+				m_textures.at(mat->GetDiffuseTextureIndex())->GetDescriptor()
+			);
+
+			sm->Render(cmdList);
+		}
 
 		++entityId;
 	}

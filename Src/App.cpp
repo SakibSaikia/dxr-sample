@@ -1,27 +1,6 @@
 #include "stdafx.h"
 #include "App.h"
 
-Microsoft::WRL::ComPtr<ID3DBlob> LoadBlob(const std::string& filename)
-{
-	std::ifstream fileHandle(filename, std::ios::binary);
-	assert(fileHandle.good() && L"Error opening file");
-
-	// file size
-	fileHandle.seekg(0, std::ios::end);
-	std::ifstream::pos_type size = fileHandle.tellg();
-	fileHandle.seekg(0, std::ios::beg);
-
-	// serialize bytecode
-	Microsoft::WRL::ComPtr<ID3DBlob> blob;
-	HRESULT hr = D3DCreateBlob(size, blob.GetAddressOf());
-	assert(hr == S_OK && L"Failed to create blob");
-	fileHandle.read(static_cast<char*>(blob->GetBufferPointer()), size);
-
-	fileHandle.close();
-
-	return blob;
-}
-
 App* AppInstance()
 {
 	static App instance;
@@ -230,109 +209,41 @@ void App::InitDescriptors()
 	m_scene.InitDescriptors(m_d3dDevice.Get(), m_cbvSrvUavHeap.Get(), k_cbvCount, m_cbvSrvUavDescriptorSize);
 }
 
-void App::InitShaders()
-{
-	m_vsByteCode = LoadBlob(R"(CompiledShaders\VertexShader.cso)");
-	m_psByteCode = LoadBlob(R"(CompiledShaders\PixelShader.cso)");
-}
-
 void App::InitScene()
 {
-	m_scene.InitResources(m_d3dDevice.Get(), m_cmdQueue.Get(), m_gfxCmdList.Get());
+	m_scene.InitResources(m_d3dDevice.Get(), m_cmdQueue.Get(), m_gfxCmdList.Get(), m_basePassPSODesc);
 }
 
 void App::InitView()
 {
-	float aspectRatio = static_cast<float>(k_screenWidth) / k_screenHeight;
-	m_camera.Init(aspectRatio);
-
-	// View Constant Buffer
-	{
-		// 256 byte aligned
-		uint32_t viewConstantBufferSize = (sizeof(ViewConstants) + 0xff) & ~0xff;
-
-		D3D12_RESOURCE_DESC resDesc = {};
-		resDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
-		resDesc.Width = viewConstantBufferSize;
-		resDesc.Height = 1;
-		resDesc.DepthOrArraySize = 1;
-		resDesc.MipLevels = 1;
-		resDesc.Format = DXGI_FORMAT_UNKNOWN;
-		resDesc.SampleDesc.Count = 1;
-		resDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
-
-		D3D12_HEAP_PROPERTIES heapDesc = {};
-		heapDesc.Type = D3D12_HEAP_TYPE_UPLOAD;
-		heapDesc.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
-
-		for (auto n = 0; n < k_gfxBufferCount; ++n)
-		{
-			HRESULT hr = m_d3dDevice->CreateCommittedResource(
-				&heapDesc,
-				D3D12_HEAP_FLAG_NONE,
-				&resDesc,
-				D3D12_RESOURCE_STATE_GENERIC_READ,
-				nullptr,
-				IID_PPV_ARGS(m_viewConstantBuffers.at(n).GetAddressOf())
-			);
-			assert(hr == S_OK && L"Failed to create constant buffer");
-
-			// Get ptr to mapped resource
-			auto** ptr = reinterpret_cast<void**>(&m_ViewConstantBufferPtr.at(n));
-			m_viewConstantBuffers.at(n)->Map(0, nullptr, ptr);
-		}
-	}
+	m_view.Init(m_d3dDevice.Get(), k_gfxBufferCount, k_screenWidth, k_screenHeight);
 }
 
 void App::InitStateObjects()
 {
-	// Root signature
+	// PSO
 	{
-		Microsoft::WRL::ComPtr<ID3DBlob> rsBytecode = LoadBlob(R"(CompiledShaders\Material.sig)");
-		HRESULT hr = m_d3dDevice->CreateRootSignature(
-			0,
-			rsBytecode->GetBufferPointer(),
-			rsBytecode->GetBufferSize(),
-			IID_PPV_ARGS(m_rootSignature.GetAddressOf())
-		);
-
-		assert(hr == S_OK && L"Failed to create root signature");
-	}
-
-	// Pipeline State
-	{
-		D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc = {};
-
 		// input layout
-		psoDesc.InputLayout.pInputElementDescs = StaticMesh::VertexType::InputLayout::s_desc;
-		psoDesc.InputLayout.NumElements = StaticMesh::VertexType::InputLayout::s_num;
-
-		// root sig specified in shader
-		psoDesc.pRootSignature = nullptr;
-
-		// shaders
-		psoDesc.VS.pShaderBytecode = m_vsByteCode.Get()->GetBufferPointer();
-		psoDesc.VS.BytecodeLength = m_vsByteCode.Get()->GetBufferSize();
-		psoDesc.PS.pShaderBytecode = m_psByteCode.Get()->GetBufferPointer();
-		psoDesc.PS.BytecodeLength = m_psByteCode.Get()->GetBufferSize();
+		m_basePassPSODesc.InputLayout.pInputElementDescs = StaticMesh::VertexType::InputLayout::s_desc;
+		m_basePassPSODesc.InputLayout.NumElements = StaticMesh::VertexType::InputLayout::s_num;
 
 		// rasterizer state
-		psoDesc.RasterizerState.FillMode = D3D12_FILL_MODE_SOLID;
-		psoDesc.RasterizerState.CullMode = D3D12_CULL_MODE_BACK;
-		psoDesc.RasterizerState.FrontCounterClockwise = FALSE;
-		psoDesc.RasterizerState.DepthBias = D3D12_DEFAULT_DEPTH_BIAS;
-		psoDesc.RasterizerState.DepthBiasClamp = D3D12_DEFAULT_DEPTH_BIAS_CLAMP;
-		psoDesc.RasterizerState.SlopeScaledDepthBias = D3D12_DEFAULT_SLOPE_SCALED_DEPTH_BIAS;
-		psoDesc.RasterizerState.DepthClipEnable = TRUE;
-		psoDesc.RasterizerState.MultisampleEnable = FALSE;
-		psoDesc.RasterizerState.AntialiasedLineEnable = FALSE;
-		psoDesc.RasterizerState.ForcedSampleCount = 0;
-		psoDesc.RasterizerState.ConservativeRaster = D3D12_CONSERVATIVE_RASTERIZATION_MODE_OFF;
+		m_basePassPSODesc.RasterizerState.FillMode = D3D12_FILL_MODE_SOLID;
+		m_basePassPSODesc.RasterizerState.CullMode = D3D12_CULL_MODE_BACK;
+		m_basePassPSODesc.RasterizerState.FrontCounterClockwise = FALSE;
+		m_basePassPSODesc.RasterizerState.DepthBias = D3D12_DEFAULT_DEPTH_BIAS;
+		m_basePassPSODesc.RasterizerState.DepthBiasClamp = D3D12_DEFAULT_DEPTH_BIAS_CLAMP;
+		m_basePassPSODesc.RasterizerState.SlopeScaledDepthBias = D3D12_DEFAULT_SLOPE_SCALED_DEPTH_BIAS;
+		m_basePassPSODesc.RasterizerState.DepthClipEnable = TRUE;
+		m_basePassPSODesc.RasterizerState.MultisampleEnable = FALSE;
+		m_basePassPSODesc.RasterizerState.AntialiasedLineEnable = FALSE;
+		m_basePassPSODesc.RasterizerState.ForcedSampleCount = 0;
+		m_basePassPSODesc.RasterizerState.ConservativeRaster = D3D12_CONSERVATIVE_RASTERIZATION_MODE_OFF;
 
 		// blend state
-		psoDesc.BlendState.AlphaToCoverageEnable = FALSE;
-		psoDesc.BlendState.IndependentBlendEnable = FALSE;
-		for (auto& rt : psoDesc.BlendState.RenderTarget)
+		m_basePassPSODesc.BlendState.AlphaToCoverageEnable = FALSE;
+		m_basePassPSODesc.BlendState.IndependentBlendEnable = FALSE;
+		for (auto& rt : m_basePassPSODesc.BlendState.RenderTarget)
 		{
 			rt.BlendEnable = FALSE;
 			rt.LogicOpEnable = FALSE;
@@ -340,26 +251,20 @@ void App::InitStateObjects()
 		}
 
 		// depth stencil state
-		psoDesc.DepthStencilState.DepthEnable = TRUE;
-		psoDesc.DepthStencilState.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ALL;
-		psoDesc.DepthStencilState.DepthFunc = D3D12_COMPARISON_FUNC_LESS;
-		psoDesc.DepthStencilState.StencilEnable = FALSE;
+		m_basePassPSODesc.DepthStencilState.DepthEnable = TRUE;
+		m_basePassPSODesc.DepthStencilState.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ALL;
+		m_basePassPSODesc.DepthStencilState.DepthFunc = D3D12_COMPARISON_FUNC_LESS;
+		m_basePassPSODesc.DepthStencilState.StencilEnable = FALSE;
 
 		// RTV
-		psoDesc.NumRenderTargets = 1;
-		psoDesc.RTVFormats[0] = k_backBufferFormat;
-		psoDesc.DSVFormat = k_depthStencilFormatDsv;
+		m_basePassPSODesc.NumRenderTargets = 1;
+		m_basePassPSODesc.RTVFormats[0] = k_backBufferFormat;
+		m_basePassPSODesc.DSVFormat = k_depthStencilFormatDsv;
 
 		// misc
-		psoDesc.SampleMask = UINT_MAX;
-		psoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
-		psoDesc.SampleDesc.Count = 1;
-
-		HRESULT hr = m_d3dDevice->CreateGraphicsPipelineState(
-			&psoDesc,
-			IID_PPV_ARGS(m_pso.GetAddressOf())
-		);
-		assert(hr == S_OK && L"Failed to create PSO");
+		m_basePassPSODesc.SampleMask = UINT_MAX;
+		m_basePassPSODesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+		m_basePassPSODesc.SampleDesc.Count = 1;
 	}
 
 	// Viewport
@@ -383,10 +288,9 @@ void App::Init(HWND windowHandle)
 	InitBaseD3D();
 	InitCommandObjects();
 	InitSwapChain(windowHandle);
-	InitShaders();
+	InitStateObjects();
 	InitScene();
 	InitDescriptors();
-	InitStateObjects();
 	InitView();
 
 	// Finalize init and flush 
@@ -400,24 +304,15 @@ void App::Destroy()
 {
 	FlushCmdQueue();
 	CloseHandle(m_gfxFenceEvent);
-
-	for (auto cbuffer : m_viewConstantBuffers)
-	{
-		cbuffer->Unmap(0, nullptr);
-	}
 }
 
 void App::Update(float dt)
 {
 	POINT mouseDelta = { m_currentMousePos.x - m_lastMousePos.x, m_currentMousePos.y - m_lastMousePos.y };
 	m_lastMousePos = m_currentMousePos;
-	m_camera.Update(dt, mouseDelta);
 
-	// Update view constant buffer
-	m_ViewConstantBufferPtr.at(m_gfxBufferIndex)->viewMatrix = m_camera.GetViewMatrix();
-	m_ViewConstantBufferPtr.at(m_gfxBufferIndex)->viewProjectionMatrix = m_camera.GetViewProjectionMatrix();
+	m_view.Update(dt, mouseDelta, m_gfxBufferIndex);
 
-	// Update scene 
 	m_scene.Update(m_gfxBufferIndex);
 }
 
@@ -451,11 +346,7 @@ void App::Render()
 		ID3D12DescriptorHeap* descriptorHeaps[] = { m_cbvSrvUavHeap.Get() };
 		m_gfxCmdList->SetDescriptorHeaps(std::extent<decltype(descriptorHeaps)>::value, descriptorHeaps);
 
-		// Set root sig
-		m_gfxCmdList->SetGraphicsRootSignature(m_rootSignature.Get());
-
 		// Set state
-		m_gfxCmdList->SetPipelineState(m_pso.Get());
 		m_gfxCmdList->RSSetViewports(1, &m_viewport);
 		m_gfxCmdList->RSSetScissorRects(1, &m_scissorRect);
 
@@ -466,8 +357,7 @@ void App::Render()
 
 		// Render scene
 		m_gfxCmdList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-		m_gfxCmdList->SetGraphicsRootConstantBufferView(0, m_viewConstantBuffers.at(m_gfxBufferIndex)->GetGPUVirtualAddress());
-		m_scene.Render(m_gfxCmdList.Get(), m_gfxBufferIndex);
+		m_scene.Render(m_gfxCmdList.Get(), m_gfxBufferIndex, m_view);
 
 		// Transition back buffer from render target to present
 		barrierDesc = {};

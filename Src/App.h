@@ -1,5 +1,5 @@
 #pragma once
-#include "Camera.h"
+#include "View.h"
 #include "Scene.h"
 
 constexpr float k_Pi = 3.1415926535f;
@@ -10,13 +10,6 @@ constexpr size_t k_cbvCount = 16;
 constexpr DXGI_FORMAT k_backBufferFormat = DXGI_FORMAT_R8G8B8A8_UNORM;
 constexpr DXGI_FORMAT k_depthStencilFormatRaw = DXGI_FORMAT_R24G8_TYPELESS;
 constexpr DXGI_FORMAT k_depthStencilFormatDsv = DXGI_FORMAT_D24_UNORM_S8_UINT;
-
-__declspec(align(256))
-struct ViewConstants
-{
-	DirectX::XMFLOAT4X4 viewMatrix;
-	DirectX::XMFLOAT4X4 viewProjectionMatrix;
-};
 
 enum class ConstantBufferId : uint32_t
 {
@@ -48,7 +41,6 @@ private:
 	void InitCommandObjects();
 	void InitSwapChain(HWND windowHandle);
 	void InitDescriptors();
-	void InitShaders();
 	void InitView();
 	void InitScene();
 	void InitStateObjects();
@@ -92,23 +84,16 @@ private:
 	uint32_t m_cbvSrvUavDescriptorSize = 0;
 	uint32_t m_samplerDescriptorSize = 0;
 
-	// Shaders
-	Microsoft::WRL::ComPtr<ID3DBlob> m_vsByteCode;
-	Microsoft::WRL::ComPtr<ID3DBlob> m_psByteCode;
-
 	// Scene
 	Scene m_scene;
 
+	// View
+	View m_view;
+
 	// State Objects
-	Microsoft::WRL::ComPtr<ID3D12RootSignature> m_rootSignature;
-	Microsoft::WRL::ComPtr<ID3D12PipelineState> m_pso;
 	D3D12_VIEWPORT m_viewport;
 	D3D12_RECT m_scissorRect;
-
-	// View
-	Camera m_camera;
-	std::array<Microsoft::WRL::ComPtr<ID3D12Resource>, k_gfxBufferCount> m_viewConstantBuffers;
-	std::array<ViewConstants*, k_gfxBufferCount> m_ViewConstantBufferPtr;
+	D3D12_GRAPHICS_PIPELINE_STATE_DESC m_basePassPSODesc;
 
 	// Mouse
 	POINT m_currentMousePos = { 0, 0 };
