@@ -40,16 +40,24 @@ void Scene::LoadMeshes(const aiScene* loader, ID3D12Device* device, ID3D12Graphi
 	}
 }
 
-void Scene::LoadMaterials(const aiScene* loader, ID3D12Device* device, ID3D12CommandQueue* cmdQueue, const D3D12_GRAPHICS_PIPELINE_STATE_DESC& psoDesc)
+void Scene::LoadMaterials(
+	const aiScene* loader, 
+	ID3D12Device* device, 
+	ID3D12CommandQueue* cmdQueue,
+	ID3D12DescriptorHeap* srvHeap, 
+	const size_t srvStartOffset, 
+	const size_t srvDescriptorSize)
 {
 	// Used to batch texture uploads
 	DirectX::ResourceUploadBatch resourceUpload(device);
 	resourceUpload.Begin();
 
+	auto descriptorIdx = 0;
+
 	for (auto matIdx = 0u; matIdx < loader->mNumMaterials; matIdx++)
 	{
 		const aiMaterial* srcMat = loader->mMaterials[matIdx];
-		auto mat = std::make_unique<Material>();
+		auto mat = std::make_unique<DiffuseOnlyMaterial>();
 
 		aiString materialName;
 		srcMat->Get(AI_MATKEY_NAME, materialName);
@@ -60,22 +68,26 @@ void Scene::LoadMaterials(const aiScene* loader, ID3D12Device* device, ID3D12Com
 		{
 			std::string diffuseTextureName(textureNameStr.C_Str());
 
-			uint32_t diffuseTextureIndex;
-			const auto iter = m_textureDirectory.find(diffuseTextureName);
-			if (iter != m_textureDirectory.cend())
-			{
-				diffuseTextureIndex = iter->second;
-			}
-			else
+			Texture* diffuseTexture;
+			auto texIter = std::find_if(m_textures.cbegin(), m_textures.cend(),
+				[&diffuseTextureName](const std::unique_ptr<Texture>& tex) { return tex->GetName() == diffuseTextureName; });
+
+			if(texIter == m_textures.cend())
 			{
 				auto newTexture = std::make_unique<Texture>();
 				newTexture->Init(device, resourceUpload, diffuseTextureName);
+				diffuseTexture = newTexture.get();
 				m_textures.push_back(std::move(newTexture));
-				diffuseTextureIndex = m_textures.size() - 1;
-				m_textureDirectory[diffuseTextureName] = diffuseTextureIndex;
+			}
+			else
+			{
+				diffuseTexture = texIter->get();
 			}
 
-			mat->Init(device, psoDesc, std::string(materialName.C_Str()), diffuseTextureIndex);
+			mat->Init(
+				std::string(materialName.C_Str()), 
+				diffuseTexture->CreateDescriptor(device, srvHeap, srvStartOffset + descriptorIdx++, srvDescriptorSize)
+			);
 		}
 
 		m_materials.push_back(std::move(mat));
@@ -114,7 +126,14 @@ void Scene::LoadEntities(const aiNode* node)
 	}
 }
 
-void Scene::InitResources(ID3D12Device* device, ID3D12CommandQueue* cmdQueue, ID3D12GraphicsCommandList* cmdList, const D3D12_GRAPHICS_PIPELINE_STATE_DESC& psoDesc)
+void Scene::InitResources(
+	ID3D12Device* device, 
+	ID3D12CommandQueue* cmdQueue, 
+	ID3D12GraphicsCommandList* cmdList, 
+	ID3D12DescriptorHeap* srvHeap, 
+	const size_t srvStartOffset,
+	const size_t srvDescriptorSize,
+	const D3D12_GRAPHICS_PIPELINE_STATE_DESC& psoDesc)
 {
 	// Load scene
 	{
@@ -132,7 +151,7 @@ void Scene::InitResources(ID3D12Device* device, ID3D12CommandQueue* cmdQueue, ID
 		assert(scene != nullptr && L"Failed to load scene");
 
 		LoadMeshes(scene, device, cmdList);
-		LoadMaterials(scene, device, cmdQueue, psoDesc);
+		LoadMaterials(scene, device, cmdQueue, srvHeap, srvStartOffset, srvDescriptorSize);
 		LoadEntities(scene->mRootNode);
 	}
 
@@ -173,34 +192,6 @@ void Scene::InitResources(ID3D12Device* device, ID3D12CommandQueue* cmdQueue, ID
 	}
 }
 
-void Scene::InitDescriptors(ID3D12Device* device, ID3D12DescriptorHeap* srvHeap, const size_t startOffset, const uint32_t descriptorSize)
-{
-	auto descriptorIdx = 0;
-
-	for (auto& tex : m_textures)
-	{
-		size_t descriptorOffset = startOffset + descriptorIdx;
-
-		D3D12_CPU_DESCRIPTOR_HANDLE cpuHnd;
-		cpuHnd.ptr = srvHeap->GetCPUDescriptorHandleForHeapStart().ptr + descriptorOffset * descriptorSize;
-
-		D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
-		srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-		srvDesc.Format = tex->GetResource()->GetDesc().Format;
-		srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
-		srvDesc.Texture2D.MostDetailedMip = 0;
-		srvDesc.Texture2D.MipLevels = tex->GetResource()->GetDesc().MipLevels;
-		srvDesc.Texture2D.ResourceMinLODClamp = 0.0f;
-		device->CreateShaderResourceView(tex->GetResource(), &srvDesc, cpuHnd);
-
-		D3D12_GPU_DESCRIPTOR_HANDLE gpuHnd;
-		gpuHnd.ptr = srvHeap->GetGPUDescriptorHandleForHeapStart().ptr + descriptorOffset * descriptorSize;
-		tex->SetDescriptor(gpuHnd);
-
-		descriptorIdx++;
-	}
-}
-
 void Scene::Update(uint32_t bufferIndex)
 {
 	ObjectConstants* c = m_objectConstantBufferPtr.at(bufferIndex);
@@ -224,7 +215,7 @@ void Scene::Render(ID3D12GraphicsCommandList* cmdList, uint32_t bufferIndex, con
 		if (mat->IsValid())
 		{
 			// Root signature set by the material
-			mat->Bind(cmdList);
+			mat->BindPipeline(cmdList);
 
 			cmdList->SetGraphicsRootConstantBufferView(0, view.GetConstantBuffer(bufferIndex)->GetGPUVirtualAddress());
 
@@ -234,10 +225,7 @@ void Scene::Render(ID3D12GraphicsCommandList* cmdList, uint32_t bufferIndex, con
 				entityId * sizeof(ObjectConstants)
 			);
 
-			cmdList->SetGraphicsRootDescriptorTable(
-				Material::GetDiffusemapRootParamIndex(),
-				m_textures.at(mat->GetDiffuseTextureIndex())->GetDescriptor()
-			);
+			mat->BindConstants(cmdList);
 
 			sm->Render(cmdList);
 		}

@@ -15,8 +15,7 @@ class Scene
 	};
 
 public:
-	void InitResources(ID3D12Device* device, ID3D12CommandQueue* cmdQueue, ID3D12GraphicsCommandList* cmdList, const D3D12_GRAPHICS_PIPELINE_STATE_DESC& psoDesc);
-	void InitDescriptors(ID3D12Device* device, ID3D12DescriptorHeap* srvHeap, size_t startOffset, uint32_t descriptorSize);
+	void InitResources(ID3D12Device* device, ID3D12CommandQueue* cmdQueue, ID3D12GraphicsCommandList* cmdList, ID3D12DescriptorHeap* srvHeap, size_t srvStartOffset, size_t srvDescriptorSize, const D3D12_GRAPHICS_PIPELINE_STATE_DESC& psoDesc);
 	void Update(uint32_t bufferIndex);
 	void Render(ID3D12GraphicsCommandList* cmdList, uint32_t bufferIndex, const View& view);
 
@@ -24,7 +23,7 @@ public:
 
 private:
 	void LoadMeshes(const aiScene* loader, ID3D12Device* device, ID3D12GraphicsCommandList* cmdList);
-	void LoadMaterials(const aiScene* loader, ID3D12Device* device, ID3D12CommandQueue* cmdQueue, const D3D12_GRAPHICS_PIPELINE_STATE_DESC& psoDesc);
+	void LoadMaterials(const aiScene* loader, ID3D12Device* device, ID3D12CommandQueue* cmdQueue, ID3D12DescriptorHeap* srvHeap, const size_t srvStartOffset, const size_t srvDescriptorSize);
 	void LoadEntities(const aiNode* node);
 
 private:
@@ -32,7 +31,6 @@ private:
 	std::vector<std::unique_ptr<Material>> m_materials;
 	std::vector<StaticMeshEntity> m_meshEntities;
 	std::vector<std::unique_ptr<Texture>> m_textures;
-	std::unordered_map<std::string, uint32_t> m_textureDirectory;
 
 	std::array<Microsoft::WRL::ComPtr<ID3D12Resource>, k_gfxBufferCount> m_objectConstantBuffers;
 	std::array<ObjectConstants*, k_gfxBufferCount> m_objectConstantBufferPtr;

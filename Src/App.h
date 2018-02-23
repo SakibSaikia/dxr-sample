@@ -7,6 +7,7 @@ constexpr float k_Pi = 3.1415926535f;
 constexpr size_t k_screenWidth = 1280;
 constexpr size_t k_screenHeight = 720;
 constexpr size_t k_cbvCount = 16;
+constexpr size_t k_srvCount = 64;
 constexpr DXGI_FORMAT k_backBufferFormat = DXGI_FORMAT_R8G8B8A8_UNORM;
 constexpr DXGI_FORMAT k_depthStencilFormatRaw = DXGI_FORMAT_R24G8_TYPELESS;
 constexpr DXGI_FORMAT k_depthStencilFormatDsv = DXGI_FORMAT_D24_UNORM_S8_UINT;
@@ -44,6 +45,7 @@ private:
 	void InitView();
 	void InitScene();
 	void InitStateObjects();
+	void InitMaterialPipelines();
 
 	D3D12_CPU_DESCRIPTOR_HANDLE GetCurrentBackBufferView() const;
 	D3D12_CPU_DESCRIPTOR_HANDLE GetCurrentDepthStencilView() const;

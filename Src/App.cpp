@@ -199,24 +199,35 @@ void App::InitDescriptors()
 	// CBV/SRV/UAV heap
 	{
 		D3D12_DESCRIPTOR_HEAP_DESC cbvSrvUavHeapDesc = {};
-		cbvSrvUavHeapDesc.NumDescriptors = k_cbvCount + m_scene.GetNumTextures();
+		cbvSrvUavHeapDesc.NumDescriptors = k_cbvCount + k_srvCount;
 		cbvSrvUavHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
 		cbvSrvUavHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
 		HRESULT hr = m_d3dDevice->CreateDescriptorHeap(&cbvSrvUavHeapDesc, IID_PPV_ARGS(m_cbvSrvUavHeap.GetAddressOf()));
 		assert(hr == S_OK && L"Failed to create CBV heap");
 	}
-
-	m_scene.InitDescriptors(m_d3dDevice.Get(), m_cbvSrvUavHeap.Get(), k_cbvCount, m_cbvSrvUavDescriptorSize);
 }
 
 void App::InitScene()
 {
-	m_scene.InitResources(m_d3dDevice.Get(), m_cmdQueue.Get(), m_gfxCmdList.Get(), m_basePassPSODesc);
+	m_scene.InitResources(
+		m_d3dDevice.Get(), 
+		m_cmdQueue.Get(), 
+		m_gfxCmdList.Get(), 
+		m_cbvSrvUavHeap.Get(),
+		k_cbvCount,
+		m_cbvSrvUavDescriptorSize,
+		m_basePassPSODesc
+	);
 }
 
 void App::InitView()
 {
 	m_view.Init(m_d3dDevice.Get(), k_gfxBufferCount, k_screenWidth, k_screenHeight);
+}
+
+void App::InitMaterialPipelines()
+{
+	DiffuseOnlyMaterialPipeline::Init(m_d3dDevice.Get(), m_basePassPSODesc);
 }
 
 void App::InitStateObjects()
@@ -289,8 +300,9 @@ void App::Init(HWND windowHandle)
 	InitCommandObjects();
 	InitSwapChain(windowHandle);
 	InitStateObjects();
-	InitScene();
+	InitMaterialPipelines();
 	InitDescriptors();
+	InitScene();
 	InitView();
 
 	// Finalize init and flush 

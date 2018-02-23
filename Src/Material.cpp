@@ -1,6 +1,8 @@
 #include "stdafx.h"
 #include "Material.h"
 
+MaterialPipelineState DiffuseOnlyMaterialPipeline::m_pipelineState;
+
 Microsoft::WRL::ComPtr<ID3DBlob> LoadBlob(const std::string& filename)
 {
 	std::ifstream fileHandle(filename, std::ios::binary);
@@ -22,15 +24,12 @@ Microsoft::WRL::ComPtr<ID3DBlob> LoadBlob(const std::string& filename)
 	return blob;
 }
 
-void Material::Init(ID3D12Device* device, D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc, std::string&& name, const uint32_t diffuseIdx)
+void DiffuseOnlyMaterialPipeline::Init(ID3D12Device* device, D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc)
 {
-	m_name = std::move(name);
-	m_diffuseTextureIndex = diffuseIdx;
-
 	// Shaders
 	{
-		m_vsByteCode = LoadBlob(R"(CompiledShaders\VertexShader.cso)");
-		m_psByteCode = LoadBlob(R"(CompiledShaders\PixelShader.cso)");
+		m_pipelineState.vsByteCode = LoadBlob(R"(CompiledShaders\VertexShader.cso)");
+		m_pipelineState.psByteCode = LoadBlob(R"(CompiledShaders\PixelShader.cso)");
 	}
 
 	// Root signature
@@ -40,7 +39,7 @@ void Material::Init(ID3D12Device* device, D3D12_GRAPHICS_PIPELINE_STATE_DESC pso
 			0,
 			rsBytecode->GetBufferPointer(),
 			rsBytecode->GetBufferSize(),
-			IID_PPV_ARGS(m_rootSignature.GetAddressOf())
+			IID_PPV_ARGS(m_pipelineState.rootSignature.GetAddressOf())
 		);
 		assert(hr == S_OK && L"Failed to create root signature");
 	}
@@ -51,38 +50,46 @@ void Material::Init(ID3D12Device* device, D3D12_GRAPHICS_PIPELINE_STATE_DESC pso
 		psoDesc.pRootSignature = nullptr;
 
 		// shaders
-		psoDesc.VS.pShaderBytecode = m_vsByteCode.Get()->GetBufferPointer();
-		psoDesc.VS.BytecodeLength = m_vsByteCode.Get()->GetBufferSize();
-		psoDesc.PS.pShaderBytecode = m_psByteCode.Get()->GetBufferPointer();
-		psoDesc.PS.BytecodeLength = m_psByteCode.Get()->GetBufferSize();
+		psoDesc.VS.pShaderBytecode = m_pipelineState.vsByteCode.Get()->GetBufferPointer();
+		psoDesc.VS.BytecodeLength = m_pipelineState.vsByteCode.Get()->GetBufferSize();
+		psoDesc.PS.pShaderBytecode = m_pipelineState.psByteCode.Get()->GetBufferPointer();
+		psoDesc.PS.BytecodeLength = m_pipelineState.psByteCode.Get()->GetBufferSize();
 
 		HRESULT hr = device->CreateGraphicsPipelineState(
 			&psoDesc,
-			IID_PPV_ARGS(m_pso.GetAddressOf())
+			IID_PPV_ARGS(m_pipelineState.pso.GetAddressOf())
 		);
 		assert(hr == S_OK && L"Failed to create PSO");
 	}
+}
 
+void DiffuseOnlyMaterial::Init(std::string& name, const D3D12_GPU_DESCRIPTOR_HANDLE srvHandle)
+{
+	m_name = std::move(name);
+	m_srvBegin = srvHandle;
 	m_valid = true;
 }
 
-void Material::Bind(ID3D12GraphicsCommandList* cmdList) const
+void DiffuseOnlyMaterialPipeline::Bind(ID3D12GraphicsCommandList* cmdList)
 {
-	cmdList->SetGraphicsRootSignature(m_rootSignature.Get());
-	cmdList->SetPipelineState(m_pso.Get());
+	cmdList->SetGraphicsRootSignature(m_pipelineState.rootSignature.Get());
+	cmdList->SetPipelineState(m_pipelineState.pso.Get());
 }
 
-bool Material::IsValid() const
+void DiffuseOnlyMaterial::BindPipeline(ID3D12GraphicsCommandList* cmdList) const
+{
+	pipeline_type::Bind(cmdList);
+}
+
+void DiffuseOnlyMaterial::BindConstants(ID3D12GraphicsCommandList* cmdList) const
+{
+	cmdList->SetGraphicsRootDescriptorTable(
+		pipeline_type::k_srvDescriptorTableIndex,
+		m_srvBegin
+	);
+}
+
+bool DiffuseOnlyMaterial::IsValid() const
 {
 	return m_valid;
-}
-
-uint32_t Material::GetDiffuseTextureIndex() const
-{
-	return m_diffuseTextureIndex;
-}
-
-uint32_t Material::GetDiffusemapRootParamIndex()
-{
-	return 2;
 }
