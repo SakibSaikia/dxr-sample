@@ -90,7 +90,21 @@ void Scene::LoadMaterials(
 		aiString opacityMaskTextureNameStr;
 		aiReturn bHasOpacityMaskTexture = srcMat->Get(AI_MATKEY_TEXTURE(aiTextureType_OPACITY, 0), opacityMaskTextureNameStr);
 
-		if (bHasDiffuseTexture == aiReturn_SUCCESS && bHasOpacityMaskTexture == aiReturn_SUCCESS)
+		aiString normalmapTextureNameStr;
+		aiReturn bHasNormalmapTexture = srcMat->Get(AI_MATKEY_TEXTURE(aiTextureType_HEIGHT, 0), normalmapTextureNameStr);
+
+		if (bHasNormalmapTexture == aiReturn_SUCCESS && bHasOpacityMaskTexture == aiReturn_SUCCESS)
+		{
+			const auto headDescriptor = LoadTexture(normalmapTextureNameStr.C_Str(), device, srvHeap, srvStartOffset + descriptorIdx++, srvDescriptorSize, resourceUpload);
+			LoadTexture(opacityMaskTextureNameStr.C_Str(), device, srvHeap, srvStartOffset + descriptorIdx++, srvDescriptorSize, resourceUpload);
+			m_materials.push_back(std::make_unique<DiffuseOnlyMaskedMaterial>(std::string(materialName.C_Str()), headDescriptor));
+		}
+		else if (bHasNormalmapTexture == aiReturn_SUCCESS)
+		{
+			const auto headDescriptor = LoadTexture(normalmapTextureNameStr.C_Str(), device, srvHeap, srvStartOffset + descriptorIdx++, srvDescriptorSize, resourceUpload);
+			m_materials.push_back(std::make_unique<DiffuseOnlyOpaqueMaterial>(std::string(materialName.C_Str()), headDescriptor));
+		}
+		else if (bHasDiffuseTexture == aiReturn_SUCCESS && bHasOpacityMaskTexture == aiReturn_SUCCESS)
 		{
 			const auto headDescriptor = LoadTexture(diffuseTextureNameStr.C_Str(), device, srvHeap, srvStartOffset + descriptorIdx++, srvDescriptorSize, resourceUpload);
 			LoadTexture(opacityMaskTextureNameStr.C_Str(), device, srvHeap, srvStartOffset + descriptorIdx++, srvDescriptorSize, resourceUpload);
