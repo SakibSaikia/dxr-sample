@@ -7,15 +7,17 @@ public:
 	{
 		DirectX::XMFLOAT3 position;
 		DirectX::XMFLOAT3 normal;
+		DirectX::XMFLOAT3 tangent;
+		DirectX::XMFLOAT3 bitangent;
 		DirectX::XMFLOAT2 uv;
 
 		VertexType() = default;
-		VertexType(DirectX::XMFLOAT3 inPos, DirectX::XMFLOAT3 inNormal, DirectX::XMFLOAT2 inUV) :
-			position(inPos), normal(inNormal), uv(inUV) {}
+		VertexType(DirectX::XMFLOAT3 inPos, DirectX::XMFLOAT3 inNormal, DirectX::XMFLOAT3 inTangent, DirectX::XMFLOAT3 inBitangent, DirectX::XMFLOAT2 inUV) :
+			position(inPos), normal(inNormal), tangent(inTangent), bitangent(inBitangent), uv(inUV) {}
 
 		struct InputLayout
 		{
-			static const uint32_t s_num = 3;
+			static const uint32_t s_num = 5;
 			static D3D12_INPUT_ELEMENT_DESC s_desc[s_num];
 		};
 	};

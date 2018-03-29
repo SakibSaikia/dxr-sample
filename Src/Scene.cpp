@@ -14,11 +14,15 @@ void Scene::LoadMeshes(const aiScene* loader, ID3D12Device* device, ID3D12Graphi
 		{
 			const aiVector3D& vertPos = srcMesh->mVertices[vertIdx];
 			const aiVector3D& vertNormal = srcMesh->mNormals[vertIdx];
+			const aiVector3D& vertTangent = srcMesh->mTangents[vertIdx];
+			const aiVector3D& vertBitangent = srcMesh->mBitangents[vertIdx];
 			const aiVector3D& vertUV = srcMesh->mTextureCoords[0][vertIdx];
 
 			vertexData.emplace_back(
 				DirectX::XMFLOAT3(vertPos.x, vertPos.y, vertPos.z),
 				DirectX::XMFLOAT3(vertNormal.x, vertNormal.y, vertNormal.z),
+				DirectX::XMFLOAT3(vertTangent.x, vertTangent.y, vertTangent.z),
+				DirectX::XMFLOAT3(vertBitangent.x, vertBitangent.y, vertBitangent.z),
 				DirectX::XMFLOAT2(vertUV.x, vertUV.y)
 			);
 		}

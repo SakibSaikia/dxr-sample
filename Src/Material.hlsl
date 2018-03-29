@@ -30,9 +30,11 @@ cbuffer SceneConstants : register(b1)
 
 struct VsIn
 {
-	float3 pos		: IA_POSITION;
-	float3 normal	: IA_NORMAL;
-	float2 uv		: IA_TEXCOORD0;
+	float3 pos		    : POSITION;
+	float3 normal	    : NORMAL;
+    float3 tangent      : TANGENT;
+    float3 bitangent    : BITANGENT;
+	float2 uv		    : TEXCOORD0;
 };
 
 [RootSignature(args)]
