@@ -32,16 +32,14 @@ void StaticMesh::Init(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList, 
 	heapProp.Type = D3D12_HEAP_TYPE_DEFAULT;
 	heapProp.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
 
-	HRESULT hr = device->CreateCommittedResource(
+	DX_VERIFY(device->CreateCommittedResource(
 		&heapProp,
 		D3D12_HEAP_FLAG_NONE,
 		&vbDesc,
 		D3D12_RESOURCE_STATE_COPY_DEST,
 		nullptr,
 		IID_PPV_ARGS(m_vertexBuffer.GetAddressOf())
-	);
-
-	assert(hr == S_OK && L"Failed to create default vertex buffer");
+	));
 
 	// default index buffer
 	D3D12_RESOURCE_DESC ibDesc = {};
@@ -54,44 +52,38 @@ void StaticMesh::Init(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList, 
 	ibDesc.SampleDesc.Count = 1;
 	ibDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
 
-	hr = device->CreateCommittedResource(
+	DX_VERIFY(device->CreateCommittedResource(
 		&heapProp,
 		D3D12_HEAP_FLAG_NONE,
 		&ibDesc,
 		D3D12_RESOURCE_STATE_COPY_DEST,
 		nullptr,
 		IID_PPV_ARGS(m_indexBuffer.GetAddressOf())
-	);
-
-	assert(hr == S_OK && L"Failed to create default index buffer");
+	));
 
 	// upload vertex buffer
 	D3D12_HEAP_PROPERTIES uploadHeapProp = {};
 	uploadHeapProp.Type = D3D12_HEAP_TYPE_UPLOAD;
 	uploadHeapProp.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
 
-	hr = device->CreateCommittedResource(
+	DX_VERIFY(device->CreateCommittedResource(
 		&uploadHeapProp,
 		D3D12_HEAP_FLAG_NONE,
 		&vbDesc,
 		D3D12_RESOURCE_STATE_GENERIC_READ,
 		nullptr,
 		IID_PPV_ARGS(vertexBufferUpload.GetAddressOf())
-	);
-
-	assert(hr == S_OK && L"Failed to create upload vertex buffer");
+	));
 
 	// upload index buffer
-	hr = device->CreateCommittedResource(
+	DX_VERIFY(device->CreateCommittedResource(
 		&uploadHeapProp,
 		D3D12_HEAP_FLAG_NONE,
 		&ibDesc,
 		D3D12_RESOURCE_STATE_GENERIC_READ,
 		nullptr,
 		IID_PPV_ARGS(indexBufferUpload.GetAddressOf())
-	);
-
-	assert(hr == S_OK && L"Failed to create upload vertex buffer");
+	));
 
 	// copy vertex data to upload buffer
 	uint64_t vbRowSizeInBytes;

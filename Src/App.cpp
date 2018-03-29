@@ -9,11 +9,9 @@ App* AppInstance()
 
 void App::InitBaseD3D()
 {
-	HRESULT hr;
-
 	// Debug layer
 #if defined(DEBUG) || defined(_DEBUG)
-	hr = D3D12GetDebugInterface(IID_PPV_ARGS(m_debugController.GetAddressOf()));
+	HRESULT hr = D3D12GetDebugInterface(IID_PPV_ARGS(m_debugController.GetAddressOf()));
 	if (hr == S_OK)
 	{
 		m_debugController->EnableDebugLayer();
@@ -21,8 +19,7 @@ void App::InitBaseD3D()
 #endif
 
 	// DXGI
-	hr = CreateDXGIFactory1(IID_PPV_ARGS(m_dxgiFactory.GetAddressOf()));
-	assert(hr == S_OK && L"Failed to create DXGI factory");
+	DX_VERIFY(CreateDXGIFactory1(IID_PPV_ARGS(m_dxgiFactory.GetAddressOf())));
 
 	// Enable SM6
 	static const GUID D3D12ExperimentalShaderModelsID = { /* 76f5573e-f13a-40f5-b297-81ce9e18933f */
@@ -35,13 +32,11 @@ void App::InitBaseD3D()
 	D3D12EnableExperimentalFeatures(1, &D3D12ExperimentalShaderModelsID, nullptr, nullptr);
 
 	// Device
-	hr = D3D12CreateDevice(
+	DX_VERIFY(D3D12CreateDevice(
 		nullptr,
 		D3D_FEATURE_LEVEL_11_0,
 		IID_PPV_ARGS(m_d3dDevice.GetAddressOf())
-	);
-
-	assert(hr == S_OK && L"Failed to create D3D Device");
+	));
 
 	// Cached descriptor size
 	m_rtvDescriptorSize = m_d3dDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
@@ -56,38 +51,31 @@ void App::InitCommandObjects()
 	D3D12_COMMAND_QUEUE_DESC cmdQueueDesc = {};
 	cmdQueueDesc.Type = D3D12_COMMAND_LIST_TYPE_DIRECT;
 	cmdQueueDesc.Flags = D3D12_COMMAND_QUEUE_FLAG_NONE;
-	HRESULT hr = m_d3dDevice->CreateCommandQueue(
+	DX_VERIFY(m_d3dDevice->CreateCommandQueue(
 		&cmdQueueDesc,
 		IID_PPV_ARGS(m_cmdQueue.GetAddressOf())
-	);
-
-	assert(hr == S_OK && L"Failed to create command queue");
+	));
 
 	// Command Allocator
 	for (auto n = 0; n < k_gfxBufferCount; ++n)
 	{
-		hr = m_d3dDevice->CreateCommandAllocator(
+		DX_VERIFY(m_d3dDevice->CreateCommandAllocator(
 			D3D12_COMMAND_LIST_TYPE_DIRECT,
 			IID_PPV_ARGS(m_gfxCmdAllocators.at(n).GetAddressOf())
-		);
-
-		assert(hr == S_OK && L"Failed to create command allocator");
+		));
 	}
 
 	// Command List
-	hr = m_d3dDevice->CreateCommandList(
+	DX_VERIFY(m_d3dDevice->CreateCommandList(
 		0,
 		D3D12_COMMAND_LIST_TYPE_DIRECT,
 		m_gfxCmdAllocators.at(m_gfxBufferIndex).Get(),
 		nullptr,
 		IID_PPV_ARGS(m_gfxCmdList.GetAddressOf())
-	);
-
-	assert(hr == S_OK && L"Failed to create command list");
+	));
 
 	// Fence
-	hr = m_d3dDevice->CreateFence(m_gfxFenceValues.at(m_gfxBufferIndex), D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(m_gfxFence.GetAddressOf()));
-	assert(hr == S_OK && L"Failed to create fence");
+	DX_VERIFY(m_d3dDevice->CreateFence(m_gfxFenceValues.at(m_gfxBufferIndex), D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(m_gfxFence.GetAddressOf())));
 	m_gfxFenceEvent = CreateEventEx(nullptr, nullptr, 0, EVENT_ALL_ACCESS);
 }
 
@@ -109,33 +97,28 @@ void App::InitSwapChain(HWND windowHandle)
 	scDesc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
 	scDesc.Flags = DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH;
 
-	HRESULT hr = m_dxgiFactory->CreateSwapChain(
+	DX_VERIFY(m_dxgiFactory->CreateSwapChain(
 		m_cmdQueue.Get(),
 		&scDesc,
 		m_swapChain.GetAddressOf()
-	);
-
-	assert(hr == S_OK && L"Failed to create swap chain");
+	));
 
 	D3D12_DESCRIPTOR_HEAP_DESC rtvHeapDesc = {};
 	rtvHeapDesc.NumDescriptors = k_gfxBufferCount;
 	rtvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
-	hr = m_d3dDevice->CreateDescriptorHeap(&rtvHeapDesc, IID_PPV_ARGS(m_rtvHeap.GetAddressOf()));
-	assert(hr == S_OK && L"Failed to create RTV heap");
+	DX_VERIFY(m_d3dDevice->CreateDescriptorHeap(&rtvHeapDesc, IID_PPV_ARGS(m_rtvHeap.GetAddressOf())));
 
 	D3D12_DESCRIPTOR_HEAP_DESC dsvHeapDesc = {};
 	dsvHeapDesc.NumDescriptors = k_gfxBufferCount;
 	dsvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_DSV;
-	hr = m_d3dDevice->CreateDescriptorHeap(&dsvHeapDesc, IID_PPV_ARGS(m_dsvHeap.GetAddressOf()));
-	assert(hr == S_OK && L"Failed to create DSV heap");
+	DX_VERIFY(m_d3dDevice->CreateDescriptorHeap(&dsvHeapDesc, IID_PPV_ARGS(m_dsvHeap.GetAddressOf())));
 
 	// RTVs
 	{
 		D3D12_CPU_DESCRIPTOR_HANDLE rtvHeapHandle = m_rtvHeap->GetCPUDescriptorHandleForHeapStart();
 		for (auto bufferIdx = 0; bufferIdx < k_gfxBufferCount; bufferIdx++)
 		{
-			HRESULT hr = m_swapChain->GetBuffer(bufferIdx, IID_PPV_ARGS(m_swapChainBuffers.at(bufferIdx).GetAddressOf()));
-			assert(hr == S_OK && L"Failed to initialize back buffer");
+			DX_VERIFY(m_swapChain->GetBuffer(bufferIdx, IID_PPV_ARGS(m_swapChainBuffers.at(bufferIdx).GetAddressOf())));
 
 			m_d3dDevice->CreateRenderTargetView(m_swapChainBuffers.at(bufferIdx).Get(), nullptr, rtvHeapHandle);
 			rtvHeapHandle.ptr += m_rtvDescriptorSize;
@@ -166,16 +149,14 @@ void App::InitSwapChain(HWND windowHandle)
 		D3D12_CPU_DESCRIPTOR_HANDLE dsvHeapHandle = m_dsvHeap->GetCPUDescriptorHandleForHeapStart();
 		for (auto bufferIdx = 0; bufferIdx < k_gfxBufferCount; bufferIdx++)
 		{
-			HRESULT hr = m_d3dDevice->CreateCommittedResource(
+			DX_VERIFY(m_d3dDevice->CreateCommittedResource(
 				&heapDesc,
 				D3D12_HEAP_FLAG_NONE,
 				&resDesc,
 				D3D12_RESOURCE_STATE_DEPTH_WRITE,
 				&zClear,
 				IID_PPV_ARGS(m_depthStencilBuffers.at(bufferIdx).GetAddressOf())
-			);
-
-			assert(hr == S_OK && L"Failed to create DepthStencil buffer");
+			));
 
 			// Descriptor to mip level 0
 			D3D12_DEPTH_STENCIL_VIEW_DESC dsvDesc = {};
@@ -202,8 +183,7 @@ void App::InitDescriptors()
 		cbvSrvUavHeapDesc.NumDescriptors = k_cbvCount + k_srvCount;
 		cbvSrvUavHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
 		cbvSrvUavHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
-		HRESULT hr = m_d3dDevice->CreateDescriptorHeap(&cbvSrvUavHeapDesc, IID_PPV_ARGS(m_cbvSrvUavHeap.GetAddressOf()));
-		assert(hr == S_OK && L"Failed to create CBV heap");
+		DX_VERIFY(m_d3dDevice->CreateDescriptorHeap(&cbvSrvUavHeapDesc, IID_PPV_ARGS(m_cbvSrvUavHeap.GetAddressOf())));
 	}
 }
 

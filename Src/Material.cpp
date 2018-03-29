@@ -16,8 +16,7 @@ Microsoft::WRL::ComPtr<ID3DBlob> LoadBlob(const std::string& filename)
 
 	// serialize bytecode
 	Microsoft::WRL::ComPtr<ID3DBlob> blob;
-	HRESULT hr = D3DCreateBlob(size, blob.GetAddressOf());
-	assert(hr == S_OK && L"Failed to create blob");
+	DX_VERIFY(D3DCreateBlob(size, blob.GetAddressOf()));
 	fileHandle.read(static_cast<char*>(blob->GetBufferPointer()), size);
 
 	fileHandle.close();
@@ -38,13 +37,12 @@ void DiffuseOnlyOpaqueMaterialPipeline::Init(ID3D12Device* device, D3D12_GRAPHIC
 	// Root signature
 	{
 		Microsoft::WRL::ComPtr<ID3DBlob> rsBytecode = LoadBlob(R"(CompiledShaders\mtl_diffuse_only_opaque.rootsig.cso)");
-		HRESULT hr = device->CreateRootSignature(
+		DX_VERIFY(device->CreateRootSignature(
 			0,
 			rsBytecode->GetBufferPointer(),
 			rsBytecode->GetBufferSize(),
 			IID_PPV_ARGS(m_pipelineState.rootSignature.GetAddressOf())
-		);
-		assert(hr == S_OK && L"Failed to create root signature");
+		));
 	}
 
 	// Pipeline State
@@ -58,11 +56,10 @@ void DiffuseOnlyOpaqueMaterialPipeline::Init(ID3D12Device* device, D3D12_GRAPHIC
 		psoDesc.PS.pShaderBytecode = m_pipelineState.psByteCode.Get()->GetBufferPointer();
 		psoDesc.PS.BytecodeLength = m_pipelineState.psByteCode.Get()->GetBufferSize();
 
-		HRESULT hr = device->CreateGraphicsPipelineState(
+		DX_VERIFY(device->CreateGraphicsPipelineState(
 			&psoDesc,
 			IID_PPV_ARGS(m_pipelineState.pso.GetAddressOf())
-		);
-		assert(hr == S_OK && L"Failed to create PSO");
+		));
 	}
 }
 
@@ -85,13 +82,12 @@ void DiffuseOnlyMaskedMaterialPipeline::Init(ID3D12Device* device, D3D12_GRAPHIC
 	// Root signature
 	{
 		Microsoft::WRL::ComPtr<ID3DBlob> rsBytecode = LoadBlob(R"(CompiledShaders\mtl_diffuse_only_masked.rootsig.cso)");
-		HRESULT hr = device->CreateRootSignature(
+		DX_VERIFY(device->CreateRootSignature(
 			0,
 			rsBytecode->GetBufferPointer(),
 			rsBytecode->GetBufferSize(),
 			IID_PPV_ARGS(m_pipelineState.rootSignature.GetAddressOf())
-		);
-		assert(hr == S_OK && L"Failed to create root signature");
+		));
 	}
 
 	// Pipeline State
@@ -105,11 +101,10 @@ void DiffuseOnlyMaskedMaterialPipeline::Init(ID3D12Device* device, D3D12_GRAPHIC
 		psoDesc.PS.pShaderBytecode = m_pipelineState.psByteCode.Get()->GetBufferPointer();
 		psoDesc.PS.BytecodeLength = m_pipelineState.psByteCode.Get()->GetBufferSize();
 
-		HRESULT hr = device->CreateGraphicsPipelineState(
+		DX_VERIFY(device->CreateGraphicsPipelineState(
 			&psoDesc,
 			IID_PPV_ARGS(m_pipelineState.pso.GetAddressOf())
-		);
-		assert(hr == S_OK && L"Failed to create PSO");
+		));
 	}
 }
 

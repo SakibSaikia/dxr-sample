@@ -222,15 +222,14 @@ void Scene::InitResources(
 
 		for (auto n = 0; n < k_gfxBufferCount; ++n)
 		{
-			HRESULT hr = device->CreateCommittedResource(
+			DX_VERIFY(device->CreateCommittedResource(
 				&heapDesc,
 				D3D12_HEAP_FLAG_NONE,
 				&resDesc,
 				D3D12_RESOURCE_STATE_GENERIC_READ,
 				nullptr,
 				IID_PPV_ARGS(m_objectConstantBuffers.at(n).GetAddressOf())
-			);
-			assert(hr == S_OK && L"Failed to create constant buffer");
+			));
 
 			// Get ptr to mapped resource
 			auto** ptr = reinterpret_cast<void**>(&m_objectConstantBufferPtr.at(n));

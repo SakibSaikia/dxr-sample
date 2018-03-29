@@ -38,15 +38,14 @@ void View::Init(ID3D12Device* device, size_t bufferCount, const size_t width, co
 		for (auto n = 0; n < bufferCount; ++n)
 		{
 			Microsoft::WRL::ComPtr<ID3D12Resource> buf;
-			HRESULT hr = device->CreateCommittedResource(
+			DX_VERIFY(device->CreateCommittedResource(
 				&heapDesc,
 				D3D12_HEAP_FLAG_NONE,
 				&resDesc,
 				D3D12_RESOURCE_STATE_GENERIC_READ,
 				nullptr,
 				IID_PPV_ARGS(buf.GetAddressOf())
-			);
-			assert(hr == S_OK && L"Failed to create constant buffer");
+			));
 			m_cbuffers.push_back(buf);
 
 			// Get ptr to mapped resource

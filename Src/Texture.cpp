@@ -11,14 +11,12 @@ void Texture::Init(ID3D12Device* device, DirectX::ResourceUploadBatch& resourceU
 	MultiByteToWideChar(CP_UTF8, 0, &name[0], static_cast<int>(name.size()), &wideName[0], size_needed);
 	std::wstring filePath = L"..\\Content\\Sponza\\textures\\Compressed\\" + wideName + L".dds";
 
-	HRESULT hr = DirectX::CreateDDSTextureFromFile(
+	DX_VERIFY(DirectX::CreateDDSTextureFromFile(
 		device,
 		resourceUpload,
 		filePath.c_str(),
 		m_resource.ReleaseAndGetAddressOf()
-	);
-
-	assert(hr == S_OK);
+	));
 }
 
 D3D12_GPU_DESCRIPTOR_HANDLE Texture::CreateDescriptor(ID3D12Device* device, ID3D12DescriptorHeap* srvHeap, const size_t offsetInHeap, const size_t descriptorSize) const

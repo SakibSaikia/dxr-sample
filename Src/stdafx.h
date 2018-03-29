@@ -2,6 +2,15 @@
 
 #define WIN32_LEAN_AND_MEAN
 #define USE_PIX
+
+#ifdef _DEBUG
+#define DX_VERIFY(x) {HRESULT hr = x; assert(hr == S_OK);}
+#else
+	#define DX_VERIFY(x) x
+#endif
+
+#pragma warning(disable : 4324)
+
 #include <windows.h>
 #include <wrl.h>
 #include <dxgi1_4.h>
