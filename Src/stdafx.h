@@ -1,6 +1,7 @@
 #pragma once
 
 #define WIN32_LEAN_AND_MEAN
+#define USE_PIX
 #include <windows.h>
 #include <wrl.h>
 #include <dxgi1_4.h>

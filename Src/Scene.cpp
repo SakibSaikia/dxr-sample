@@ -251,7 +251,7 @@ void Scene::Update(uint32_t bufferIndex)
 
 void Scene::Render(ID3D12GraphicsCommandList* cmdList, uint32_t bufferIndex, const View& view)
 {
-	PIXScopedEvent(0, L"render_scene");
+	PIXScopedEvent(cmdList, 0, L"render_scene");
 
 	int entityId = 0;
 	for (auto& meshEntity : m_meshEntities)

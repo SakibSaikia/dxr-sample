@@ -336,7 +336,7 @@ void App::Render()
 	m_gfxCmdList->Reset(m_gfxCmdAllocators.at(m_gfxBufferIndex).Get(), nullptr);
 
 	{
-		PIXScopedEvent(0, L"render_frame");
+		PIXScopedEvent(m_gfxCmdList.Get(), 0, L"render_frame");
 
 		// Transition back buffer from present to render target
 		D3D12_RESOURCE_BARRIER barrierDesc = {};
@@ -392,7 +392,7 @@ void App::Render()
 
 	// Present
 	{
-		PIXScopedEvent(0, L"present");
+		PIXScopedEvent(m_cmdQueue.Get(), 0, L"present");
 		m_swapChain->Present(1, 0);
 	}
 
@@ -442,7 +442,7 @@ void App::SubmitCommands()
 
 void App::FlushCmdQueue()
 {
-	PIXScopedEvent(0, L"gfx_wait_for_GPU");
+	PIXScopedEvent(m_cmdQueue.Get(), 0, L"gfx_wait_for_GPU");
 	auto& currentFenceValue = m_gfxFenceValues.at(m_gfxBufferIndex);
 	currentFenceValue++;
 
