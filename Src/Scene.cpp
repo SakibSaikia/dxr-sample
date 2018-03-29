@@ -40,6 +40,29 @@ void Scene::LoadMeshes(const aiScene* loader, ID3D12Device* device, ID3D12Graphi
 	}
 }
 
+D3D12_GPU_DESCRIPTOR_HANDLE Scene::LoadTexture(const std::string& textureName, ID3D12Device* device, ID3D12DescriptorHeap* srvHeap, const size_t srvOffset, const size_t srvDescriptorSize, DirectX::ResourceUploadBatch& resourceUpload)
+{
+	Texture* tex;
+	auto texIter = std::find_if(m_textures.cbegin(), m_textures.cend(),
+		[&textureName](const std::unique_ptr<Texture>& tex) { return tex->GetName() == textureName; });
+
+	if (texIter == m_textures.cend())
+	{
+		auto newTexture = std::make_unique<Texture>();
+		newTexture->Init(device, resourceUpload, textureName);
+		tex = newTexture.get();
+		m_textures.push_back(std::move(newTexture));
+	}
+	else
+	{
+		tex = texIter->get();
+	}
+
+	const auto gpuDescriptorHandle = tex->CreateDescriptor(device, srvHeap, srvOffset, srvDescriptorSize);
+
+	return gpuDescriptorHandle;
+}
+
 void Scene::LoadMaterials(
 	const aiScene* loader, 
 	ID3D12Device* device, 
@@ -69,69 +92,14 @@ void Scene::LoadMaterials(
 
 		if (bHasDiffuseTexture == aiReturn_SUCCESS && bHasOpacityMaskTexture == aiReturn_SUCCESS)
 		{
-			std::string diffuseTextureName(diffuseTextureNameStr.C_Str());
-			Texture* diffuseTexture;
-			auto texIter = std::find_if(m_textures.cbegin(), m_textures.cend(),
-				[&diffuseTextureName](const std::unique_ptr<Texture>& tex) { return tex->GetName() == diffuseTextureName; });
-
-			if(texIter == m_textures.cend())
-			{
-				auto newTexture = std::make_unique<Texture>();
-				newTexture->Init(device, resourceUpload, diffuseTextureName);
-				diffuseTexture = newTexture.get();
-				m_textures.push_back(std::move(newTexture));
-			}
-			else
-			{
-				diffuseTexture = texIter->get();
-			}
-
-			const auto diffuseTextureGPUDescriptorHandle = diffuseTexture->CreateDescriptor(device, srvHeap, srvStartOffset + descriptorIdx++, srvDescriptorSize);
-
-			std::string opacityMaskTextureName(opacityMaskTextureNameStr.C_Str());
-			Texture* opacityMaskTexture;
-			texIter = std::find_if(m_textures.cbegin(), m_textures.cend(),
-				[&opacityMaskTextureName](const std::unique_ptr<Texture>& tex) { return tex->GetName() == opacityMaskTextureName; });
-
-			if (texIter == m_textures.cend())
-			{
-				auto newTexture = std::make_unique<Texture>();
-				newTexture->Init(device, resourceUpload, opacityMaskTextureName);
-				opacityMaskTexture = newTexture.get();
-				m_textures.push_back(std::move(newTexture));
-			}
-			else
-			{
-				opacityMaskTexture = texIter->get();
-			}
-
-			const auto opacityMaskTextureGPUDescriptorHandle = opacityMaskTexture->CreateDescriptor(device, srvHeap, srvStartOffset + descriptorIdx++, srvDescriptorSize);
-
-			m_materials.push_back(std::make_unique<DiffuseOnlyMaskedMaterial>(std::string(materialName.C_Str()),diffuseTextureGPUDescriptorHandle));
+			const auto headDescriptor = LoadTexture(diffuseTextureNameStr.C_Str(), device, srvHeap, srvStartOffset + descriptorIdx++, srvDescriptorSize, resourceUpload);
+			LoadTexture(opacityMaskTextureNameStr.C_Str(), device, srvHeap, srvStartOffset + descriptorIdx++, srvDescriptorSize, resourceUpload);
+			m_materials.push_back(std::make_unique<DiffuseOnlyMaskedMaterial>(std::string(materialName.C_Str()), headDescriptor));
 		}
 		else if (bHasDiffuseTexture == aiReturn_SUCCESS)
 		{
-			std::string diffuseTextureName(diffuseTextureNameStr.C_Str());
-
-			Texture* diffuseTexture;
-			auto texIter = std::find_if(m_textures.cbegin(), m_textures.cend(),
-				[&diffuseTextureName](const std::unique_ptr<Texture>& tex) { return tex->GetName() == diffuseTextureName; });
-
-			if (texIter == m_textures.cend())
-			{
-				auto newTexture = std::make_unique<Texture>();
-				newTexture->Init(device, resourceUpload, diffuseTextureName);
-				diffuseTexture = newTexture.get();
-				m_textures.push_back(std::move(newTexture));
-			}
-			else
-			{
-				diffuseTexture = texIter->get();
-			}
-
-			const auto diffuseTextureGPUDescriptorHandle = diffuseTexture->CreateDescriptor(device, srvHeap, srvStartOffset + descriptorIdx++, srvDescriptorSize);
-
-			m_materials.push_back(std::make_unique<DiffuseOnlyOpaqueMaterial>(std::string(materialName.C_Str()), diffuseTextureGPUDescriptorHandle));
+			const auto headDescriptor = LoadTexture(diffuseTextureNameStr.C_Str(), device, srvHeap, srvStartOffset + descriptorIdx++, srvDescriptorSize, resourceUpload);
+			m_materials.push_back(std::make_unique<DiffuseOnlyOpaqueMaterial>(std::string(materialName.C_Str()), headDescriptor));
 		}
 		else
 		{
