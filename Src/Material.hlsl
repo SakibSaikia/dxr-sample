@@ -5,7 +5,15 @@
 				    ", CBV(b1, visibility = SHADER_VISIBILITY_VERTEX)" \
 				    ", StaticSampler(s0, visibility = SHADER_VISIBILITY_PIXEL, filter = FILTER_ANISOTROPIC, maxAnisotropy = 8, addressU = TEXTURE_ADDRESS_WRAP, addressV = TEXTURE_ADDRESS_WRAP, borderColor = STATIC_BORDER_COLOR_OPAQUE_WHITE)"
 
-#ifdef MASKED
+#ifdef NORMAL_MAPPED
+    #ifdef MASKED
+       #define args	commonArgs \
+				    ", DescriptorTable(SRV(t0, numDescriptors = 3), visibility = SHADER_VISIBILITY_PIXEL)"
+    #else
+       #define args	commonArgs \
+				    ", DescriptorTable(SRV(t0, numDescriptors = 2), visibility = SHADER_VISIBILITY_PIXEL)"
+    #endif 
+#elif defined(MASKED)
     #define args	commonArgs \
 				    ", DescriptorTable(SRV(t0, numDescriptors = 2), visibility = SHADER_VISIBILITY_PIXEL)"
 #else
@@ -59,19 +67,34 @@ VsToPs vs_main( VsIn v )
 Texture2D diffuseMap : register(t0);
 SamplerState anisoSampler : register(s0);
 
-#if MASKED
-Texture2D maskTex : register(t1);
+#ifdef NORMAL_MAPPED
+    #ifdef MASKED
+        Texture2D maskTex : register(t1);
+        Texture2D normalTex : register(t2);
+    #else
+        Texture2D normalTex : register(t1);
+    #endif 
+#elif defined(MASKED)
+    Texture2D maskTex : register(t1);
 #endif
 
 [RootSignature(args)]
 float4 ps_main(VsToPs p) : SV_TARGET
 {
-#if MASKED
-	float mask = maskTex.Sample(anisoSampler, p.uv);
+#ifdef MASKED
+	float mask = maskTex.Sample(anisoSampler, p.uv).r;
 	clip(mask - 0.5f);
 #endif
 
+#ifdef NORMAL_MAPPED
+    float3 normalMap = normalTex.Sample(anisoSampler, p.uv).rgb;
+    normalMap = 2.f * normalMap - 1.f;
+    float3 normal = mul(normalMap, float3x3(p.tangent, p.bitangent, p.normal));
+    normal = normalize(mul(normal, (float3x3) viewMatrix));
+#else
     float3 normal = normalize(mul(p.normal, (float3x3) viewMatrix));
+#endif
+
     float3 light = normalize(mul(float3(1.f, 1.f, 0.f), (float3x3) viewMatrix));
 	float4 matColor = diffuseMap.Sample(anisoSampler, p.uv);
 	return matColor * (max(dot(normal, light), 0.f) + 0.1f);

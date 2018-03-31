@@ -8,6 +8,8 @@ struct MaterialPipelineState
 	Microsoft::WRL::ComPtr<ID3DBlob> psByteCode;
 };
 
+// #TODO - These can probably be changed into static/const array tables
+
 class DiffuseOnlyOpaqueMaterialPipeline
 {
 public:
@@ -20,6 +22,28 @@ private:
 };
 
 class DiffuseOnlyMaskedMaterialPipeline
+{
+public:
+	static const uint32_t k_srvDescriptorTableIndex = 2;
+
+	static void Init(ID3D12Device* device, D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc);
+	static void Bind(ID3D12GraphicsCommandList* cmdList);
+private:
+	static MaterialPipelineState m_pipelineState;
+};
+
+class NormalMappedOpaqueMaterialPipeline
+{
+public:
+	static const uint32_t k_srvDescriptorTableIndex = 2;
+
+	static void Init(ID3D12Device* device, D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc);
+	static void Bind(ID3D12GraphicsCommandList* cmdList);
+private:
+	static MaterialPipelineState m_pipelineState;
+};
+
+class NormalMappedMaskedMaterialPipeline
 {
 public:
 	static const uint32_t k_srvDescriptorTableIndex = 2;
@@ -63,6 +87,42 @@ class DiffuseOnlyMaskedMaterial : public Material
 public:
 	DiffuseOnlyMaskedMaterial() = default;
 	DiffuseOnlyMaskedMaterial(std::string& name, const D3D12_GPU_DESCRIPTOR_HANDLE srvHandle);
+
+	void BindPipeline(ID3D12GraphicsCommandList* cmdList) const override;
+	void BindConstants(ID3D12GraphicsCommandList* cmdList) const override;
+	bool IsValid() const override;
+
+private:
+	bool m_valid;
+	std::string m_name;
+	D3D12_GPU_DESCRIPTOR_HANDLE m_srvBegin;
+};
+
+class NormalMappedOpaqueMaterial : public Material
+{
+	using pipeline_type = NormalMappedOpaqueMaterialPipeline;
+
+public:
+	NormalMappedOpaqueMaterial() = default;
+	NormalMappedOpaqueMaterial(std::string& name, const D3D12_GPU_DESCRIPTOR_HANDLE srvHandle);
+
+	void BindPipeline(ID3D12GraphicsCommandList* cmdList) const override;
+	void BindConstants(ID3D12GraphicsCommandList* cmdList) const override;
+	bool IsValid() const override;
+
+private:
+	bool m_valid;
+	std::string m_name;
+	D3D12_GPU_DESCRIPTOR_HANDLE m_srvBegin;
+};
+
+class NormalMappedMaskedMaterial : public Material
+{
+	using pipeline_type = NormalMappedMaskedMaterialPipeline;
+
+public:
+	NormalMappedMaskedMaterial() = default;
+	NormalMappedMaskedMaterial(std::string& name, const D3D12_GPU_DESCRIPTOR_HANDLE srvHandle);
 
 	void BindPipeline(ID3D12GraphicsCommandList* cmdList) const override;
 	void BindConstants(ID3D12GraphicsCommandList* cmdList) const override;

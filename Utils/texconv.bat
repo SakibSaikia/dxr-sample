@@ -2,6 +2,7 @@
 
 REM Convert source textures to compressed  DDS format
 REM Usage : ConvertTextures.bat <path_to_mtl_file> <path_to_src_textures_folder> <src_texture_format>
+REM eg. texconv.bat ..\Content\Sponza\obj\sponza.mtl ..\Content\Sponza\textures tga
 REM Compressed textures will be created in a "Compressed" folder in the same path as the source textures folder.
 
 set mtl_file=%1

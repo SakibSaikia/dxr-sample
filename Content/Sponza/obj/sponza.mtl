@@ -92,8 +92,8 @@ newmtl bricks
 	Ke 0.0000 0.0000 0.0000
 	map_Ka spnza_bricks_a_diff
 	map_Kd spnza_bricks_a_diff
-	map_bump spnza_bricks_a_diff
-	bump spnza_bricks_a_diff
+	map_bump spnza_bricks_a_ddn
+	bump spnza_bricks_a_ddn
 
 newmtl arch
 	Ns 10.0000

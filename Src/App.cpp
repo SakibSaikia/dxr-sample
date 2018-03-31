@@ -209,6 +209,8 @@ void App::InitMaterialPipelines()
 {
 	DiffuseOnlyOpaqueMaterialPipeline::Init(m_d3dDevice.Get(), m_basePassPSODesc);
 	DiffuseOnlyMaskedMaterialPipeline::Init(m_d3dDevice.Get(), m_basePassPSODesc);
+	NormalMappedOpaqueMaterialPipeline::Init(m_d3dDevice.Get(), m_basePassPSODesc);
+	NormalMappedMaskedMaterialPipeline::Init(m_d3dDevice.Get(), m_basePassPSODesc);
 }
 
 void App::InitStateObjects()
