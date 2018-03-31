@@ -43,7 +43,7 @@ VsToPs vs_main( VsIn v )
 	VsToPs o;
 	float4 worldPos = mul(float4(v.pos, 1.f), localToWorldMatrix);
 	o.ndcPos = mul(worldPos, viewProjectionMatrix);
-	o.normal = mul(float4(v.normal, 0.f), viewMatrix);
+    o.normal = mul(float4(v.normal, 0.f), localToWorldMatrix);
 	o.uv = v.uv;
 
 	return o;
@@ -67,7 +67,7 @@ float4 ps_main(VsToPs p) : SV_TARGET
 	clip(mask - 0.5f);
 #endif
 
-	float4 normal = normalize(p.normal);
+    float4 normal = normalize(mul(p.normal, viewMatrix));
 	float4 light = normalize(mul(float4(1.f, 1.f, 0.f, 0.f), viewMatrix));
 	float4 matColor = diffuseMap.Sample(anisoSampler, p.uv);
 	return matColor * (max(dot(normal, light), 0.f) + 0.1f);
