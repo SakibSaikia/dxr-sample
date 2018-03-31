@@ -17,7 +17,9 @@
 struct VsToPs
 {
 	float4 ndcPos	: SV_POSITION;
-	float4 normal	: INTERP_NORMAL;
+    float3 tangent  : INTERP_TANGENT;
+    float3 bitangent: INTERP_BITANGENT;
+	float3 normal	: INTERP_NORMAL;
 	float2 uv		: INTERP_TEXCOORD0;
 };
 
@@ -43,7 +45,9 @@ VsToPs vs_main( VsIn v )
 	VsToPs o;
 	float4 worldPos = mul(float4(v.pos, 1.f), localToWorldMatrix);
 	o.ndcPos = mul(worldPos, viewProjectionMatrix);
-    o.normal = mul(float4(v.normal, 0.f), localToWorldMatrix);
+    o.tangent = mul(v.tangent, (float3x3) localToWorldMatrix);
+    o.bitangent = mul(v.bitangent, (float3x3) localToWorldMatrix);
+    o.normal = mul(v.normal, (float3x3) localToWorldMatrix);
 	o.uv = v.uv;
 
 	return o;
@@ -67,8 +71,8 @@ float4 ps_main(VsToPs p) : SV_TARGET
 	clip(mask - 0.5f);
 #endif
 
-    float4 normal = normalize(mul(p.normal, viewMatrix));
-	float4 light = normalize(mul(float4(1.f, 1.f, 0.f, 0.f), viewMatrix));
+    float3 normal = normalize(mul(p.normal, (float3x3) viewMatrix));
+    float3 light = normalize(mul(float3(1.f, 1.f, 0.f), (float3x3) viewMatrix));
 	float4 matColor = diffuseMap.Sample(anisoSampler, p.uv);
 	return matColor * (max(dot(normal, light), 0.f) + 0.1f);
 }
