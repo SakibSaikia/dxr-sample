@@ -16,20 +16,20 @@
 #include <dxgi1_4.h>
 #include <d3d12.h>
 #include <d3dcompiler.h>
-#include <DirectXMath.h>
-#include <pix3.h>
+
 #include <array>
-#include <vector>
-#include <unordered_map>
-#include <memory>
-#include <unordered_map>
 #include <cassert>
 #include <fstream>
-#include <string>
 #include <functional>
+#include <memory>
+#include <string>
+#include <unordered_map>
+#include <vector>
 
-#include <DDSTextureLoader.h>
-#include <ResourceUploadBatch.h>
 #include <assimp\Importer.hpp>
 #include <assimp\scene.h>
 #include <assimp\postprocess.h>
+#include <DDSTextureLoader.h>
+#include <DirectXMath.h>
+#include <pix3.h>
+#include <ResourceUploadBatch.h>
