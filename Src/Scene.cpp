@@ -101,34 +101,42 @@ void Scene::LoadMaterials(
 			bHasNormalmapTexture == aiReturn_SUCCESS && 
 			bHasOpacityMaskTexture == aiReturn_SUCCESS)
 		{
+			const MaterialPipeline* pipeline = k_materialPipelines.at(MaterialType::NormalMappedMasked).get();
+
 			const auto headDescriptor = LoadTexture(diffuseTextureNameStr.C_Str(), device, srvHeap, srvStartOffset + descriptorIdx++, srvDescriptorSize, resourceUpload);
 			LoadTexture(opacityMaskTextureNameStr.C_Str(), device, srvHeap, srvStartOffset + descriptorIdx++, srvDescriptorSize, resourceUpload);
 			LoadTexture(normalmapTextureNameStr.C_Str(), device, srvHeap, srvStartOffset + descriptorIdx++, srvDescriptorSize, resourceUpload);
-			m_materials.push_back(std::make_unique<NormalMappedMaskedMaterial>(std::string(materialName.C_Str()), headDescriptor));
+			m_materials.push_back(std::make_unique<Material>(pipeline, std::string(materialName.C_Str()), headDescriptor));
 		}
 		else if (bHasDiffuseTexture == aiReturn_SUCCESS && 
 				bHasNormalmapTexture == aiReturn_SUCCESS)
 		{
+			const MaterialPipeline* pipeline = k_materialPipelines.at(MaterialType::NormalMappedOpaque).get();
+
 			const auto headDescriptor = LoadTexture(diffuseTextureNameStr.C_Str(), device, srvHeap, srvStartOffset + descriptorIdx++, srvDescriptorSize, resourceUpload);
 			LoadTexture(normalmapTextureNameStr.C_Str(), device, srvHeap, srvStartOffset + descriptorIdx++, srvDescriptorSize, resourceUpload);
-			m_materials.push_back(std::make_unique<NormalMappedOpaqueMaterial>(std::string(materialName.C_Str()), headDescriptor));
+			m_materials.push_back(std::make_unique<Material>(pipeline, std::string(materialName.C_Str()), headDescriptor));
 		}
 		else if (bHasDiffuseTexture == aiReturn_SUCCESS && 
 				bHasOpacityMaskTexture == aiReturn_SUCCESS)
 		{
+			const MaterialPipeline* pipeline = k_materialPipelines.at(MaterialType::DiffuseOnlyMasked).get();
+
 			const auto headDescriptor = LoadTexture(diffuseTextureNameStr.C_Str(), device, srvHeap, srvStartOffset + descriptorIdx++, srvDescriptorSize, resourceUpload);
 			LoadTexture(opacityMaskTextureNameStr.C_Str(), device, srvHeap, srvStartOffset + descriptorIdx++, srvDescriptorSize, resourceUpload);
-			m_materials.push_back(std::make_unique<DiffuseOnlyMaskedMaterial>(std::string(materialName.C_Str()), headDescriptor));
+			m_materials.push_back(std::make_unique<Material>(pipeline, std::string(materialName.C_Str()), headDescriptor));
 		}
 		else if (bHasDiffuseTexture == aiReturn_SUCCESS)
 		{
+			const MaterialPipeline* pipeline = k_materialPipelines.at(MaterialType::DiffuseOnlyOpaque).get();
+
 			const auto headDescriptor = LoadTexture(diffuseTextureNameStr.C_Str(), device, srvHeap, srvStartOffset + descriptorIdx++, srvDescriptorSize, resourceUpload);
-			m_materials.push_back(std::make_unique<DiffuseOnlyOpaqueMaterial>(std::string(materialName.C_Str()), headDescriptor));
+			m_materials.push_back(std::make_unique<Material>(pipeline, std::string(materialName.C_Str()), headDescriptor));
 		}
 		else
 		{
 			// Invalid material
-			m_materials.push_back(std::make_unique<DiffuseOnlyOpaqueMaterial>());
+			m_materials.push_back(std::make_unique<Material>());
 		}
 	}
 

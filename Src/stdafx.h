@@ -20,11 +20,13 @@
 #include <pix3.h>
 #include <array>
 #include <vector>
+#include <unordered_map>
 #include <memory>
 #include <unordered_map>
 #include <cassert>
 #include <fstream>
 #include <string>
+#include <functional>
 
 #include <DDSTextureLoader.h>
 #include <ResourceUploadBatch.h>

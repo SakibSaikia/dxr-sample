@@ -1,6 +1,8 @@
 #include "stdafx.h"
 #include "App.h"
 
+std::unordered_map<MaterialType, std::unique_ptr<MaterialPipeline>> k_materialPipelines;
+
 App* AppInstance()
 {
 	static App instance;
@@ -207,10 +209,11 @@ void App::InitView()
 
 void App::InitMaterialPipelines()
 {
-	DiffuseOnlyOpaqueMaterialPipeline::Init(m_d3dDevice.Get(), m_basePassPSODesc);
-	DiffuseOnlyMaskedMaterialPipeline::Init(m_d3dDevice.Get(), m_basePassPSODesc);
-	NormalMappedOpaqueMaterialPipeline::Init(m_d3dDevice.Get(), m_basePassPSODesc);
-	NormalMappedMaskedMaterialPipeline::Init(m_d3dDevice.Get(), m_basePassPSODesc);
+	for (const auto& pipelineDesc : k_supportedMaterialPipelineDescriptions)
+	{
+		auto newMaterialPipeline = std::make_unique<MaterialPipeline>(pipelineDesc, m_d3dDevice.Get(), m_basePassPSODesc);
+		k_materialPipelines.emplace(pipelineDesc.type, std::move(newMaterialPipeline));
+	}
 }
 
 void App::InitStateObjects()
