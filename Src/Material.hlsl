@@ -25,8 +25,10 @@
 struct VsToPs
 {
 	float4 ndcPos	: SV_POSITION;
+#ifdef NORMAL_MAPPED
     float3 tangent  : INTERP_TANGENT;
     float3 bitangent: INTERP_BITANGENT;
+#endif
 	float3 normal	: INTERP_NORMAL;
 	float2 uv		: INTERP_TEXCOORD0;
 };
@@ -53,8 +55,10 @@ VsToPs vs_main( VsIn v )
 	VsToPs o;
 	float4 worldPos = mul(float4(v.pos, 1.f), localToWorldMatrix);
 	o.ndcPos = mul(worldPos, viewProjectionMatrix);
+#ifdef NORMAL_MAPPED
     o.tangent = mul(v.tangent, (float3x3) localToWorldMatrix);
     o.bitangent = mul(v.bitangent, (float3x3) localToWorldMatrix);
+#endif
     o.normal = mul(v.normal, (float3x3) localToWorldMatrix);
 	o.uv = v.uv;
 
