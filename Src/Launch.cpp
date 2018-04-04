@@ -23,6 +23,17 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR pCmdLine,
 	return Run();
 }
 
+void LockCursorToWindow()
+{
+	RECT screenRect;
+	GetWindowRect(g_wndHandle, &screenRect);
+	ClipCursor(&screenRect);
+
+	int windowCenterX = screenRect.left + (screenRect.right - screenRect.left) / 2;
+	int windowCenterY = screenRect.top + (screenRect.bottom - screenRect.top) / 2;
+	SetCursorPos(windowCenterX, windowCenterY);
+}
+
 bool InitWindowsApp(HINSTANCE instanceHandle, int show)
 {
 	WNDCLASS desc;
@@ -67,18 +78,9 @@ bool InitWindowsApp(HINSTANCE instanceHandle, int show)
 	ShowWindow(g_wndHandle, show);
 	UpdateWindow(g_wndHandle);
 
-	// Hide cursor
 	ShowCursor(FALSE);
 
-	// Lock cursor to screen
-	RECT screenRect;
-	GetWindowRect(g_wndHandle, &screenRect);
-	ClipCursor(&screenRect);
-
-	// Set cursor to window center
-	int windowCenterX = screenRect.left + (screenRect.right - screenRect.left) / 2;
-	int windowCenterY = screenRect.top + (screenRect.bottom - screenRect.top) / 2;
-	SetCursorPos(windowCenterX, windowCenterY);
+	LockCursorToWindow();
 
 	return true;
 }
@@ -121,6 +123,17 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 		return 0;
 	case WM_MOUSEMOVE:
 		AppInstance()->OnMouseMove(wParam, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
+		return 0;
+	case WM_ACTIVATE:
+		if (LOWORD(wParam) == WA_ACTIVE || LOWORD(wParam) == WA_CLICKACTIVE)
+		{
+			EnableWindow(hWnd, TRUE);
+			LockCursorToWindow();
+		}
+		else if (LOWORD(wParam) == WA_INACTIVE)
+		{
+			EnableWindow(hWnd, FALSE);
+		}
 		return 0;
 	}
 
