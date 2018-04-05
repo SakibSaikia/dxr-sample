@@ -38,7 +38,7 @@ void View::Init(ID3D12Device* device, size_t bufferCount, const size_t width, co
 		for (auto n = 0; n < bufferCount; ++n)
 		{
 			Microsoft::WRL::ComPtr<ID3D12Resource> buf;
-			DX_VERIFY(device->CreateCommittedResource(
+			CHECK(device->CreateCommittedResource(
 				&heapDesc,
 				D3D12_HEAP_FLAG_NONE,
 				&resDesc,

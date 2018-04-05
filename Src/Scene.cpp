@@ -222,7 +222,7 @@ void Scene::InitResources(
 
 		for (auto n = 0; n < k_gfxBufferCount; ++n)
 		{
-			DX_VERIFY(device->CreateCommittedResource(
+			CHECK(device->CreateCommittedResource(
 				&heapDesc,
 				D3D12_HEAP_FLAG_NONE,
 				&resDesc,

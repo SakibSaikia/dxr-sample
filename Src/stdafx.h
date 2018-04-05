@@ -4,9 +4,9 @@
 #define USE_PIX
 
 #ifdef _DEBUG
-#define DX_VERIFY(x) {HRESULT hr = x; assert(hr == S_OK);}
+#define CHECK(x) {HRESULT hr = x; assert(hr == S_OK);}
 #else
-	#define DX_VERIFY(x) x
+	#define CHECK(x) x
 #endif
 
 #pragma warning(disable : 4324)

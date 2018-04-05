@@ -14,7 +14,7 @@ Microsoft::WRL::ComPtr<ID3DBlob> LoadBlob(const std::string& filename)
 
 	// serialize bytecode
 	Microsoft::WRL::ComPtr<ID3DBlob> blob;
-	DX_VERIFY(D3DCreateBlob(size, blob.GetAddressOf()));
+	CHECK(D3DCreateBlob(size, blob.GetAddressOf()));
 	fileHandle.read(static_cast<char*>(blob->GetBufferPointer()), size);
 
 	fileHandle.close();
@@ -34,7 +34,7 @@ MaterialPipeline::MaterialPipeline(const MaterialPipelineDescription& desc, ID3D
 	// Root signature
 	{
 		Microsoft::WRL::ComPtr<ID3DBlob> rsBytecode = LoadBlob(desc.rootsigBlobName);
-		DX_VERIFY(device->CreateRootSignature(
+		CHECK(device->CreateRootSignature(
 			0,
 			rsBytecode->GetBufferPointer(),
 			rsBytecode->GetBufferSize(),
@@ -53,7 +53,7 @@ MaterialPipeline::MaterialPipeline(const MaterialPipelineDescription& desc, ID3D
 		psoDesc.PS.pShaderBytecode = psByteCode.Get()->GetBufferPointer();
 		psoDesc.PS.BytecodeLength = psByteCode.Get()->GetBufferSize();
 
-		DX_VERIFY(device->CreateGraphicsPipelineState(
+		CHECK(device->CreateGraphicsPipelineState(
 			&psoDesc,
 			IID_PPV_ARGS(pso.GetAddressOf())
 		));

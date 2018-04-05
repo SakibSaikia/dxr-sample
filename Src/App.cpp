@@ -21,7 +21,7 @@ void App::InitBaseD3D()
 #endif
 
 	// DXGI
-	DX_VERIFY(CreateDXGIFactory1(IID_PPV_ARGS(m_dxgiFactory.GetAddressOf())));
+	CHECK(CreateDXGIFactory1(IID_PPV_ARGS(m_dxgiFactory.GetAddressOf())));
 
 	// Enable SM6
 	static const GUID D3D12ExperimentalShaderModelsID = { /* 76f5573e-f13a-40f5-b297-81ce9e18933f */
@@ -34,7 +34,7 @@ void App::InitBaseD3D()
 	D3D12EnableExperimentalFeatures(1, &D3D12ExperimentalShaderModelsID, nullptr, nullptr);
 
 	// Device
-	DX_VERIFY(D3D12CreateDevice(
+	CHECK(D3D12CreateDevice(
 		nullptr,
 		D3D_FEATURE_LEVEL_11_0,
 		IID_PPV_ARGS(m_d3dDevice.GetAddressOf())
@@ -53,7 +53,7 @@ void App::InitCommandObjects()
 	D3D12_COMMAND_QUEUE_DESC cmdQueueDesc = {};
 	cmdQueueDesc.Type = D3D12_COMMAND_LIST_TYPE_DIRECT;
 	cmdQueueDesc.Flags = D3D12_COMMAND_QUEUE_FLAG_NONE;
-	DX_VERIFY(m_d3dDevice->CreateCommandQueue(
+	CHECK(m_d3dDevice->CreateCommandQueue(
 		&cmdQueueDesc,
 		IID_PPV_ARGS(m_cmdQueue.GetAddressOf())
 	));
@@ -61,14 +61,14 @@ void App::InitCommandObjects()
 	// Command Allocator
 	for (auto n = 0; n < k_gfxBufferCount; ++n)
 	{
-		DX_VERIFY(m_d3dDevice->CreateCommandAllocator(
+		CHECK(m_d3dDevice->CreateCommandAllocator(
 			D3D12_COMMAND_LIST_TYPE_DIRECT,
 			IID_PPV_ARGS(m_gfxCmdAllocators.at(n).GetAddressOf())
 		));
 	}
 
 	// Command List
-	DX_VERIFY(m_d3dDevice->CreateCommandList(
+	CHECK(m_d3dDevice->CreateCommandList(
 		0,
 		D3D12_COMMAND_LIST_TYPE_DIRECT,
 		m_gfxCmdAllocators.at(m_gfxBufferIndex).Get(),
@@ -77,7 +77,7 @@ void App::InitCommandObjects()
 	));
 
 	// Fence
-	DX_VERIFY(m_d3dDevice->CreateFence(m_gfxFenceValues.at(m_gfxBufferIndex), D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(m_gfxFence.GetAddressOf())));
+	CHECK(m_d3dDevice->CreateFence(m_gfxFenceValues.at(m_gfxBufferIndex), D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(m_gfxFence.GetAddressOf())));
 	m_gfxFenceEvent = CreateEventEx(nullptr, nullptr, 0, EVENT_ALL_ACCESS);
 }
 
@@ -99,7 +99,7 @@ void App::InitSwapChain(HWND windowHandle)
 	scDesc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
 	scDesc.Flags = DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH;
 
-	DX_VERIFY(m_dxgiFactory->CreateSwapChain(
+	CHECK(m_dxgiFactory->CreateSwapChain(
 		m_cmdQueue.Get(),
 		&scDesc,
 		m_swapChain.GetAddressOf()
@@ -108,19 +108,19 @@ void App::InitSwapChain(HWND windowHandle)
 	D3D12_DESCRIPTOR_HEAP_DESC rtvHeapDesc = {};
 	rtvHeapDesc.NumDescriptors = k_gfxBufferCount;
 	rtvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
-	DX_VERIFY(m_d3dDevice->CreateDescriptorHeap(&rtvHeapDesc, IID_PPV_ARGS(m_rtvHeap.GetAddressOf())));
+	CHECK(m_d3dDevice->CreateDescriptorHeap(&rtvHeapDesc, IID_PPV_ARGS(m_rtvHeap.GetAddressOf())));
 
 	D3D12_DESCRIPTOR_HEAP_DESC dsvHeapDesc = {};
 	dsvHeapDesc.NumDescriptors = k_gfxBufferCount;
 	dsvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_DSV;
-	DX_VERIFY(m_d3dDevice->CreateDescriptorHeap(&dsvHeapDesc, IID_PPV_ARGS(m_dsvHeap.GetAddressOf())));
+	CHECK(m_d3dDevice->CreateDescriptorHeap(&dsvHeapDesc, IID_PPV_ARGS(m_dsvHeap.GetAddressOf())));
 
 	// RTVs
 	{
 		D3D12_CPU_DESCRIPTOR_HANDLE rtvHeapHandle = m_rtvHeap->GetCPUDescriptorHandleForHeapStart();
 		for (auto bufferIdx = 0; bufferIdx < k_gfxBufferCount; bufferIdx++)
 		{
-			DX_VERIFY(m_swapChain->GetBuffer(bufferIdx, IID_PPV_ARGS(m_swapChainBuffers.at(bufferIdx).GetAddressOf())));
+			CHECK(m_swapChain->GetBuffer(bufferIdx, IID_PPV_ARGS(m_swapChainBuffers.at(bufferIdx).GetAddressOf())));
 
 			m_d3dDevice->CreateRenderTargetView(m_swapChainBuffers.at(bufferIdx).Get(), nullptr, rtvHeapHandle);
 			rtvHeapHandle.ptr += m_rtvDescriptorSize;
@@ -151,7 +151,7 @@ void App::InitSwapChain(HWND windowHandle)
 		D3D12_CPU_DESCRIPTOR_HANDLE dsvHeapHandle = m_dsvHeap->GetCPUDescriptorHandleForHeapStart();
 		for (auto bufferIdx = 0; bufferIdx < k_gfxBufferCount; bufferIdx++)
 		{
-			DX_VERIFY(m_d3dDevice->CreateCommittedResource(
+			CHECK(m_d3dDevice->CreateCommittedResource(
 				&heapDesc,
 				D3D12_HEAP_FLAG_NONE,
 				&resDesc,
@@ -185,7 +185,7 @@ void App::InitDescriptors()
 		cbvSrvUavHeapDesc.NumDescriptors = k_cbvCount + k_srvCount;
 		cbvSrvUavHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
 		cbvSrvUavHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
-		DX_VERIFY(m_d3dDevice->CreateDescriptorHeap(&cbvSrvUavHeapDesc, IID_PPV_ARGS(m_cbvSrvUavHeap.GetAddressOf())));
+		CHECK(m_d3dDevice->CreateDescriptorHeap(&cbvSrvUavHeapDesc, IID_PPV_ARGS(m_cbvSrvUavHeap.GetAddressOf())));
 	}
 }
 

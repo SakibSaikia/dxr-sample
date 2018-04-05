@@ -11,7 +11,7 @@ void Texture::Init(ID3D12Device* device, DirectX::ResourceUploadBatch& resourceU
 	MultiByteToWideChar(CP_UTF8, 0, &name[0], static_cast<int>(name.size()), &wideName[0], size_needed);
 	std::wstring filePath = L"..\\Content\\Sponza\\textures\\Compressed\\" + wideName + L".dds";
 
-	DX_VERIFY(DirectX::CreateDDSTextureFromFile(
+	CHECK(DirectX::CreateDDSTextureFromFile(
 		device,
 		resourceUpload,
 		filePath.c_str(),

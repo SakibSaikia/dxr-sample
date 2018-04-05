@@ -34,7 +34,7 @@ void StaticMesh::Init(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList, 
 	heapProp.Type = D3D12_HEAP_TYPE_DEFAULT;
 	heapProp.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
 
-	DX_VERIFY(device->CreateCommittedResource(
+	CHECK(device->CreateCommittedResource(
 		&heapProp,
 		D3D12_HEAP_FLAG_NONE,
 		&vbDesc,
@@ -54,7 +54,7 @@ void StaticMesh::Init(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList, 
 	ibDesc.SampleDesc.Count = 1;
 	ibDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
 
-	DX_VERIFY(device->CreateCommittedResource(
+	CHECK(device->CreateCommittedResource(
 		&heapProp,
 		D3D12_HEAP_FLAG_NONE,
 		&ibDesc,
@@ -68,7 +68,7 @@ void StaticMesh::Init(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList, 
 	uploadHeapProp.Type = D3D12_HEAP_TYPE_UPLOAD;
 	uploadHeapProp.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
 
-	DX_VERIFY(device->CreateCommittedResource(
+	CHECK(device->CreateCommittedResource(
 		&uploadHeapProp,
 		D3D12_HEAP_FLAG_NONE,
 		&vbDesc,
@@ -78,7 +78,7 @@ void StaticMesh::Init(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList, 
 	));
 
 	// upload index buffer
-	DX_VERIFY(device->CreateCommittedResource(
+	CHECK(device->CreateCommittedResource(
 		&uploadHeapProp,
 		D3D12_HEAP_FLAG_NONE,
 		&ibDesc,
