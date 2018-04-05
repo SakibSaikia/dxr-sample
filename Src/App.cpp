@@ -255,7 +255,7 @@ void App::InitStateObjects()
 
 		// RTV
 		m_basePassPSODesc.NumRenderTargets = 1;
-		m_basePassPSODesc.RTVFormats[0] = k_backBufferFormat;
+		m_basePassPSODesc.RTVFormats[0] = k_backBufferRTVFormat;
 		m_basePassPSODesc.DSVFormat = k_depthStencilFormatDsv;
 
 		// misc
