@@ -3,6 +3,7 @@
 /Src/x64/
 /Src/CompiledShaders
 /Src/packages
+/Captures
 
 # Files
 *.tga

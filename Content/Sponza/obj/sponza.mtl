@@ -12,11 +12,12 @@ newmtl leaf
 	Kd 0.5880 0.5880 0.5880
 	Ks 0.0000 0.0000 0.0000
 	Ke 0.0000 0.0000 0.0000
-	map_Ka sponza_thorn_diff
-	map_Kd sponza_thorn_diff
+	map_Ka Dielectric_metallic
+	map_Kd Sponza_Thorn_diffuse
 	map_d sponza_thorn_mask
-	map_bump sponza_thorn_ddn
-	bump sponza_thorn_ddn
+	map_bump Sponza_Thorn_normal
+	bump Sponza_Thorn_normal
+	map_Ns Sponza_Thorn_roughness
 
 newmtl vase_round
 	Ns 10.0000
@@ -29,10 +30,11 @@ newmtl vase_round
 	Kd 0.5880 0.5880 0.5880
 	Ks 0.0000 0.0000 0.0000
 	Ke 0.0000 0.0000 0.0000
-	map_Ka vase_round
-	map_Kd vase_round
-	map_bump vase_round_ddn
-	bump vase_round_ddn
+	map_Ka Dielectric_metallic
+	map_Kd VaseRound_diffuse
+	map_bump VaseRound_normal
+	bump VaseRound_normal
+	map_Ns VaseRound_roughness
 
 newmtl Material__57
 	Ns 10.0000
@@ -45,8 +47,11 @@ newmtl Material__57
 	Kd 0.5880 0.5880 0.5880
 	Ks 0.0000 0.0000 0.0000
 	Ke 0.0000 0.0000 0.0000
-	map_Ka vase_plant
-	map_Kd vase_plant
+	map_Ka Dielectric_metallic
+	map_Kd VasePlant_diffuse
+	map_bump VasePlant_normal
+	bump VasePlant_normal
+	map_Ns VasePlant_roughness
 	map_d vase_plant_mask
 
 newmtl Material__298
@@ -60,24 +65,11 @@ newmtl Material__298
 	Kd 0.5880 0.5880 0.5880
 	Ks 0.0000 0.0000 0.0000
 	Ke 0.0000 0.0000 0.0000
-	map_Ka background
-	map_Kd background
-	map_bump background_ddn
-	bump background_ddn
-
-newmtl 16___Default
-	Ns 10.0000
-	Ni 1.5000
-	d 1.0000
-	Tr 0.0000
-	Tf 1.0000 1.0000 1.0000 
-	illum 2
-	Ka 0.5880 0.5880 0.5880
-	Kd 0.5880 0.5880 0.5880
-	Ks 0.0000 0.0000 0.0000
-	Ke 0.0000 0.0000 0.0000
-	map_Ka gi_flag
-	map_Kd gi_flag
+	map_Ka Dielectric_metallic
+	map_Kd Background_Albedo
+	map_bump Background_Normal
+	bump Background_Normal
+	map_NS Background_roughness
 
 newmtl bricks
 	Ns 10.0000
@@ -90,10 +82,11 @@ newmtl bricks
 	Kd 0.5880 0.5880 0.5880
 	Ks 0.0000 0.0000 0.0000
 	Ke 0.0000 0.0000 0.0000
-	map_Ka spnza_bricks_a_diff
-	map_Kd spnza_bricks_a_diff
-	map_bump spnza_bricks_a_ddn
-	bump spnza_bricks_a_ddn
+	map_Ka Dielectric_metallic
+	map_Kd Sponza_Bricks_a_Albedo
+	map_bump Sponza_Bricks_a_Normal
+	map_Ns Sponza_Bricks_a_Roughness
+	bump Sponza_Bricks_a_Normal
 
 newmtl arch
 	Ns 10.0000
@@ -106,8 +99,11 @@ newmtl arch
 	Kd 0.5880 0.5880 0.5880
 	Ks 0.0000 0.0000 0.0000
 	Ke 0.0000 0.0000 0.0000
-	map_Ka sponza_arch_diff
-	map_Kd sponza_arch_diff
+	map_Ka Dielectric_metallic
+	map_Kd Sponza_Arch_diffuse
+	map_Ns Sponza_Arch_roughness
+	map_bump Sponza_Arch_normal
+	bump Sponza_Arch_normal
 
 newmtl ceiling
 	Ns 10.0000
@@ -120,8 +116,11 @@ newmtl ceiling
 	Kd 0.5880 0.5880 0.5880
 	Ks 0.0000 0.0000 0.0000
 	Ke 0.0000 0.0000 0.0000
-	map_Ka sponza_ceiling_a_diff
-	map_Kd sponza_ceiling_a_diff
+	map_Ka Dielectric_metallic
+	map_Kd Sponza_Ceiling_diffuse
+	map_Ns Sponza_Ceiling_roughness
+	map_bump Sponza_Ceiling_normal
+	bump Sponza_Ceiling_normal
 
 newmtl column_a
 	Ns 10.0000
@@ -134,10 +133,11 @@ newmtl column_a
 	Kd 0.5880 0.5880 0.5880
 	Ks 0.0000 0.0000 0.0000
 	Ke 0.0000 0.0000 0.0000
-	map_Ka sponza_column_a_diff
-	map_Kd sponza_column_a_diff
-	map_bump sponza_column_a_ddn
-	bump sponza_column_a_ddn
+	map_Ka Dielectric_metallic
+	map_Kd Sponza_Column_a_diffuse
+	map_bump Sponza_Column_a_normal
+	bump Sponza_Column_a_normal
+	map_Ns Sponza_Column_a_roughness
 
 newmtl floor
 	Ns 10.0000
@@ -150,8 +150,11 @@ newmtl floor
 	Kd 0.5880 0.5880 0.5880
 	Ks 0.0000 0.0000 0.0000
 	Ke 0.0000 0.0000 0.0000
-	map_Ka sponza_floor_a_diff
-	map_Kd sponza_floor_a_diff
+	map_Ka Dielectric_metallic
+	map_Kd Sponza_Floor_diffuse
+	map_bump Sponza_Floor_normal
+	bump Sponza_Floor_normal
+	map_Ns Sponza_Floor_roughness
 
 newmtl column_c
 	Ns 10.0000
@@ -164,10 +167,11 @@ newmtl column_c
 	Kd 0.5880 0.5880 0.5880
 	Ks 0.0000 0.0000 0.0000
 	Ke 0.0000 0.0000 0.0000
-	map_Ka sponza_column_c_diff
-	map_Kd sponza_column_c_diff
-	map_bump sponza_column_c_ddn
-	bump sponza_column_c_ddn
+	map_Ka Dielectric_metallic
+	map_Kd Sponza_Column_c_diffuse
+	map_bump Sponza_Column_c_normal
+	bump Sponza_Column_c_normal
+	map_Ns Sponza_Column_c_roughness
 
 newmtl details
 	Ns 10.0000
@@ -180,8 +184,11 @@ newmtl details
 	Kd 0.5880 0.5880 0.5880
 	Ks 0.0000 0.0000 0.0000
 	Ke 0.0000 0.0000 0.0000
-	map_Ka sponza_details_diff
-	map_Kd sponza_details_diff
+	map_Ka Dielectric_metallic
+	map_Kd Sponza_Details_diffuse
+	map_bump Sponza_Details_normal
+	bump Sponza_Details_normal
+	map_Ns Sponza_Details_roughness
 
 newmtl column_b
 	Ns 10.0000
@@ -194,22 +201,11 @@ newmtl column_b
 	Kd 0.5880 0.5880 0.5880
 	Ks 0.0000 0.0000 0.0000
 	Ke 0.0000 0.0000 0.0000
-	map_Ka sponza_column_b_diff
-	map_Kd sponza_column_b_diff
-	map_bump sponza_column_b_ddn
-	bump sponza_column_b_ddn
-
-newmtl Material__47
-	Ns 10.0000
-	Ni 1.5000
-	d 1.0000
-	Tr 0.0000
-	Tf 1.0000 1.0000 1.0000 
-	illum 2
-	Ka 0.5880 0.5880 0.5880
-	Kd 0.5880 0.5880 0.5880
-	Ks 0.0000 0.0000 0.0000
-	Ke 0.0000 0.0000 0.0000
+	map_Ka Dielectric_metallic
+	map_Kd Sponza_Column_b_diffuse
+	map_bump Sponza_Column_b_normal
+	bump Sponza_Column_b_normal
+	map_Ns Sponza_Column_b_roughness
 
 newmtl flagpole
 	Ns 10.0000
@@ -222,8 +218,11 @@ newmtl flagpole
 	Kd 0.5880 0.5880 0.5880
 	Ks 0.0000 0.0000 0.0000
 	Ke 0.0000 0.0000 0.0000
-	map_Ka sponza_flagpole_diff
-	map_Kd sponza_flagpole_diff
+	map_Ka Metallic_metallic
+	map_Kd Sponza_FlagPole_diffuse
+	map_bump Sponza_FlagPole_normal
+	bump Sponza_FlagPole_normal
+	map_Ns Sponza_FlagPole_roughness
 
 newmtl fabric_e
 	Ns 10.0000
@@ -236,8 +235,11 @@ newmtl fabric_e
 	Kd 0.5880 0.5880 0.5880
 	Ks 0.0000 0.0000 0.0000
 	Ke 0.0000 0.0000 0.0000
-	map_Ka sponza_fabric_green_diff
-	map_Kd sponza_fabric_green_diff
+	map_Ka Sponza_Fabric_metallic
+	map_Kd Sponza_Fabric_Green_diffuse
+	map_bump Sponza_Fabric_Green_normal
+	bump Sponza_Fabric_Green_normal
+	map_Ns Sponza_Fabric_roughness
 
 newmtl fabric_d
 	Ns 10.0000
@@ -250,8 +252,11 @@ newmtl fabric_d
 	Kd 0.5880 0.5880 0.5880
 	Ks 0.0000 0.0000 0.0000
 	Ke 0.0000 0.0000 0.0000
-	map_Ka sponza_fabric_blue_diff
-	map_Kd sponza_fabric_blue_diff
+	map_Ka Sponza_Fabric_metallic
+	map_Kd Sponza_Fabric_Blue_diffuse
+	map_bump Sponza_Fabric_Blue_normal
+	bump Sponza_Fabric_Blue_normal
+	map_Ns Sponza_Fabric_roughness
 
 newmtl fabric_a
 	Ns 10.0000
@@ -264,8 +269,11 @@ newmtl fabric_a
 	Kd 0.5880 0.5880 0.5880
 	Ks 0.0000 0.0000 0.0000
 	Ke 0.0000 0.0000 0.0000
-	map_Ka sponza_fabric_diff
-	map_Kd sponza_fabric_diff
+	map_Ka Sponza_Fabric_metallic
+	map_Kd Sponza_Fabric_Red_diffuse
+	map_bump Sponza_Fabric_Red_normal
+	bump Sponza_Fabric_Red_normal
+	map_Ns Sponza_Fabric_roughness
 
 newmtl fabric_g
 	Ns 10.0000
@@ -278,8 +286,11 @@ newmtl fabric_g
 	Kd 0.5880 0.5880 0.5880
 	Ks 0.0000 0.0000 0.0000
 	Ke 0.0000 0.0000 0.0000
-	map_Ka sponza_curtain_blue_diff
-	map_Kd sponza_curtain_blue_diff
+	map_Ka Sponza_Curtain_metallic
+	map_Kd Sponza_Curtain_Blue_diffuse
+	map_bump Sponza_Curtain_Blue_normal
+	bump Sponza_Curtain_Blue_normal
+	map_Ns Sponza_Curtain_roughness
 
 newmtl fabric_c
 	Ns 10.0000
@@ -292,8 +303,11 @@ newmtl fabric_c
 	Kd 0.5880 0.5880 0.5880
 	Ks 0.0000 0.0000 0.0000
 	Ke 0.0000 0.0000 0.0000
-	map_Ka sponza_curtain_diff
-	map_Kd sponza_curtain_diff
+	map_Ka Sponza_Curtain_metallic
+	map_Kd Sponza_Curtain_Red_diffuse
+	map_bump Sponza_Curtain_Red_normal
+	bump Sponza_Curtain_Red_normal
+	map_Ns Sponza_Curtain_roughness
 
 newmtl fabric_f
 	Ns 10.0000
@@ -306,8 +320,11 @@ newmtl fabric_f
 	Kd 0.5880 0.5880 0.5880
 	Ks 0.0000 0.0000 0.0000
 	Ke 0.0000 0.0000 0.0000
-	map_Ka sponza_curtain_green_diff
-	map_Kd sponza_curtain_green_diff
+	map_Ka Sponza_Curtain_metallic
+	map_Kd Sponza_Curtain_Green_diffuse
+	map_bump Sponza_Curtain_Green_normal
+	bump Sponza_Curtain_Green_normal
+	map_Ns Sponza_Curtain_roughness
 
 newmtl chain
 	Ns 10.0000
@@ -320,11 +337,12 @@ newmtl chain
 	Kd 0.5880 0.5880 0.5880
 	Ks 0.0000 0.0000 0.0000
 	Ke 0.0000 0.0000 0.0000
-	map_Ka chain_texture
-	map_Kd chain_texture
+	map_Ka ChainTexture_Metallic
+	map_Kd ChainTexture_Albedo
 	map_d chain_texture_mask
-	map_bump chain_texture_ddn
-	bump chain_texture_ddn
+	map_bump ChainTexture_Normal
+	bump ChainTexture_Normal
+	map_Ns ChainTexture_Roughness
 
 newmtl vase_hanging
 	Ns 10.0000
@@ -337,8 +355,11 @@ newmtl vase_hanging
 	Kd 0.5880 0.5880 0.5880
 	Ks 0.0000 0.0000 0.0000
 	Ke 0.0000 0.0000 0.0000
-	map_Ka vase_hanging
-	map_Kd vase_hanging
+	map_Ka Metallic_metallic
+	map_Kd VaseHanging_diffuse
+	map_bump VaseHanging_normal
+	bump VaseHanging_normal
+	map_Ns VaseHanging_roughness
 
 newmtl vase
 	Ns 10.0000
@@ -351,8 +372,11 @@ newmtl vase
 	Kd 0.5880 0.5880 0.5880
 	Ks 0.0000 0.0000 0.0000
 	Ke 0.0000 0.0000 0.0000
-	map_Ka vase_dif
-	map_Kd vase_dif
+	map_Ka Dielectric_metallic
+	map_Kd Vase_diffuse
+	map_bump Vase_normal
+	bump Vase_normal
+	map_Ns Vase_roughness
 
 newmtl Material__25
 	Ns 10.0000
@@ -365,10 +389,11 @@ newmtl Material__25
 	Kd 0.5880 0.5880 0.5880
 	Ks 0.0000 0.0000 0.0000
 	Ke 0.0000 0.0000 0.0000
-	map_Ka lion
-	map_Kd lion
-	map_bump lion_ddn
-	bump lion_ddn
+	map_Ka Dielectric_metallic
+	map_Kd Lion_Albedo
+	map_bump Lion_Normal
+	bump Lion_Normal
+	map_Ns Lion_Roughness
 
 newmtl roof
 	Ns 10.0000
@@ -381,5 +406,8 @@ newmtl roof
 	Kd 0.5880 0.5880 0.5880
 	Ks 0.0000 0.0000 0.0000
 	Ke 0.0000 0.0000 0.0000
-	map_Ka sponza_roof_diff
-	map_Kd sponza_roof_diff
+	map_Ka Dielectric_metallic
+	map_Kd Sponza_Roof_diffuse
+	map_bump Sponza_Roof_normal
+	bump Sponza_Roof_normal
+	map_Ns Sponza_Roof_roughness
