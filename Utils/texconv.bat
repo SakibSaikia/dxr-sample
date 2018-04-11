@@ -10,14 +10,27 @@ set src_texture_path=%2
 set dest_texture_path=%2\Compressed
 set ext=%3
 
+REM --- BaseColor ---
 for /f "tokens=2" %%a in ('FINDSTR /I "map_Kd" %mtl_file%') do (
   texconv.exe -f BC3_UNORM_SRGB -y -o "%dest_texture_path%" "%src_texture_path%\%%a.%ext%"
 )
 
+REM --- Roughness ---
+for /f "tokens=2" %%a in ('FINDSTR /I "map_Ns" %mtl_file%') do (
+  texconv.exe -f BC4_UNORM -y -o "%dest_texture_path%" "%src_texture_path%\%%a.%ext%"
+)
+
+REM --- Metallic ---
+for /f "tokens=2" %%a in ('FINDSTR /I "map_Ka" %mtl_file%') do (
+  texconv.exe -f BC4_UNORM -y -o "%dest_texture_path%" "%src_texture_path%\%%a.%ext%"
+)
+
+REM --- Normalmap ---
 for /f "tokens=2" %%a in ('FINDSTR /I "map_bump" %mtl_file%') do (
   texconv.exe -f BC7_UNORM -y -o "%dest_texture_path%" "%src_texture_path%\%%a.%ext%"
 )
 
+REM --- OpacityMask ---
 for /f "tokens=2" %%a in ('FINDSTR /I "map_d" %mtl_file%') do (
   texconv.exe -f BC4_UNORM -y -o "%dest_texture_path%" "%src_texture_path%\%%a.%ext%"
 )

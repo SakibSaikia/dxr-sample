@@ -2,10 +2,8 @@
 
 enum class MaterialType
 {
-	DiffuseOnlyOpaque,
-	DiffuseOnlyMasked,
-	NormalMappedOpaque,
-	NormalMappedMasked
+	Default,
+	Masked
 };
 
 struct MaterialPipelineDescription
@@ -18,11 +16,9 @@ struct MaterialPipelineDescription
 };
 
 const MaterialPipelineDescription k_supportedMaterialPipelineDescriptions[] = {
-	/*		type					descId			root signature								vertex shader						pixel shader			*/	
-	{ MaterialType::DiffuseOnlyOpaque,	2, "mtl_diffuse_only_opaque.rootsig.cso",		"mtl_diffuse_only_opaque.vs.cso",		"mtl_diffuse_only_opaque.ps.cso"	},
-	{ MaterialType::DiffuseOnlyMasked,	2, "mtl_diffuse_only_masked.rootsig.cso",		"mtl_diffuse_only_masked.vs.cso",		"mtl_diffuse_only_masked.ps.cso"	},
-	{ MaterialType::NormalMappedOpaque,	2, "mtl_normal_mapped_opaque.rootsig.cso",		"mtl_normal_mapped_opaque.vs.cso",		"mtl_normal_mapped_opaque.ps.cso"	},
-	{ MaterialType::NormalMappedMasked,	2, "mtl_normal_mapped_masked.rootsig.cso",		"mtl_normal_mapped_masked.vs.cso",		"mtl_normal_mapped_masked.ps.cso"	},
+	/*		type			descId			root signature				vertex shader			pixel shader		*/	
+	{ MaterialType::Default,	2,		"mtl_default.rootsig.cso",	"mtl_default.vs.cso",	"mtl_default.ps.cso"	},
+	{ MaterialType::Masked,		2,		"mtl_masked.rootsig.cso",	"mtl_masked.vs.cso",	"mtl_masked.ps.cso"		},
 };
 
 class MaterialPipeline
