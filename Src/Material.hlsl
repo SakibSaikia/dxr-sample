@@ -66,6 +66,8 @@ Texture2D texNormalmap : register(t3);
     Texture2D texOpacityMask : register(t4);
 #endif
 
+static const float3 F_0_dielectric = float3(0.04, 0.04, 0.04);
+
 [RootSignature(args)]
 float4 ps_main(VsToPs p) : SV_TARGET
 {
@@ -74,12 +76,32 @@ float4 ps_main(VsToPs p) : SV_TARGET
 	clip(mask - 0.5f);
 #endif
 
+    float3 baseColor = texBaseColor.Sample(anisoSampler, p.uv).rgb;
+
     float3 normalMap = texNormalmap.Sample(anisoSampler, p.uv).rgb;
     normalMap = 2.f * normalMap - 1.f;
     float3 normal = mul(normalMap, float3x3(p.tangent, p.bitangent, p.normal));
     normal = normalize(mul(normal, (float3x3) viewMatrix));
 
     float3 light = normalize(mul(float3(1.f, 1.f, 0.f), (float3x3) viewMatrix));
-    float4 matColor = texBaseColor.Sample(anisoSampler, p.uv);
-	return matColor * (max(dot(normal, light), 0.f) + 0.1f);
+
+    float3 halfVector = normalize(light + float3(0, 0, 1));
+
+    float metallic = texMetallic.Sample(anisoSampler, p.uv).r;
+
+    float roughness = texRoughness.Sample(anisoSampler, p.uv).r;
+
+    float3 F_0 = lerp(baseColor.rgb, F_0_dielectric, metallic);
+
+    float nDotL = max(dot(normal, light), 0.f);
+
+    float nDotH = max(dot(normal, halfVector), 0.f);
+
+    float3 reflectance = F_0 + (1.f - F_0) * pow((1 - nDotL), 5.f);
+
+    float3 diffuseLight = (1.f - metallic) * nDotL * baseColor.rgb;
+
+    float3 specularLight = reflectance * ((roughness + 8.f) / 8.f) * pow(nDotH, roughness);
+
+    return float4(diffuseLight + specularLight, 1.f);
 }
