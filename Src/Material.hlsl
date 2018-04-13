@@ -68,6 +68,18 @@ Texture2D texNormalmap : register(t3);
 
 static const float3 F_0_dielectric = float3(0.04, 0.04, 0.04);
 
+// Tonemap operator
+// See : https://knarkowicz.wordpress.com/2016/01/06/aces-filmic-tone-mapping-curve/
+float3 tonemapACES(float3 x)
+{
+    float a = 2.51;
+    float b = 0.03;
+    float c = 2.43;
+    float d = 0.59;
+    float e = 0.14;
+    return saturate((x * (a * x + b)) / (x * (c * x + d) + e));
+}
+
 [RootSignature(args)]
 float4 ps_main(VsToPs p) : SV_TARGET
 {
@@ -99,9 +111,13 @@ float4 ps_main(VsToPs p) : SV_TARGET
 
     float3 reflectance = F_0 + (1.f - F_0) * pow((1 - nDotL), 5.f);
 
-    float3 diffuseLight = (1.f - metallic) * nDotL * baseColor.rgb;
+    // diffuse
+    float3 outColor = (1.f - metallic) * nDotL * baseColor.rgb;
 
-    float3 specularLight = reflectance * ((roughness + 8.f) / 8.f) * pow(nDotH, roughness);
+    // specular
+    outColor += nDotL * reflectance * 0.125 * (roughness + 8.f) * pow(nDotH, roughness);
 
-    return float4(diffuseLight + specularLight, 1.f);
+    outColor = tonemapACES(outColor);
+
+    return float4(outColor, 1.f);
 }
