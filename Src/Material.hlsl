@@ -117,6 +117,9 @@ float4 ps_main(VsToPs p) : SV_TARGET
     // specular
     outColor += nDotL * reflectance * 0.125 * (roughness + 8.f) * pow(lDotH, roughness);
 
+    // ambient
+    outColor += float3(.1f, .1f, .1f) * baseColor.rgb;
+
     // tonemap
     outColor = tonemapACES(outColor);
 
