@@ -83,25 +83,24 @@ void App::InitCommandObjects()
 
 void App::InitSwapChain(HWND windowHandle)
 {
-	DXGI_SWAP_CHAIN_DESC scDesc = {};
-	scDesc.BufferDesc.Width = k_screenWidth;
-	scDesc.BufferDesc.Height = k_screenHeight;
-	scDesc.BufferDesc.RefreshRate.Numerator = 60;
-	scDesc.BufferDesc.RefreshRate.Denominator = 1;
-	scDesc.BufferDesc.Format = k_backBufferFormat;
-	scDesc.BufferDesc.ScanlineOrdering = DXGI_MODE_SCANLINE_ORDER_UNSPECIFIED;
-	scDesc.BufferDesc.Scaling = DXGI_MODE_SCALING_UNSPECIFIED;
-	scDesc.SampleDesc.Count = 1; // No MSAA
-	scDesc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
-	scDesc.BufferCount = k_gfxBufferCount;
-	scDesc.OutputWindow = windowHandle;
-	scDesc.Windowed = TRUE;
-	scDesc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
-	scDesc.Flags = DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH;
+	DXGI_SWAP_CHAIN_DESC1 swapChainDesc = {};
+	swapChainDesc.Width = k_screenWidth;
+	swapChainDesc.Height = k_screenHeight;
+	swapChainDesc.Format = k_backBufferFormat;
+	swapChainDesc.Scaling = DXGI_SCALING_NONE;
+	swapChainDesc.SampleDesc.Quality = 0;
+	swapChainDesc.SampleDesc.Count = 1;
+	swapChainDesc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
+	swapChainDesc.BufferCount = k_gfxBufferCount;
+	swapChainDesc.Flags = DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH;
+	swapChainDesc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_SEQUENTIAL;
 
-	CHECK(m_dxgiFactory->CreateSwapChain(
+	CHECK(m_dxgiFactory->CreateSwapChainForHwnd(
 		m_cmdQueue.Get(),
-		&scDesc,
+		windowHandle,
+		&swapChainDesc,
+		nullptr, 
+		nullptr,
 		m_swapChain.GetAddressOf()
 	));
 
@@ -378,7 +377,7 @@ void App::Render()
 	// Present
 	{
 		PIXScopedEvent(m_cmdQueue.Get(), 0, L"present");
-		m_swapChain->Present(1, 0);
+		m_swapChain->Present(0, 0);
 	}
 
 	// Swap buffers
