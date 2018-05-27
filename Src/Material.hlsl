@@ -107,7 +107,7 @@ float4 ps_main(VsToPs p) : SV_TARGET
 
     float nDotL = max(dot(normal, light), 0.f);
 
-    float nDotH = max(dot(normal, halfVector), 0.f);
+    float lDotH = max(dot(light, halfVector), 0.f);
 
     float3 reflectance = F_0 + (1.f - F_0) * pow((1 - nDotL), 5.f);
 
@@ -115,9 +115,13 @@ float4 ps_main(VsToPs p) : SV_TARGET
     float3 outColor = (1.f - metallic) * nDotL * baseColor.rgb;
 
     // specular
-    outColor += nDotL * reflectance * 0.125 * (roughness + 8.f) * pow(nDotH, roughness);
+    outColor += nDotL * reflectance * 0.125 * (roughness + 8.f) * pow(lDotH, roughness);
 
+    // tonemap
     outColor = tonemapACES(outColor);
+
+    // gamma correction
+    //outColor = pow(outColor, 1/2.2f);
 
     return float4(outColor, 1.f);
 }
