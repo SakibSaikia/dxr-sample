@@ -80,5 +80,6 @@
     <None Include="Material.hlsl">
       <Filter>Shaders</Filter>
     </None>
+    <None Include="..\.gitignore" />
   </ItemGroup>
 </Project>

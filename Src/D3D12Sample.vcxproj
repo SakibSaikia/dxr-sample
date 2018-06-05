@@ -169,6 +169,7 @@
     <ClInclude Include="View.h" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="..\.gitignore" />
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
