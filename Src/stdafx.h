@@ -31,5 +31,6 @@
 #include <assimp\postprocess.h>
 #include <DDSTextureLoader.h>
 #include <DirectXMath.h>
+#include <DirectXCollision.h>
 #include <pix3.h>
 #include <ResourceUploadBatch.h>

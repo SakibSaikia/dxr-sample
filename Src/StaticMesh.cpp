@@ -13,6 +13,11 @@ D3D12_INPUT_ELEMENT_DESC StaticMesh::VertexType::InputLayout::s_desc[StaticMesh:
 
 void StaticMesh::Init(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList, std::vector<StaticMesh::VertexType> vertexData, std::vector<StaticMesh::IndexType> indexData, const uint32_t matIndex)
 {
+	// bounding box
+	const auto data = reinterpret_cast<DirectX::XMFLOAT3*>(vertexData.data());
+	DirectX::BoundingBox::CreateFromPoints(m_bounds, vertexData.size(), data, sizeof(StaticMesh::VertexType));
+
+
 	Microsoft::WRL::ComPtr<ID3D12Resource> vertexBufferUpload;
 	Microsoft::WRL::ComPtr<ID3D12Resource> indexBufferUpload;
 

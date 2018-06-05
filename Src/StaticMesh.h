@@ -37,6 +37,7 @@ private:
 	D3D12_INDEX_BUFFER_VIEW m_indexBufferView;
 	uint32_t m_materialIndex;
 	uint32_t m_numIndices;
+	DirectX::BoundingBox m_bounds;
 };
 
 class StaticMeshEntity
