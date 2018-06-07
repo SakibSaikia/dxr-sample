@@ -51,7 +51,7 @@ void StaticMesh::Init(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList, 
 	// default index buffer
 	D3D12_RESOURCE_DESC ibDesc = {};
 	ibDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
-	ibDesc.Width = indexData.size() * sizeof(StaticMesh::IndexType);
+	ibDesc.Width = indexData.size() * sizeof(IndexType);
 	ibDesc.Height = 1;
 	ibDesc.DepthOrArraySize = 1;
 	ibDesc.MipLevels = 1;
@@ -169,7 +169,7 @@ void StaticMesh::Init(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList, 
 	// IB descriptor
 	m_indexBufferView.BufferLocation = m_indexBuffer->GetGPUVirtualAddress();
 	m_indexBufferView.Format = DXGI_FORMAT_R16_UINT;
-	m_indexBufferView.SizeInBytes = indexData.size() * sizeof(StaticMesh::IndexType);
+	m_indexBufferView.SizeInBytes = indexData.size() * sizeof(IndexType);
 
 	// Flush here so that the upload buffers do not go out of scope
 	// TODO(sakib): do not create and destroy upload buffers for each mesh. 

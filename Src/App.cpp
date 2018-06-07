@@ -353,7 +353,6 @@ void App::Render()
 		m_gfxCmdList->OMSetRenderTargets(1, &rtvHandle, FALSE, &dsvHandle);
 
 		// Render scene
-		m_gfxCmdList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 		m_scene.Render(m_gfxCmdList.Get(), m_gfxBufferIndex, m_view);
 
 		// Transition back buffer from render target to present

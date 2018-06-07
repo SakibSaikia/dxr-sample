@@ -147,6 +147,7 @@
   <ItemGroup>
     <ClCompile Include="App.cpp" />
     <ClCompile Include="Camera.cpp" />
+    <ClCompile Include="DebugDraw.cpp" />
     <ClCompile Include="Launch.cpp" />
     <ClCompile Include="Material.cpp" />
     <ClCompile Include="Scene.cpp" />
@@ -161,6 +162,7 @@
   <ItemGroup>
     <ClInclude Include="App.h" />
     <ClInclude Include="Camera.h" />
+    <ClInclude Include="DebugDraw.h" />
     <ClInclude Include="Material.h" />
     <ClInclude Include="Scene.h" />
     <ClInclude Include="StaticMesh.h" />

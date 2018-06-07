@@ -173,7 +173,7 @@ void Scene::LoadEntities(const aiNode* node)
 	}
 }
 
-void Scene::InitBounds()
+void Scene::InitBounds(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList)
 {
 	// world space mesh bounds
 	m_meshWorldBounds.resize(m_meshEntities.size());
@@ -194,6 +194,11 @@ void Scene::InitBounds()
 	{
 		DirectX::BoundingBox::CreateMerged(m_sceneBounds, m_sceneBounds, meshWorldBounds);
 	}
+
+	// debug rendering
+	auto debugMesh = std::make_unique<DebugLineMesh>();
+	debugMesh->Init(device, cmdList, m_meshWorldBounds, DirectX::XMFLOAT3{ 1.0, 0.0, 0.0 });
+	m_debugMeshes.push_back(std::move(debugMesh));
 }
 
 void Scene::InitResources(
@@ -223,7 +228,7 @@ void Scene::InitResources(
 		LoadMeshes(scene, device, cmdList);
 		LoadMaterials(scene, device, cmdQueue, srvHeap, srvStartOffset, srvDescriptorSize);
 		LoadEntities(scene->mRootNode);
-		InitBounds();
+		InitBounds(device, cmdList);
 	}
 
 	// Object Constant Buffer
@@ -276,31 +281,46 @@ void Scene::Render(ID3D12GraphicsCommandList* cmdList, uint32_t bufferIndex, con
 {
 	PIXScopedEvent(cmdList, 0, L"render_scene");
 
-	int entityId = 0;
-	for (auto& meshEntity : m_meshEntities)
 	{
-		StaticMesh* sm = m_meshes.at(meshEntity.GetMeshIndex()).get();
-		Material* mat = m_materials.at(sm->GetMaterialIndex()).get();
+		PIXScopedEvent(cmdList, 0, L"scene_geo");
+		cmdList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
-		if (mat->IsValid())
+		int entityId = 0;
+		for (const auto& meshEntity : m_meshEntities)
 		{
-			// Root signature set by the material
-			mat->BindPipeline(cmdList);
+			StaticMesh* sm = m_meshes.at(meshEntity.GetMeshIndex()).get();
+			Material* mat = m_materials.at(sm->GetMaterialIndex()).get();
 
-			cmdList->SetGraphicsRootConstantBufferView(0, view.GetConstantBuffer(bufferIndex)->GetGPUVirtualAddress());
+			if (mat->IsValid())
+			{
+				// Root signature set by the material
+				mat->BindPipeline(cmdList);
 
-			cmdList->SetGraphicsRootConstantBufferView(
-				StaticMeshEntity::GetObjectConstantsRootParamIndex(),
-				m_objectConstantBuffers.at(bufferIndex)->GetGPUVirtualAddress() +
-				entityId * sizeof(ObjectConstants)
-			);
+				cmdList->SetGraphicsRootConstantBufferView(0, view.GetConstantBuffer(bufferIndex)->GetGPUVirtualAddress());
 
-			mat->BindConstants(cmdList);
+				cmdList->SetGraphicsRootConstantBufferView(
+					StaticMeshEntity::GetObjectConstantsRootParamIndex(),
+					m_objectConstantBuffers.at(bufferIndex)->GetGPUVirtualAddress() +
+					entityId * sizeof(ObjectConstants)
+				);
 
-			sm->Render(cmdList);
+				mat->BindConstants(cmdList);
+
+				sm->Render(cmdList);
+			}
+
+			++entityId;
 		}
+	}
 
-		++entityId;
+	{
+		PIXScopedEvent(cmdList, 0, L"debug_draws");
+		cmdList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_LINELIST);
+
+		for (const auto& debugMesh : m_debugMeshes)
+		{
+			//debugMesh->Render();
+		}
 	}
 }
 
