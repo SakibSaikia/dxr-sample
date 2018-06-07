@@ -25,14 +25,18 @@ private:
 	void LoadMeshes(const aiScene* loader, ID3D12Device* device, ID3D12GraphicsCommandList* cmdList);
 	void LoadMaterials(const aiScene* loader, ID3D12Device* device, ID3D12CommandQueue* cmdQueue, ID3D12DescriptorHeap* srvHeap, const size_t srvStartOffset, const size_t srvDescriptorSize);
 	void LoadEntities(const aiNode* node);
+	void InitBounds();
 	D3D12_GPU_DESCRIPTOR_HANDLE LoadTexture(const std::string& textureName, ID3D12Device* device, ID3D12DescriptorHeap* srvHeap, const size_t srvOffset, const size_t srvDescriptorSize, DirectX::ResourceUploadBatch& resourceUpload);
 
 private:
 	std::vector<std::unique_ptr<StaticMesh>> m_meshes;
-	std::vector<std::unique_ptr<Material>> m_materials;
 	std::vector<StaticMeshEntity> m_meshEntities;
+	std::vector<DirectX::BoundingBox> m_meshWorldBounds;
+	std::vector<std::unique_ptr<Material>> m_materials;
 	std::vector<std::unique_ptr<Texture>> m_textures;
 
 	std::array<Microsoft::WRL::ComPtr<ID3D12Resource>, k_gfxBufferCount> m_objectConstantBuffers;
 	std::array<ObjectConstants*, k_gfxBufferCount> m_objectConstantBufferPtr;
+
+	DirectX::BoundingBox m_sceneBounds;
 };

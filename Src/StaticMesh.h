@@ -28,7 +28,9 @@ public:
 	void Init(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList, std::vector<StaticMesh::VertexType> vertexData, std::vector<StaticMesh::IndexType> indexData, uint32_t matIndex);
 	void Render(ID3D12GraphicsCommandList* cmdList);
 
-	const uint32_t GetMaterialIndex() const;
+	uint32_t GetMaterialIndex() const;
+	const DirectX::BoundingBox& GetBounds() const;
+
 
 private:
 	Microsoft::WRL::ComPtr<ID3D12Resource> m_vertexBuffer;

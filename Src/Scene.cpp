@@ -173,6 +173,29 @@ void Scene::LoadEntities(const aiNode* node)
 	}
 }
 
+void Scene::InitBounds()
+{
+	// world space mesh bounds
+	m_meshWorldBounds.resize(m_meshEntities.size());
+
+	int i = 0;
+	for (const auto& meshEntity : m_meshEntities)
+	{
+		DirectX::XMMATRIX worldTransform = DirectX::XMLoadFloat4x4(&meshEntity.GetLocalToWorldMatrix());
+
+		const DirectX::BoundingBox& objectBounds = m_meshes.at(meshEntity.GetMeshIndex())->GetBounds();
+		DirectX::BoundingBox& outWorldBounds = m_meshWorldBounds.at(i++);
+		objectBounds.Transform(outWorldBounds, worldTransform);
+	}
+
+	// world space scene bounds
+	m_sceneBounds = m_meshWorldBounds.at(0);
+	for (const auto& meshWorldBounds : m_meshWorldBounds)
+	{
+		DirectX::BoundingBox::CreateMerged(m_sceneBounds, m_sceneBounds, meshWorldBounds);
+	}
+}
+
 void Scene::InitResources(
 	ID3D12Device* device, 
 	ID3D12CommandQueue* cmdQueue, 
@@ -200,6 +223,7 @@ void Scene::InitResources(
 		LoadMeshes(scene, device, cmdList);
 		LoadMaterials(scene, device, cmdQueue, srvHeap, srvStartOffset, srvDescriptorSize);
 		LoadEntities(scene->mRootNode);
+		InitBounds();
 	}
 
 	// Object Constant Buffer

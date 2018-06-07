@@ -185,9 +185,14 @@ void StaticMesh::Render(ID3D12GraphicsCommandList* cmdList)
 	cmdList->DrawIndexedInstanced(m_numIndices, 1, 0, 0, 0);
 }
 
-const uint32_t StaticMesh::GetMaterialIndex() const
+uint32_t StaticMesh::GetMaterialIndex() const
 {
 	return m_materialIndex;
+}
+
+const DirectX::BoundingBox& StaticMesh::GetBounds() const
+{
+	return m_bounds;
 }
 
 StaticMeshEntity::StaticMeshEntity(const uint64_t meshIndex, const DirectX::XMFLOAT4X4& localToWorld) :
