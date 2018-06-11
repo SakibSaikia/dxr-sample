@@ -16,9 +16,9 @@ class Scene
 	};
 
 public:
-	void InitResources(ID3D12Device* device, ID3D12CommandQueue* cmdQueue, ID3D12GraphicsCommandList* cmdList, ID3D12DescriptorHeap* srvHeap, size_t srvStartOffset, size_t srvDescriptorSize, const D3D12_GRAPHICS_PIPELINE_STATE_DESC& psoDesc);
+	void InitResources(ID3D12Device* device, ID3D12CommandQueue* cmdQueue, ID3D12GraphicsCommandList* cmdList, ID3D12DescriptorHeap* srvHeap, size_t srvStartOffset, size_t srvDescriptorSize);
 	void Update(uint32_t bufferIndex);
-	void Render(ID3D12GraphicsCommandList* cmdList, uint32_t bufferIndex, const View& view);
+	void Render(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList, uint32_t bufferIndex, const View& view);
 
 	const size_t GetNumTextures() const;
 
@@ -35,6 +35,8 @@ private:
 	std::vector<DirectX::BoundingBox> m_meshWorldBounds;
 	std::vector<std::unique_ptr<Material>> m_materials;
 	std::vector<std::unique_ptr<Texture>> m_textures;
+
+	std::unique_ptr<Material> m_debugMaterial;
 	std::vector<std::unique_ptr<DebugLineMesh>> m_debugMeshes;
 
 	std::array<Microsoft::WRL::ComPtr<ID3D12Resource>, k_gfxBufferCount> m_objectConstantBuffers;

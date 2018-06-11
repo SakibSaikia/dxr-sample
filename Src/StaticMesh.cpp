@@ -2,20 +2,11 @@
 #include "StaticMesh.h"
 #include "App.h"
 
-D3D12_INPUT_ELEMENT_DESC StaticMesh::VertexType::InputLayout::s_desc[StaticMesh::VertexType::InputLayout::s_num] =
-{
-	{ "POSITION",	0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0,	D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-	{ "NORMAL",		0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 12,	D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-	{ "TANGENT",	0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 24,	D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-	{ "BITANGENT",	0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 36,	D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-	{ "TEXCOORD",	0, DXGI_FORMAT_R32G32_FLOAT,	0, 48,	D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 }
-};
-
-void StaticMesh::Init(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList, std::vector<StaticMesh::VertexType> vertexData, std::vector<StaticMesh::IndexType> indexData, const uint32_t matIndex)
+void StaticMesh::Init(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList, std::vector<VertexType> vertexData, std::vector<IndexType> indexData, const uint32_t matIndex)
 {
 	// bounding box
 	const auto data = reinterpret_cast<DirectX::XMFLOAT3*>(vertexData.data());
-	DirectX::BoundingBox::CreateFromPoints(m_bounds, vertexData.size(), data, sizeof(StaticMesh::VertexType));
+	DirectX::BoundingBox::CreateFromPoints(m_bounds, vertexData.size(), data, sizeof(VertexType));
 
 
 	Microsoft::WRL::ComPtr<ID3D12Resource> vertexBufferUpload;
@@ -188,6 +179,11 @@ void StaticMesh::Render(ID3D12GraphicsCommandList* cmdList)
 uint32_t StaticMesh::GetMaterialIndex() const
 {
 	return m_materialIndex;
+}
+
+VertexFormat::Type StaticMesh::GetVertexFormat() const
+{
+	return VertexFormat::Type::P3N3T3B3U2;
 }
 
 const DirectX::BoundingBox& StaticMesh::GetBounds() const

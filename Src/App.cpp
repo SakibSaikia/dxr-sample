@@ -1,8 +1,6 @@
 #include "stdafx.h"
 #include "App.h"
 
-std::unordered_map<MaterialType, std::unique_ptr<MaterialPipeline>> k_materialPipelines;
-
 App* AppInstance()
 {
 	static App instance;
@@ -196,8 +194,7 @@ void App::InitScene()
 		m_gfxCmdList.Get(), 
 		m_cbvSrvUavHeap.Get(),
 		k_cbvCount,
-		m_cbvSrvUavDescriptorSize,
-		m_basePassPSODesc
+		m_cbvSrvUavDescriptorSize
 	);
 }
 
@@ -206,63 +203,8 @@ void App::InitView()
 	m_view.Init(m_d3dDevice.Get(), k_gfxBufferCount, k_screenWidth, k_screenHeight);
 }
 
-void App::InitMaterialPipelines()
-{
-	for (const auto& pipelineDesc : k_supportedMaterialPipelineDescriptions)
-	{
-		auto newMaterialPipeline = std::make_unique<MaterialPipeline>(pipelineDesc, m_d3dDevice.Get(), m_basePassPSODesc);
-		k_materialPipelines.emplace(pipelineDesc.type, std::move(newMaterialPipeline));
-	}
-}
-
 void App::InitStateObjects()
 {
-	// PSO
-	{
-		// input layout
-		m_basePassPSODesc.InputLayout.pInputElementDescs = StaticMesh::VertexType::InputLayout::s_desc;
-		m_basePassPSODesc.InputLayout.NumElements = StaticMesh::VertexType::InputLayout::s_num;
-
-		// rasterizer state
-		m_basePassPSODesc.RasterizerState.FillMode = D3D12_FILL_MODE_SOLID;
-		m_basePassPSODesc.RasterizerState.CullMode = D3D12_CULL_MODE_BACK;
-		m_basePassPSODesc.RasterizerState.FrontCounterClockwise = FALSE;
-		m_basePassPSODesc.RasterizerState.DepthBias = D3D12_DEFAULT_DEPTH_BIAS;
-		m_basePassPSODesc.RasterizerState.DepthBiasClamp = D3D12_DEFAULT_DEPTH_BIAS_CLAMP;
-		m_basePassPSODesc.RasterizerState.SlopeScaledDepthBias = D3D12_DEFAULT_SLOPE_SCALED_DEPTH_BIAS;
-		m_basePassPSODesc.RasterizerState.DepthClipEnable = TRUE;
-		m_basePassPSODesc.RasterizerState.MultisampleEnable = FALSE;
-		m_basePassPSODesc.RasterizerState.AntialiasedLineEnable = FALSE;
-		m_basePassPSODesc.RasterizerState.ForcedSampleCount = 0;
-		m_basePassPSODesc.RasterizerState.ConservativeRaster = D3D12_CONSERVATIVE_RASTERIZATION_MODE_OFF;
-
-		// blend state
-		m_basePassPSODesc.BlendState.AlphaToCoverageEnable = FALSE;
-		m_basePassPSODesc.BlendState.IndependentBlendEnable = FALSE;
-		for (auto& rt : m_basePassPSODesc.BlendState.RenderTarget)
-		{
-			rt.BlendEnable = FALSE;
-			rt.LogicOpEnable = FALSE;
-			rt.RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL;
-		}
-
-		// depth stencil state
-		m_basePassPSODesc.DepthStencilState.DepthEnable = TRUE;
-		m_basePassPSODesc.DepthStencilState.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ALL;
-		m_basePassPSODesc.DepthStencilState.DepthFunc = D3D12_COMPARISON_FUNC_LESS;
-		m_basePassPSODesc.DepthStencilState.StencilEnable = FALSE;
-
-		// RTV
-		m_basePassPSODesc.NumRenderTargets = 1;
-		m_basePassPSODesc.RTVFormats[0] = k_backBufferRTVFormat;
-		m_basePassPSODesc.DSVFormat = k_depthStencilFormatDsv;
-
-		// misc
-		m_basePassPSODesc.SampleMask = UINT_MAX;
-		m_basePassPSODesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
-		m_basePassPSODesc.SampleDesc.Count = 1;
-	}
-
 	// Viewport
 	{
 		m_viewport.TopLeftX = 0.f;
@@ -285,7 +227,6 @@ void App::Init(HWND windowHandle)
 	InitCommandObjects();
 	InitSwapChain(windowHandle);
 	InitStateObjects();
-	InitMaterialPipelines();
 	InitDescriptors();
 	InitScene();
 	InitView();
@@ -353,7 +294,7 @@ void App::Render()
 		m_gfxCmdList->OMSetRenderTargets(1, &rtvHandle, FALSE, &dsvHandle);
 
 		// Render scene
-		m_scene.Render(m_gfxCmdList.Get(), m_gfxBufferIndex, m_view);
+		m_scene.Render(m_d3dDevice.Get(), m_gfxCmdList.Get(), m_gfxBufferIndex, m_view);
 
 		// Transition back buffer from render target to present
 		barrierDesc = {};

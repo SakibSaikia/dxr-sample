@@ -1,24 +1,11 @@
 #pragma once
 
+#include "Common.h"
+
 class DebugLineMesh
 {
 public:
-	struct VertexType
-	{
-		DirectX::XMFLOAT3 position;
-		DirectX::XMFLOAT3 color;
-
-		VertexType() = default;
-		VertexType(DirectX::XMFLOAT3 inPos, DirectX::XMFLOAT3 inColor) :
-			position(inPos), color(inColor) {}
-
-		struct InputLayout
-		{
-			static const uint32_t s_num = 2;
-			static D3D12_INPUT_ELEMENT_DESC s_desc[s_num];
-		};
-	};
-
+	using VertexType = VertexFormat::P3C3;
 	using IndexType = uint16_t;
 
 	DebugLineMesh() = default;

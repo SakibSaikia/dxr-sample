@@ -4,8 +4,8 @@
 
 void DebugLineMesh::Init(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList, const std::vector<DirectX::BoundingBox>& boundingBoxes, const DirectX::XMFLOAT3 color)
 {
-	std::vector<DebugLineMesh::VertexType> vertexData;
-	std::vector<DebugLineMesh::IndexType> indexData;
+	std::vector<VertexType> vertexData;
+	std::vector<IndexType> indexData;
 
 
 	std::vector<DirectX::XMFLOAT3> boxCorners;

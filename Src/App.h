@@ -1,17 +1,7 @@
 #pragma once
+#include "Common.h"
 #include "View.h"
 #include "Scene.h"
-
-constexpr float k_Pi = 3.1415926535f;
-
-constexpr size_t k_screenWidth = 1280;
-constexpr size_t k_screenHeight = 720;
-constexpr size_t k_cbvCount = 16;
-constexpr size_t k_srvCount = 128;
-constexpr DXGI_FORMAT k_backBufferFormat = DXGI_FORMAT_R10G10B10A2_UNORM;
-constexpr DXGI_FORMAT k_backBufferRTVFormat = DXGI_FORMAT_R10G10B10A2_UNORM;
-constexpr DXGI_FORMAT k_depthStencilFormatRaw = DXGI_FORMAT_R24G8_TYPELESS;
-constexpr DXGI_FORMAT k_depthStencilFormatDsv = DXGI_FORMAT_D24_UNORM_S8_UINT;
 
 enum class ConstantBufferId : uint32_t
 {
@@ -46,7 +36,6 @@ private:
 	void InitView();
 	void InitScene();
 	void InitStateObjects();
-	void InitMaterialPipelines();
 
 	D3D12_CPU_DESCRIPTOR_HANDLE GetCurrentBackBufferView() const;
 	D3D12_CPU_DESCRIPTOR_HANDLE GetCurrentDepthStencilView() const;
@@ -96,7 +85,7 @@ private:
 	// State Objects
 	D3D12_VIEWPORT m_viewport;
 	D3D12_RECT m_scissorRect;
-	D3D12_GRAPHICS_PIPELINE_STATE_DESC m_basePassPSODesc;
+	std::vector<D3D12_GRAPHICS_PIPELINE_STATE_DESC> m_renderPassPSOs;
 
 	// Mouse
 	POINT m_currentMousePos = { 0, 0 };

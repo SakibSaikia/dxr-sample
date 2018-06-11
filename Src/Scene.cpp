@@ -111,32 +111,28 @@ void Scene::LoadMaterials(
 			bHasNormalmapTexture == aiReturn_SUCCESS && 
 			bHasOpacityMaskTexture == aiReturn_SUCCESS)
 		{
-			const MaterialPipeline* pipeline = k_materialPipelines.at(MaterialType::Masked).get();
-
 			const auto headDescriptor = LoadTexture(baseColorTextureNameStr.C_Str(), device, srvHeap, srvStartOffset + descriptorIdx++, srvDescriptorSize, resourceUpload);
 			LoadTexture(roughnessTextureNameStr.C_Str(), device, srvHeap, srvStartOffset + descriptorIdx++, srvDescriptorSize, resourceUpload);
 			LoadTexture(metallicTextureNameStr.C_Str(), device, srvHeap, srvStartOffset + descriptorIdx++, srvDescriptorSize, resourceUpload);
 			LoadTexture(normalmapTextureNameStr.C_Str(), device, srvHeap, srvStartOffset + descriptorIdx++, srvDescriptorSize, resourceUpload);
 			LoadTexture(opacityMaskTextureNameStr.C_Str(), device, srvHeap, srvStartOffset + descriptorIdx++, srvDescriptorSize, resourceUpload);
-			m_materials.push_back(std::make_unique<Material>(pipeline, std::string(materialName.C_Str()), headDescriptor));
+			m_materials.push_back(std::make_unique<DefaultMaskedMaterial>(std::string(materialName.C_Str()), headDescriptor));
 		}
 		else if (bHasBaseColorTexture == aiReturn_SUCCESS &&
 				bHasRoughnessTexture == aiReturn_SUCCESS &&
 				bHasMetallicTexture == aiReturn_SUCCESS &&
 				bHasNormalmapTexture == aiReturn_SUCCESS)
 		{
-			const MaterialPipeline* pipeline = k_materialPipelines.at(MaterialType::Default).get();
-
 			const auto headDescriptor = LoadTexture(baseColorTextureNameStr.C_Str(), device, srvHeap, srvStartOffset + descriptorIdx++, srvDescriptorSize, resourceUpload);
 			LoadTexture(roughnessTextureNameStr.C_Str(), device, srvHeap, srvStartOffset + descriptorIdx++, srvDescriptorSize, resourceUpload);
 			LoadTexture(metallicTextureNameStr.C_Str(), device, srvHeap, srvStartOffset + descriptorIdx++, srvDescriptorSize, resourceUpload);
 			LoadTexture(normalmapTextureNameStr.C_Str(), device, srvHeap, srvStartOffset + descriptorIdx++, srvDescriptorSize, resourceUpload);
-			m_materials.push_back(std::make_unique<Material>(pipeline, std::string(materialName.C_Str()), headDescriptor));
+			m_materials.push_back(std::make_unique<DefaultOpaqueMaterial>(std::string(materialName.C_Str()), headDescriptor));
 		}
 		else
 		{
 			// Invalid material
-			m_materials.push_back(std::make_unique<Material>());
+			m_materials.push_back(std::make_unique<NullMaterial>());
 		}
 	}
 
@@ -207,8 +203,7 @@ void Scene::InitResources(
 	ID3D12GraphicsCommandList* cmdList, 
 	ID3D12DescriptorHeap* srvHeap, 
 	const size_t srvStartOffset,
-	const size_t srvDescriptorSize,
-	const D3D12_GRAPHICS_PIPELINE_STATE_DESC& psoDesc)
+	const size_t srvDescriptorSize)
 {
 	// Load scene
 	{
@@ -277,7 +272,7 @@ void Scene::Update(uint32_t bufferIndex)
 	}
 }
 
-void Scene::Render(ID3D12GraphicsCommandList* cmdList, uint32_t bufferIndex, const View& view)
+void Scene::Render(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList, uint32_t bufferIndex, const View& view)
 {
 	PIXScopedEvent(cmdList, 0, L"render_scene");
 
@@ -294,7 +289,7 @@ void Scene::Render(ID3D12GraphicsCommandList* cmdList, uint32_t bufferIndex, con
 			if (mat->IsValid())
 			{
 				// Root signature set by the material
-				mat->BindPipeline(cmdList);
+				mat->BindPipeline(device, cmdList, RenderPass::Geometry, sm->GetVertexFormat());
 
 				cmdList->SetGraphicsRootConstantBufferView(0, view.GetConstantBuffer(bufferIndex)->GetGPUVirtualAddress());
 
@@ -313,15 +308,17 @@ void Scene::Render(ID3D12GraphicsCommandList* cmdList, uint32_t bufferIndex, con
 		}
 	}
 
-	{
+	/*{
 		PIXScopedEvent(cmdList, 0, L"debug_draws");
 		cmdList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_LINELIST);
+		m_debugMaterial->BindPipeline(device, cmdList, RenderPass::Geometry, VertexFormat::Type::P3C3);
+		cmdList->SetGraphicsRootConstantBufferView(0, view.GetConstantBuffer(bufferIndex)->GetGPUVirtualAddress());
 
 		for (const auto& debugMesh : m_debugMeshes)
 		{
-			//debugMesh->Render();
+			debugMesh->Render(cmdList);
 		}
-	}
+	}*/
 }
 
 const size_t Scene::GetNumTextures() const
