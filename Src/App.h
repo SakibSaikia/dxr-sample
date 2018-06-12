@@ -3,16 +3,6 @@
 #include "View.h"
 #include "Scene.h"
 
-enum class ConstantBufferId : uint32_t
-{
-	View = 0, // double-buffered
-	Scene = 2,
-	//
-	// .... reserved for scene constants
-	//
-	Max = 11
-};
-
 class App
 {
 public:
@@ -39,8 +29,6 @@ private:
 
 	D3D12_CPU_DESCRIPTOR_HANDLE GetCurrentBackBufferView() const;
 	D3D12_CPU_DESCRIPTOR_HANDLE GetCurrentDepthStencilView() const;
-	D3D12_CPU_DESCRIPTOR_HANDLE GetConstantBufferDescriptorCPU(ConstantBufferId id, uint32_t offset) const;
-	D3D12_GPU_DESCRIPTOR_HANDLE GetConstantBufferDescriptorGPU(ConstantBufferId id, uint32_t offset) const;
 
 	void AdvanceGfxFrame();
 

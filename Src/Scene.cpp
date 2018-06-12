@@ -293,13 +293,8 @@ void Scene::Render(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList, uin
 
 				cmdList->SetGraphicsRootConstantBufferView(0, view.GetConstantBuffer(bufferIndex)->GetGPUVirtualAddress());
 
-				cmdList->SetGraphicsRootConstantBufferView(
-					StaticMeshEntity::GetObjectConstantsRootParamIndex(),
-					m_objectConstantBuffers.at(bufferIndex)->GetGPUVirtualAddress() +
-					entityId * sizeof(ObjectConstants)
-				);
-
-				mat->BindConstants(cmdList);
+				D3D12_GPU_VIRTUAL_ADDRESS objectConstantsDescriptor = m_objectConstantBuffers.at(bufferIndex)->GetGPUVirtualAddress() + entityId * sizeof(ObjectConstants);
+				mat->BindConstants(cmdList, objectConstantsDescriptor);
 
 				sm->Render(cmdList);
 			}
@@ -319,9 +314,4 @@ void Scene::Render(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList, uin
 			debugMesh->Render(cmdList);
 		}
 	}*/
-}
-
-const size_t Scene::GetNumTextures() const
-{
-	return m_textures.size();
 }

@@ -21,7 +21,7 @@ public:
 	Material(const std::string& name);
 
 	virtual void BindPipeline(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList, RenderPass renderPass, VertexFormat::Type vertexFormat) = 0;
-	virtual void BindConstants(ID3D12GraphicsCommandList* cmdList) const = 0;
+	virtual void BindConstants(ID3D12GraphicsCommandList* cmdList, D3D12_GPU_VIRTUAL_ADDRESS objectConstantsDescriptor) const = 0;
 	bool IsValid() const;
 
 protected:
@@ -35,7 +35,7 @@ class NullMaterial : public Material
 public:
 	NullMaterial() = default;
 	void BindPipeline(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList, RenderPass renderPass, VertexFormat::Type vertexFormat) override {};
-	void BindConstants(ID3D12GraphicsCommandList* cmdList) const override {};
+	void BindConstants(ID3D12GraphicsCommandList* cmdList, D3D12_GPU_VIRTUAL_ADDRESS objectConstantsDescriptor) const override {};
 };
 
 class DefaultOpaqueMaterial : public Material
@@ -43,12 +43,13 @@ class DefaultOpaqueMaterial : public Material
 	static inline std::string k_vs = "mtl_default.vs.cso";
 	static inline std::string k_ps = "mtl_default.ps.cso";
 	static inline std::string k_rootSig = "mtl_default.rootsig.cso";
+	static inline uint32_t k_objectConstantsDescriptorIndex = 1;
 	static inline uint32_t k_srvDescriptorIndex = 2;
 
 public:
 	DefaultOpaqueMaterial(std::string& name, const D3D12_GPU_DESCRIPTOR_HANDLE srvHandle);
 	void BindPipeline(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList, RenderPass renderPass, VertexFormat::Type vertexFormat) override;
-	void BindConstants(ID3D12GraphicsCommandList* cmdList) const override;
+	void BindConstants(ID3D12GraphicsCommandList* cmdList, D3D12_GPU_VIRTUAL_ADDRESS objectConstantsDescriptor) const override;
 
 private:
 	D3D12_GPU_DESCRIPTOR_HANDLE m_srvBegin;
@@ -59,12 +60,13 @@ class DefaultMaskedMaterial : public Material
 	static inline std::string k_vs = "mtl_masked.vs.cso";
 	static inline std::string k_ps = "mtl_masked.ps.cso";
 	static inline std::string k_rootSig = "mtl_masked.rootsig.cso";
+	static inline uint32_t k_objectConstantsDescriptorIndex = 1;
 	static inline uint32_t k_srvDescriptorIndex = 2;
 
 public:
 	DefaultMaskedMaterial(std::string& name, const D3D12_GPU_DESCRIPTOR_HANDLE srvHandle);
 	void BindPipeline(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList, RenderPass renderPass, VertexFormat::Type vertexFormat) override;
-	void BindConstants(ID3D12GraphicsCommandList* cmdList) const override;
+	void BindConstants(ID3D12GraphicsCommandList* cmdList, D3D12_GPU_VIRTUAL_ADDRESS objectConstantsDescriptor) const override;
 
 private:
 	D3D12_GPU_DESCRIPTOR_HANDLE m_srvBegin;

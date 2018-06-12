@@ -205,8 +205,3 @@ DirectX::XMFLOAT4X4 StaticMeshEntity::GetLocalToWorldMatrix() const
 {
 	return m_localToWorld;
 }
-
-uint32_t StaticMeshEntity::GetObjectConstantsRootParamIndex()
-{
-	return 1;
-}

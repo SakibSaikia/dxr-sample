@@ -338,24 +338,6 @@ D3D12_CPU_DESCRIPTOR_HANDLE App::GetCurrentDepthStencilView() const
 	return hnd;
 }
 
-D3D12_CPU_DESCRIPTOR_HANDLE App::GetConstantBufferDescriptorCPU(ConstantBufferId id, const uint32_t offset) const
-{
-	uint32_t descriptorOffset = static_cast<uint32_t>(id) + offset;
-
-	D3D12_CPU_DESCRIPTOR_HANDLE hnd;
-	hnd.ptr = m_cbvSrvUavHeap->GetCPUDescriptorHandleForHeapStart().ptr + descriptorOffset * m_cbvSrvUavDescriptorSize;
-	return hnd;
-}
-
-D3D12_GPU_DESCRIPTOR_HANDLE App::GetConstantBufferDescriptorGPU(ConstantBufferId id, const uint32_t offset) const
-{
-	uint32_t descriptorOffset = static_cast<uint32_t>(id) + offset;
-
-	D3D12_GPU_DESCRIPTOR_HANDLE hnd;
-	hnd.ptr = m_cbvSrvUavHeap->GetGPUDescriptorHandleForHeapStart().ptr + descriptorOffset * m_cbvSrvUavDescriptorSize;
-	return hnd;
-}
-
 void App::SubmitCommands()
 {
 	m_gfxCmdList->Close();

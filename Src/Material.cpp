@@ -148,8 +148,9 @@ void DefaultOpaqueMaterial::BindPipeline(ID3D12Device* device, ID3D12GraphicsCom
 	pipeline->Bind(cmdList);
 }
 
-void DefaultOpaqueMaterial::BindConstants(ID3D12GraphicsCommandList* cmdList) const
+void DefaultOpaqueMaterial::BindConstants(ID3D12GraphicsCommandList* cmdList, D3D12_GPU_VIRTUAL_ADDRESS objectConstantsDescriptor) const
 {
+	cmdList->SetGraphicsRootConstantBufferView(k_objectConstantsDescriptorIndex, objectConstantsDescriptor);
 	cmdList->SetGraphicsRootDescriptorTable(k_srvDescriptorIndex, m_srvBegin);
 }
 
@@ -172,7 +173,8 @@ void DefaultMaskedMaterial::BindPipeline(ID3D12Device* device, ID3D12GraphicsCom
 	pipeline->Bind(cmdList);
 }
 
-void DefaultMaskedMaterial::BindConstants(ID3D12GraphicsCommandList* cmdList) const
+void DefaultMaskedMaterial::BindConstants(ID3D12GraphicsCommandList* cmdList, D3D12_GPU_VIRTUAL_ADDRESS objectConstantsDescriptor) const
 {
+	cmdList->SetGraphicsRootConstantBufferView(k_objectConstantsDescriptorIndex, objectConstantsDescriptor);
 	cmdList->SetGraphicsRootDescriptorTable(k_srvDescriptorIndex, m_srvBegin);
 }

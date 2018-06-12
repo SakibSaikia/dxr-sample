@@ -36,7 +36,6 @@ public:
 	DirectX::XMFLOAT4X4 GetLocalToWorldMatrix() const;
 	uint64_t GetMeshIndex() const;
 
-	static uint32_t GetObjectConstantsRootParamIndex();
 private:
 	uint64_t m_meshIndex;
 	DirectX::XMFLOAT4X4 m_localToWorld;
