@@ -29,7 +29,7 @@ private:
 
 private:
 	std::vector<std::unique_ptr<StaticMesh>> m_meshes;
-	std::vector<StaticMeshEntity> m_meshEntities;
+	std::vector<std::unique_ptr<StaticMeshEntity>> m_meshEntities;
 	std::vector<DirectX::BoundingBox> m_meshWorldBounds;
 	std::vector<std::unique_ptr<Material>> m_materials;
 	std::vector<std::unique_ptr<Texture>> m_textures;

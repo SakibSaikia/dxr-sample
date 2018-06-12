@@ -191,8 +191,10 @@ const DirectX::BoundingBox& StaticMesh::GetBounds() const
 	return m_bounds;
 }
 
-StaticMeshEntity::StaticMeshEntity(const uint64_t meshIndex, const DirectX::XMFLOAT4X4& localToWorld) :
-	m_meshIndex(meshIndex), m_localToWorld(localToWorld)
+StaticMeshEntity::StaticMeshEntity(std::string&& name, const uint64_t meshIndex, const DirectX::XMFLOAT4X4& localToWorld) :
+	m_name(name),
+	m_meshIndex(meshIndex), 
+	m_localToWorld(localToWorld)
 {
 }
 
@@ -204,4 +206,9 @@ uint64_t StaticMeshEntity::GetMeshIndex() const
 DirectX::XMFLOAT4X4 StaticMeshEntity::GetLocalToWorldMatrix() const 
 {
 	return m_localToWorld;
+}
+
+std::string StaticMeshEntity::GetName() const
+{
+	return m_name;
 }

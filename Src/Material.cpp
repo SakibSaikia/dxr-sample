@@ -133,6 +133,9 @@ DefaultOpaqueMaterial::DefaultOpaqueMaterial(std::string& name, const D3D12_GPU_
 	Material{ name },
 	m_srvBegin{ srvHandle }
 {
+	m_hash = std::hash<std::string>{}(k_vs) ^ 
+			(std::hash<std::string>{}(k_ps) << 1) ^ 
+			(std::hash<std::string>{}(k_rootSig) << 2);
 }
 
 void DefaultOpaqueMaterial::BindPipeline(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList, RenderPass renderPass, VertexFormat::Type vertexFormat)
@@ -154,10 +157,18 @@ void DefaultOpaqueMaterial::BindConstants(ID3D12GraphicsCommandList* cmdList, D3
 	cmdList->SetGraphicsRootDescriptorTable(k_srvDescriptorIndex, m_srvBegin);
 }
 
+size_t DefaultOpaqueMaterial::GetHash(RenderPass renderPass, VertexFormat::Type vertexFormat) const
+{
+	return	m_hash ^ (static_cast<int>(renderPass) << 3) ^ (static_cast<int>(vertexFormat) << 4);
+}
+
 DefaultMaskedMaterial::DefaultMaskedMaterial(std::string& name, const D3D12_GPU_DESCRIPTOR_HANDLE srvHandle) :
 	Material{ name },
 	m_srvBegin{ srvHandle }
 {
+	m_hash = std::hash<std::string>{}(k_vs) ^ 
+			(std::hash<std::string>{}(k_ps) << 1) ^ 
+			(std::hash<std::string>{}(k_rootSig) << 2);
 }
 
 void DefaultMaskedMaterial::BindPipeline(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList, RenderPass renderPass, VertexFormat::Type vertexFormat)
@@ -177,4 +188,9 @@ void DefaultMaskedMaterial::BindConstants(ID3D12GraphicsCommandList* cmdList, D3
 {
 	cmdList->SetGraphicsRootConstantBufferView(k_objectConstantsDescriptorIndex, objectConstantsDescriptor);
 	cmdList->SetGraphicsRootDescriptorTable(k_srvDescriptorIndex, m_srvBegin);
+}
+
+size_t DefaultMaskedMaterial::GetHash(RenderPass renderPass, VertexFormat::Type vertexFormat) const
+{
+	return	m_hash ^ (static_cast<int>(renderPass) << 3) ^ (static_cast<int>(vertexFormat) << 4);
 }

@@ -159,7 +159,10 @@ void Scene::LoadEntities(const aiNode* node)
 
 			for (auto meshIdx = 0u; meshIdx < childNode->mNumMeshes; meshIdx++)
 			{
-				m_meshEntities.emplace_back(childNode->mMeshes[meshIdx], localToWorld);
+				m_meshEntities.push_back(std::make_unique<StaticMeshEntity>(
+					std::string(childNode->mName.C_Str()), 
+					childNode->mMeshes[meshIdx], 
+					localToWorld));
 			}
 		}
 		else
@@ -167,6 +170,20 @@ void Scene::LoadEntities(const aiNode* node)
 			LoadEntities(childNode);
 		}
 	}
+
+	// sort entities by pipeline state
+	std::sort(m_meshEntities.begin(), m_meshEntities.end(),
+		[this](auto& entity1, auto& entity2)
+		{
+			const auto& sm1 = m_meshes.at(entity1->GetMeshIndex());
+			const auto& sm2 = m_meshes.at(entity2->GetMeshIndex());
+
+			const auto& mat1 = m_materials.at(sm1->GetMaterialIndex());
+			const auto& mat2 = m_materials.at(sm2->GetMaterialIndex());
+
+			return mat1->GetHash(RenderPass::Geometry, VertexFormat::Type::P3N3T3B3U2) < mat2->GetHash(RenderPass::Geometry, VertexFormat::Type::P3N3T3B3U2);
+		}
+	);
 }
 
 void Scene::InitBounds(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList)
@@ -177,9 +194,9 @@ void Scene::InitBounds(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList)
 	int i = 0;
 	for (const auto& meshEntity : m_meshEntities)
 	{
-		DirectX::XMMATRIX worldTransform = DirectX::XMLoadFloat4x4(&meshEntity.GetLocalToWorldMatrix());
+		DirectX::XMMATRIX worldTransform = DirectX::XMLoadFloat4x4(&meshEntity->GetLocalToWorldMatrix());
 
-		const DirectX::BoundingBox& objectBounds = m_meshes.at(meshEntity.GetMeshIndex())->GetBounds();
+		const DirectX::BoundingBox& objectBounds = m_meshes.at(meshEntity->GetMeshIndex())->GetBounds();
 		DirectX::BoundingBox& outWorldBounds = m_meshWorldBounds.at(i++);
 		objectBounds.Transform(outWorldBounds, worldTransform);
 	}
@@ -267,7 +284,7 @@ void Scene::Update(uint32_t bufferIndex)
 	ObjectConstants* c = m_objectConstantBufferPtr.at(bufferIndex);
 	for (const auto& meshEntity : m_meshEntities)
 	{
-		c->localToWorldMatrix = meshEntity.GetLocalToWorldMatrix();
+		c->localToWorldMatrix = meshEntity->GetLocalToWorldMatrix();
 		c++;
 	}
 }
@@ -281,21 +298,32 @@ void Scene::Render(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList, uin
 		cmdList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
 		int entityId = 0;
+		size_t currentMaterialHash = 0;
 		for (const auto& meshEntity : m_meshEntities)
 		{
-			StaticMesh* sm = m_meshes.at(meshEntity.GetMeshIndex()).get();
+			StaticMesh* sm = m_meshes.at(meshEntity->GetMeshIndex()).get();
 			Material* mat = m_materials.at(sm->GetMaterialIndex()).get();
+			auto hash = mat->GetHash(RenderPass::Geometry, sm->GetVertexFormat());
+
+			if (hash != currentMaterialHash)
+			{
+				PIXScopedEvent(cmdList, 0, L"bind_pipeline");
+
+				// root sig
+				mat->BindPipeline(device, cmdList, RenderPass::Geometry, sm->GetVertexFormat());
+
+				// view constants
+				cmdList->SetGraphicsRootConstantBufferView(0, view.GetConstantBuffer(bufferIndex)->GetGPUVirtualAddress());
+
+				currentMaterialHash = hash;
+			}
 
 			if (mat->IsValid())
 			{
-				// Root signature set by the material
-				mat->BindPipeline(device, cmdList, RenderPass::Geometry, sm->GetVertexFormat());
-
-				cmdList->SetGraphicsRootConstantBufferView(0, view.GetConstantBuffer(bufferIndex)->GetGPUVirtualAddress());
+				PIXScopedEvent(cmdList, 0, meshEntity->GetName().c_str());
 
 				D3D12_GPU_VIRTUAL_ADDRESS objectConstantsDescriptor = m_objectConstantBuffers.at(bufferIndex)->GetGPUVirtualAddress() + entityId * sizeof(ObjectConstants);
 				mat->BindConstants(cmdList, objectConstantsDescriptor);
-
 				sm->Render(cmdList);
 			}
 

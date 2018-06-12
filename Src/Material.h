@@ -22,6 +22,7 @@ public:
 
 	virtual void BindPipeline(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList, RenderPass renderPass, VertexFormat::Type vertexFormat) = 0;
 	virtual void BindConstants(ID3D12GraphicsCommandList* cmdList, D3D12_GPU_VIRTUAL_ADDRESS objectConstantsDescriptor) const = 0;
+	virtual size_t GetHash(RenderPass renderPass, VertexFormat::Type vertexFormat) const = 0;
 	bool IsValid() const;
 
 protected:
@@ -36,6 +37,7 @@ public:
 	NullMaterial() = default;
 	void BindPipeline(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList, RenderPass renderPass, VertexFormat::Type vertexFormat) override {};
 	void BindConstants(ID3D12GraphicsCommandList* cmdList, D3D12_GPU_VIRTUAL_ADDRESS objectConstantsDescriptor) const override {};
+	size_t GetHash(RenderPass renderPass, VertexFormat::Type vertexFormat) const override { return 0; }
 };
 
 class DefaultOpaqueMaterial : public Material
@@ -50,9 +52,11 @@ public:
 	DefaultOpaqueMaterial(std::string& name, const D3D12_GPU_DESCRIPTOR_HANDLE srvHandle);
 	void BindPipeline(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList, RenderPass renderPass, VertexFormat::Type vertexFormat) override;
 	void BindConstants(ID3D12GraphicsCommandList* cmdList, D3D12_GPU_VIRTUAL_ADDRESS objectConstantsDescriptor) const override;
+	size_t GetHash(RenderPass renderPass, VertexFormat::Type vertexFormat) const override;
 
 private:
 	D3D12_GPU_DESCRIPTOR_HANDLE m_srvBegin;
+	size_t m_hash;
 };
 
 class DefaultMaskedMaterial : public Material
@@ -67,7 +71,9 @@ public:
 	DefaultMaskedMaterial(std::string& name, const D3D12_GPU_DESCRIPTOR_HANDLE srvHandle);
 	void BindPipeline(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList, RenderPass renderPass, VertexFormat::Type vertexFormat) override;
 	void BindConstants(ID3D12GraphicsCommandList* cmdList, D3D12_GPU_VIRTUAL_ADDRESS objectConstantsDescriptor) const override;
+	size_t GetHash(RenderPass renderPass, VertexFormat::Type vertexFormat) const override;
 
 private:
 	D3D12_GPU_DESCRIPTOR_HANDLE m_srvBegin;
+	size_t m_hash;
 };

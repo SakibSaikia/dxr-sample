@@ -31,12 +31,14 @@ class StaticMeshEntity
 {
 public:
 	StaticMeshEntity() = delete;
-	StaticMeshEntity(uint64_t meshIndex, const DirectX::XMFLOAT4X4& localToWorld);
+	StaticMeshEntity(std::string&& name, const uint64_t meshIndex, const DirectX::XMFLOAT4X4& localToWorld);
 
 	DirectX::XMFLOAT4X4 GetLocalToWorldMatrix() const;
 	uint64_t GetMeshIndex() const;
+	std::string GetName() const;
 
 private:
+	std::string m_name;
 	uint64_t m_meshIndex;
 	DirectX::XMFLOAT4X4 m_localToWorld;
 };
