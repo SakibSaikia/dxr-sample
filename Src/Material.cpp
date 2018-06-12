@@ -43,6 +43,7 @@ MaterialPipeline::MaterialPipeline(ID3D12Device* device, RenderPass renderPass, 
 	switch (renderPass)
 	{
 	case RenderPass::Geometry:
+	case RenderPass::DebugDraw:
 		// rasterizer state
 		desc.RasterizerState.FillMode = D3D12_FILL_MODE_SOLID;
 		desc.RasterizerState.CullMode = D3D12_CULL_MODE_BACK;
@@ -75,12 +76,23 @@ MaterialPipeline::MaterialPipeline(ID3D12Device* device, RenderPass renderPass, 
 		desc.DSVFormat = k_depthStencilFormatDsv;
 		// misc
 		desc.SampleMask = UINT_MAX;
-		desc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
 		desc.SampleDesc.Count = 1;
 		break;
 	default:
 		assert(false);
 
+	}
+
+	switch (renderPass)
+	{
+	case RenderPass::Geometry:
+		desc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+		break;
+	case RenderPass::DebugDraw:
+		desc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_LINE;
+		break;
+	default:
+		assert(false);
 	}
 
 	// Shaders
@@ -193,4 +205,22 @@ void DefaultMaskedMaterial::BindConstants(ID3D12GraphicsCommandList* cmdList, D3
 size_t DefaultMaskedMaterial::GetHash(RenderPass renderPass, VertexFormat::Type vertexFormat) const
 {
 	return	m_hash ^ (static_cast<int>(renderPass) << 3) ^ (static_cast<int>(vertexFormat) << 4);
+}
+
+DebugMaterial::DebugMaterial() :
+	Material{ "debug_mtl" }
+{
+}
+
+void DebugMaterial::BindPipeline(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList, RenderPass renderPass, VertexFormat::Type vertexFormat)
+{
+	auto& pipeline = m_pipelines[static_cast<int>(renderPass)][static_cast<int>(vertexFormat)];
+
+	// Create a new pipeline and cache it if it has not been created
+	if (!pipeline)
+	{
+		pipeline = std::make_unique<MaterialPipeline>(device, renderPass, vertexFormat, k_vs, k_ps, k_rootSig);
+	}
+
+	pipeline->Bind(cmdList);
 }

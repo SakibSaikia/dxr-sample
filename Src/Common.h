@@ -14,6 +14,7 @@ constexpr DXGI_FORMAT k_depthStencilFormatDsv = DXGI_FORMAT_D24_UNORM_S8_UINT;
 enum class RenderPass
 {
 	Geometry,
+	DebugDraw,
 	Count
 };
 

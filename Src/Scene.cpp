@@ -331,15 +331,15 @@ void Scene::Render(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList, uin
 		}
 	}
 
-	/*{
+	{
 		PIXScopedEvent(cmdList, 0, L"debug_draws");
 		cmdList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_LINELIST);
-		m_debugMaterial->BindPipeline(device, cmdList, RenderPass::Geometry, VertexFormat::Type::P3C3);
+		m_debugMaterial.BindPipeline(device, cmdList, RenderPass::DebugDraw, VertexFormat::Type::P3C3);
 		cmdList->SetGraphicsRootConstantBufferView(0, view.GetConstantBuffer(bufferIndex)->GetGPUVirtualAddress());
 
 		for (const auto& debugMesh : m_debugMeshes)
 		{
 			debugMesh->Render(cmdList);
 		}
-	}*/
+	}
 }

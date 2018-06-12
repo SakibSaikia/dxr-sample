@@ -34,7 +34,7 @@ private:
 	std::vector<std::unique_ptr<Material>> m_materials;
 	std::vector<std::unique_ptr<Texture>> m_textures;
 
-	std::unique_ptr<Material> m_debugMaterial;
+	DebugMaterial m_debugMaterial;
 	std::vector<std::unique_ptr<DebugLineMesh>> m_debugMeshes;
 
 	std::array<Microsoft::WRL::ComPtr<ID3D12Resource>, k_gfxBufferCount> m_objectConstantBuffers;

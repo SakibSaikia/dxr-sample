@@ -11,6 +11,7 @@ void DebugLineMesh::Init(ID3D12Device* device, ID3D12GraphicsCommandList* cmdLis
 	std::vector<DirectX::XMFLOAT3> boxCorners;
 	boxCorners.resize(8);
 	
+	uint32_t indexStride = 0;
 	for (const auto& bounds : boundingBoxes)
 	{
 		bounds.GetCorners(boxCorners.data());
@@ -22,18 +23,20 @@ void DebugLineMesh::Init(ID3D12Device* device, ID3D12GraphicsCommandList* cmdLis
 		}
 
 		// add indices
-		indexData.push_back(0); indexData.push_back(1);
-		indexData.push_back(1); indexData.push_back(2);
-		indexData.push_back(2); indexData.push_back(3);
-		indexData.push_back(3); indexData.push_back(0);
-		indexData.push_back(4); indexData.push_back(5);
-		indexData.push_back(5); indexData.push_back(6);
-		indexData.push_back(6); indexData.push_back(7);
-		indexData.push_back(7); indexData.push_back(4);
-		indexData.push_back(0); indexData.push_back(4);
-		indexData.push_back(1); indexData.push_back(5);
-		indexData.push_back(2); indexData.push_back(6);
-		indexData.push_back(3); indexData.push_back(7);
+		indexData.push_back(indexStride + 0); indexData.push_back(indexStride + 1);
+		indexData.push_back(indexStride + 1); indexData.push_back(indexStride + 2);
+		indexData.push_back(indexStride + 2); indexData.push_back(indexStride + 3);
+		indexData.push_back(indexStride + 3); indexData.push_back(indexStride + 0);
+		indexData.push_back(indexStride + 4); indexData.push_back(indexStride + 5);
+		indexData.push_back(indexStride + 5); indexData.push_back(indexStride + 6);
+		indexData.push_back(indexStride + 6); indexData.push_back(indexStride + 7);
+		indexData.push_back(indexStride + 7); indexData.push_back(indexStride + 4);
+		indexData.push_back(indexStride + 0); indexData.push_back(indexStride + 4);
+		indexData.push_back(indexStride + 1); indexData.push_back(indexStride + 5);
+		indexData.push_back(indexStride + 2); indexData.push_back(indexStride + 6);
+		indexData.push_back(indexStride + 3); indexData.push_back(indexStride + 7);
+
+		indexStride += 8;
 	}
 
 	Microsoft::WRL::ComPtr<ID3D12Resource> vertexBufferUpload;

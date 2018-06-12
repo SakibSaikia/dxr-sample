@@ -77,3 +77,16 @@ private:
 	D3D12_GPU_DESCRIPTOR_HANDLE m_srvBegin;
 	size_t m_hash;
 };
+
+class DebugMaterial : public Material
+{
+	static inline std::string k_vs = "mtl_debug.vs.cso";
+	static inline std::string k_ps = "mtl_debug.ps.cso";
+	static inline std::string k_rootSig = "mtl_debug.rootsig.cso";
+
+public:
+	DebugMaterial();
+	void BindPipeline(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList, RenderPass renderPass, VertexFormat::Type vertexFormat) override;
+	void BindConstants(ID3D12GraphicsCommandList* cmdList, D3D12_GPU_VIRTUAL_ADDRESS objectConstantsDescriptor) const override {}
+	size_t GetHash(RenderPass renderPass, VertexFormat::Type vertexFormat) const override { return 0; }
+};
