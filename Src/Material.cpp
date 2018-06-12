@@ -24,7 +24,7 @@ Microsoft::WRL::ComPtr<ID3DBlob> LoadBlob(const std::string& filename)
 
 MaterialPipeline::MaterialPipeline(ID3D12Device* device, RenderPass renderPass, VertexFormat::Type vertexFormat, const std::string vs, const std::string ps, const std::string rootSig)
 {
-	D3D12_GRAPHICS_PIPELINE_STATE_DESC desc;
+	D3D12_GRAPHICS_PIPELINE_STATE_DESC desc{};
 
 	switch (vertexFormat)
 	{
