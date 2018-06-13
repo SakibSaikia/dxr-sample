@@ -101,16 +101,13 @@ void App::InitSwapChain(HWND windowHandle)
 		nullptr,
 		m_swapChain.GetAddressOf()
 	));
+}
 
-	D3D12_DESCRIPTOR_HEAP_DESC rtvHeapDesc = {};
-	rtvHeapDesc.NumDescriptors = k_gfxBufferCount;
-	rtvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
-	CHECK(m_d3dDevice->CreateDescriptorHeap(&rtvHeapDesc, IID_PPV_ARGS(m_rtvHeap.GetAddressOf())));
-
-	D3D12_DESCRIPTOR_HEAP_DESC dsvHeapDesc = {};
-	dsvHeapDesc.NumDescriptors = k_gfxBufferCount;
-	dsvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_DSV;
-	CHECK(m_d3dDevice->CreateDescriptorHeap(&dsvHeapDesc, IID_PPV_ARGS(m_dsvHeap.GetAddressOf())));
+void App::InitRenderSurfaces()
+{
+	D3D12_HEAP_PROPERTIES heapDesc = {};
+	heapDesc.Type = D3D12_HEAP_TYPE_DEFAULT;
+	heapDesc.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
 
 	// RTVs
 	{
@@ -136,54 +133,108 @@ void App::InitSwapChain(HWND windowHandle)
 		resDesc.SampleDesc.Count = 1; // No MSAA
 		resDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
 
-		D3D12_HEAP_PROPERTIES heapDesc = {};
-		heapDesc.Type = D3D12_HEAP_TYPE_DEFAULT;
-		heapDesc.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN; // GPU or system mem
+		D3D12_CLEAR_VALUE zClear;
+		zClear.Format = k_depthStencilFormatDsv;
+		zClear.DepthStencil.Depth = 1.f;
+		zClear.DepthStencil.Stencil = 0;
+
+		CHECK(m_d3dDevice->CreateCommittedResource(
+			&heapDesc,
+			D3D12_HEAP_FLAG_NONE,
+			&resDesc,
+			D3D12_RESOURCE_STATE_DEPTH_WRITE,
+			&zClear,
+			IID_PPV_ARGS(m_depthStencilBuffer.GetAddressOf())
+		));
+
+		// Descriptor to mip level 0
+		D3D12_DEPTH_STENCIL_VIEW_DESC dsvDesc = {};
+		dsvDesc.Format = k_depthStencilFormatDsv;
+		dsvDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2D;
+		dsvDesc.Texture2D.MipSlice = 0;
+		dsvDesc.Flags = D3D12_DSV_FLAG_NONE; // Modify if you want a read-only DSV
+		m_d3dDevice->CreateDepthStencilView(
+			m_depthStencilBuffer.Get(),
+			&dsvDesc,
+			GetDepthStencilViewCPU(DSV::SceneDepth)
+		);
+	}
+
+	// shadowmap
+	{
+		D3D12_RESOURCE_DESC resDesc{};
+		resDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
+		resDesc.Width = k_shadowmapSize;
+		resDesc.Height = k_shadowmapSize;
+		resDesc.DepthOrArraySize = 1;
+		resDesc.MipLevels = 1;
+		resDesc.Format = k_depthStencilFormatRaw;
+		resDesc.SampleDesc.Count = 1;
+		resDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
 
 		D3D12_CLEAR_VALUE zClear;
 		zClear.Format = k_depthStencilFormatDsv;
 		zClear.DepthStencil.Depth = 1.f;
 		zClear.DepthStencil.Stencil = 0;
 
-		D3D12_CPU_DESCRIPTOR_HANDLE dsvHeapHandle = m_dsvHeap->GetCPUDescriptorHandleForHeapStart();
-		for (auto bufferIdx = 0; bufferIdx < k_gfxBufferCount; bufferIdx++)
-		{
-			CHECK(m_d3dDevice->CreateCommittedResource(
-				&heapDesc,
-				D3D12_HEAP_FLAG_NONE,
-				&resDesc,
-				D3D12_RESOURCE_STATE_DEPTH_WRITE,
-				&zClear,
-				IID_PPV_ARGS(m_depthStencilBuffers.at(bufferIdx).GetAddressOf())
-			));
+		CHECK(m_d3dDevice->CreateCommittedResource(
+			&heapDesc,
+			D3D12_HEAP_FLAG_NONE,
+			&resDesc,
+			D3D12_RESOURCE_STATE_DEPTH_WRITE,
+			&zClear,
+			IID_PPV_ARGS(m_shadowMapSurface.GetAddressOf())
+		));
 
-			// Descriptor to mip level 0
-			D3D12_DEPTH_STENCIL_VIEW_DESC dsvDesc = {};
-			dsvDesc.Format = k_depthStencilFormatDsv;
-			dsvDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2D;
-			dsvDesc.Texture2D.MipSlice = 0;
-			dsvDesc.Flags = D3D12_DSV_FLAG_NONE; // Modify if you want a read-only DSV
-			m_d3dDevice->CreateDepthStencilView(
-				m_depthStencilBuffers.at(bufferIdx).Get(),
-				&dsvDesc,
-				dsvHeapHandle
-			);
+		// DSV
+		D3D12_DEPTH_STENCIL_VIEW_DESC dsvDesc{};
+		dsvDesc.Format = k_depthStencilFormatDsv;
+		dsvDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2D;
+		dsvDesc.Texture2D.MipSlice = 0;
+		dsvDesc.Flags = D3D12_DSV_FLAG_NONE;
+		m_d3dDevice->CreateDepthStencilView(
+			m_shadowMapSurface.Get(),
+			&dsvDesc,
+			GetDepthStencilViewCPU(DSV::Shadowmap)
+		);
 
-			dsvHeapHandle.ptr += m_dsvDescriptorSize;
-		}
+		// SRV
+		D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc{};
+		srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+		srvDesc.Format = k_depthStencilFormatSrv;
+		srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+		srvDesc.Texture2D.MostDetailedMip = 0;
+		srvDesc.Texture2D.MipLevels = 1;
+		srvDesc.Texture2D.ResourceMinLODClamp = 0.0f;
+		srvDesc.Texture2D.PlaneSlice = 0;
+		m_d3dDevice->CreateShaderResourceView(
+			m_shadowMapSurface.Get(), 
+			&srvDesc, 
+			GetShaderResourceViewCPU(SRV::Shadowmap)
+		);
 	}
 }
 
-void App::InitDescriptors()
+void App::InitDescriptorHeaps()
 {
-	// CBV/SRV/UAV heap
-	{
-		D3D12_DESCRIPTOR_HEAP_DESC cbvSrvUavHeapDesc = {};
-		cbvSrvUavHeapDesc.NumDescriptors = k_cbvCount + k_srvCount;
-		cbvSrvUavHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
-		cbvSrvUavHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
-		CHECK(m_d3dDevice->CreateDescriptorHeap(&cbvSrvUavHeapDesc, IID_PPV_ARGS(m_cbvSrvUavHeap.GetAddressOf())));
-	}
+	// rtv heap
+	D3D12_DESCRIPTOR_HEAP_DESC rtvHeapDesc = {};
+	rtvHeapDesc.NumDescriptors = RTV::Count;
+	rtvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
+	CHECK(m_d3dDevice->CreateDescriptorHeap(&rtvHeapDesc, IID_PPV_ARGS(m_rtvHeap.GetAddressOf())));
+
+	// dsv heap
+	D3D12_DESCRIPTOR_HEAP_DESC dsvHeapDesc = {};
+	dsvHeapDesc.NumDescriptors = DSV::Count;
+	dsvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_DSV;
+	CHECK(m_d3dDevice->CreateDescriptorHeap(&dsvHeapDesc, IID_PPV_ARGS(m_dsvHeap.GetAddressOf())));
+
+	// srv heap
+	D3D12_DESCRIPTOR_HEAP_DESC cbvSrvUavHeapDesc = {};
+	cbvSrvUavHeapDesc.NumDescriptors = SRV::Count;
+	cbvSrvUavHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
+	cbvSrvUavHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
+	CHECK(m_d3dDevice->CreateDescriptorHeap(&cbvSrvUavHeapDesc, IID_PPV_ARGS(m_cbvSrvUavHeap.GetAddressOf())));
 }
 
 void App::InitScene()
@@ -193,7 +244,7 @@ void App::InitScene()
 		m_cmdQueue.Get(), 
 		m_gfxCmdList.Get(), 
 		m_cbvSrvUavHeap.Get(),
-		k_cbvCount,
+		SRV::MaterialTexturesBegin,
 		m_cbvSrvUavDescriptorSize
 	);
 }
@@ -201,10 +252,7 @@ void App::InitScene()
 void App::InitView()
 {
 	m_view.Init(m_d3dDevice.Get(), k_gfxBufferCount, k_screenWidth, k_screenHeight);
-}
 
-void App::InitStateObjects()
-{
 	// Viewport
 	{
 		m_viewport.TopLeftX = 0.f;
@@ -226,8 +274,8 @@ void App::Init(HWND windowHandle)
 	InitBaseD3D();
 	InitCommandObjects();
 	InitSwapChain(windowHandle);
-	InitStateObjects();
-	InitDescriptors();
+	InitDescriptorHeaps();
+	InitRenderSurfaces();
 	InitScene();
 	InitView();
 
@@ -275,10 +323,13 @@ void App::Render()
 			&barrierDesc
 		);
 
+		D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle = GetRenderTargetViewCPU(static_cast<RTV::Id>(RTV::SwapChain + m_gfxBufferIndex));
+		D3D12_CPU_DESCRIPTOR_HANDLE dsvHandle = GetDepthStencilViewCPU(DSV::SceneDepth);
+
 		// Clear
 		float clearColor[] = { .8f, .8f, 1.f, 0.f };
-		m_gfxCmdList->ClearRenderTargetView(GetCurrentBackBufferView(), clearColor, 0, nullptr);
-		m_gfxCmdList->ClearDepthStencilView(GetCurrentDepthStencilView(), D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, 1.f, 0, 0, nullptr);
+		m_gfxCmdList->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
+		m_gfxCmdList->ClearDepthStencilView(dsvHandle, D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, 1.f, 0, 0, nullptr);
 
 		// Set descriptor heaps
 		ID3D12DescriptorHeap* descriptorHeaps[] = { m_cbvSrvUavHeap.Get() };
@@ -289,8 +340,6 @@ void App::Render()
 		m_gfxCmdList->RSSetScissorRects(1, &m_scissorRect);
 
 		// Set rendertarget
-		D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle = GetCurrentBackBufferView();
-		D3D12_CPU_DESCRIPTOR_HANDLE dsvHandle = GetCurrentDepthStencilView();
 		m_gfxCmdList->OMSetRenderTargets(1, &rtvHandle, FALSE, &dsvHandle);
 
 		// Render scene
@@ -317,24 +366,38 @@ void App::Render()
 	// Present
 	{
 		PIXScopedEvent(m_cmdQueue.Get(), 0, L"present");
-		m_swapChain->Present(0, 0);
+		m_swapChain->Present(1, 0);
 	}
 
 	// Swap buffers
 	AdvanceGfxFrame();
 }
 
-D3D12_CPU_DESCRIPTOR_HANDLE App::GetCurrentBackBufferView() const
+D3D12_CPU_DESCRIPTOR_HANDLE App::GetRenderTargetViewCPU(RTV::Id rtvId) const
 {
 	D3D12_CPU_DESCRIPTOR_HANDLE hnd;
-	hnd.ptr = m_rtvHeap->GetCPUDescriptorHandleForHeapStart().ptr + m_gfxBufferIndex * m_rtvDescriptorSize;
+	hnd.ptr = m_rtvHeap->GetCPUDescriptorHandleForHeapStart().ptr + rtvId * m_rtvDescriptorSize;
 	return hnd;
 }
 
-D3D12_CPU_DESCRIPTOR_HANDLE App::GetCurrentDepthStencilView() const
+D3D12_CPU_DESCRIPTOR_HANDLE App::GetDepthStencilViewCPU(DSV::Id dsvId) const
 {
 	D3D12_CPU_DESCRIPTOR_HANDLE hnd;
-	hnd.ptr = m_dsvHeap->GetCPUDescriptorHandleForHeapStart().ptr + m_gfxBufferIndex * m_dsvDescriptorSize;
+	hnd.ptr = m_dsvHeap->GetCPUDescriptorHandleForHeapStart().ptr + dsvId * m_dsvDescriptorSize;
+	return hnd;
+}
+
+D3D12_CPU_DESCRIPTOR_HANDLE App::GetShaderResourceViewCPU(SRV::Id srvId) const
+{
+	D3D12_CPU_DESCRIPTOR_HANDLE hnd;
+	hnd.ptr = m_cbvSrvUavHeap->GetCPUDescriptorHandleForHeapStart().ptr + srvId * m_cbvSrvUavDescriptorSize;
+	return hnd;
+}
+
+D3D12_GPU_DESCRIPTOR_HANDLE App::GetShaderResourceViewGPU(SRV::Id srvId) const
+{
+	D3D12_GPU_DESCRIPTOR_HANDLE hnd;
+	hnd.ptr = m_cbvSrvUavHeap->GetGPUDescriptorHandleForHeapStart().ptr + srvId * m_cbvSrvUavDescriptorSize;
 	return hnd;
 }
 

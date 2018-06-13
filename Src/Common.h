@@ -2,14 +2,17 @@
 
 constexpr float k_Pi = 3.1415926535f;
 
+constexpr size_t k_gfxBufferCount = 2;
 constexpr size_t k_screenWidth = 1280;
 constexpr size_t k_screenHeight = 720;
-constexpr size_t k_cbvCount = 16;
-constexpr size_t k_srvCount = 128;
+constexpr size_t k_shadowmapSize = 2048;
+constexpr size_t k_constantBufferCount = 4;
+constexpr size_t k_materialTextureCount = 128;
 constexpr DXGI_FORMAT k_backBufferFormat = DXGI_FORMAT_R10G10B10A2_UNORM;
 constexpr DXGI_FORMAT k_backBufferRTVFormat = DXGI_FORMAT_R10G10B10A2_UNORM;
 constexpr DXGI_FORMAT k_depthStencilFormatRaw = DXGI_FORMAT_R24G8_TYPELESS;
 constexpr DXGI_FORMAT k_depthStencilFormatDsv = DXGI_FORMAT_D24_UNORM_S8_UINT;
+constexpr DXGI_FORMAT k_depthStencilFormatSrv = DXGI_FORMAT_R24_UNORM_X8_TYPELESS;
 
 enum class RenderPass
 {
@@ -17,6 +20,41 @@ enum class RenderPass
 	DebugDraw,
 	Count
 };
+
+namespace RTV
+{
+	enum Id
+	{
+		SwapChain,
+		Count = k_gfxBufferCount
+	};
+}
+
+namespace DSV
+{
+	enum Id
+	{
+		SceneDepth,
+		Shadowmap,
+		Count
+	};
+}
+
+namespace SRV
+{
+	enum Id
+	{
+		Shadowmap,
+
+		ConstantBufferBegin,
+		ConstantBufferEnd = ConstantBufferBegin + k_constantBufferCount,
+
+		MaterialTexturesBegin,
+		MaterialTexturesEnd = MaterialTexturesBegin + k_materialTextureCount,
+
+		Count
+	};
+}
 
 namespace VertexFormat
 {

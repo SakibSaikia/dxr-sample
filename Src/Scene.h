@@ -1,12 +1,11 @@
 #pragma once
 
+#include "Common.h"
 #include "StaticMesh.h"
 #include "Material.h"
 #include "Texture.h"
 #include "View.h"
 #include "DebugDraw.h"
-
-constexpr size_t k_gfxBufferCount = 2;
 
 class Scene
 {

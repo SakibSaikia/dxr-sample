@@ -208,10 +208,16 @@ void Scene::InitBounds(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList)
 		DirectX::BoundingBox::CreateMerged(m_sceneBounds, m_sceneBounds, meshWorldBounds);
 	}
 
+#if 0
 	// debug rendering
 	auto debugMesh = std::make_unique<DebugLineMesh>();
 	debugMesh->Init(device, cmdList, m_meshWorldBounds, DirectX::XMFLOAT3{ 1.0, 0.0, 0.0 });
 	m_debugMeshes.push_back(std::move(debugMesh));
+
+	debugMesh = std::make_unique<DebugLineMesh>();
+	debugMesh->Init(device, cmdList, { m_sceneBounds }, DirectX::XMFLOAT3{ 0.f, 1.f, 0.f });
+	m_debugMeshes.push_back(std::move(debugMesh));
+#endif
 }
 
 void Scene::InitResources(
