@@ -2,6 +2,11 @@
 
 #include "Common.h"
 
+__declspec(align(256)) struct ObjectConstants
+{
+	DirectX::XMFLOAT4X4 localToWorldMatrix;
+};
+
 class StaticMesh
 {
 public:
@@ -33,6 +38,7 @@ public:
 	StaticMeshEntity() = delete;
 	StaticMeshEntity(std::string&& name, const uint64_t meshIndex, const DirectX::XMFLOAT4X4& localToWorld);
 
+	void Fill(ObjectConstants* objConst) const;
 	DirectX::XMFLOAT4X4 GetLocalToWorldMatrix() const;
 	uint64_t GetMeshIndex() const;
 	std::string GetName() const;

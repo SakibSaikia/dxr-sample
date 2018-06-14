@@ -3,6 +3,7 @@
 #define commonArgs  "RootFlags(ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT)" \
 				    ", CBV(b0)" \
 				    ", CBV(b1, visibility = SHADER_VISIBILITY_VERTEX)" \
+                    ", CBV(b2, visibility = SHADER_VISIBILITY_PIXEL)" \
 				    ", StaticSampler(s0, visibility = SHADER_VISIBILITY_PIXEL, filter = FILTER_ANISOTROPIC, maxAnisotropy = 8, addressU = TEXTURE_ADDRESS_WRAP, addressV = TEXTURE_ADDRESS_WRAP, borderColor = STATIC_BORDER_COLOR_OPAQUE_WHITE)"
 
 #if defined(MASKED)
@@ -56,6 +57,13 @@ VsToPs vs_main( VsIn v )
 
 //-----------------------------------------------------------------------------------
 
+cbuffer LightConstants : register(b2)
+{
+    float3 lightDir;
+    float3 lightColor;
+    float lightBrightness;
+};
+
 SamplerState anisoSampler : register(s0);
 
 Texture2D texBaseColor : register(t0);
@@ -95,7 +103,7 @@ float4 ps_main(VsToPs p) : SV_TARGET
     float3 normal = mul(normalMap, float3x3(p.tangent, p.bitangent, p.normal));
     normal = normalize(mul(normal, (float3x3) viewMatrix));
 
-    float3 light = normalize(mul(float3(1.f, 1.f, 0.f), (float3x3) viewMatrix));
+    float3 light = normalize(mul(lightDir, (float3x3) viewMatrix));
 
     float3 halfVector = normalize(light + float3(0, 0, 1));
 

@@ -46,7 +46,7 @@ class DefaultOpaqueMaterial : public Material
 	static inline std::string k_ps = "mtl_default.ps.cso";
 	static inline std::string k_rootSig = "mtl_default.rootsig.cso";
 	static inline uint32_t k_objectConstantsDescriptorIndex = 1;
-	static inline uint32_t k_srvDescriptorIndex = 2;
+	static inline uint32_t k_srvDescriptorIndex = 3;
 
 public:
 	DefaultOpaqueMaterial(std::string& name, const D3D12_GPU_DESCRIPTOR_HANDLE srvHandle);
@@ -65,7 +65,7 @@ class DefaultMaskedMaterial : public Material
 	static inline std::string k_ps = "mtl_masked.ps.cso";
 	static inline std::string k_rootSig = "mtl_masked.rootsig.cso";
 	static inline uint32_t k_objectConstantsDescriptorIndex = 1;
-	static inline uint32_t k_srvDescriptorIndex = 2;
+	static inline uint32_t k_srvDescriptorIndex = 3;
 
 public:
 	DefaultMaskedMaterial(std::string& name, const D3D12_GPU_DESCRIPTOR_HANDLE srvHandle);

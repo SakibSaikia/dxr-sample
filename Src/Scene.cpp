@@ -186,6 +186,11 @@ void Scene::LoadEntities(const aiNode* node)
 	);
 }
 
+void Scene::InitLights(ID3D12Device* device)
+{
+	m_light = std::make_unique<Light>(DirectX::XMFLOAT3{ 1.f, 1.f, 0.f }, DirectX::XMFLOAT3{ 1.f, 1.f, 1.f }, 10000.f);
+}
+
 void Scene::InitBounds(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList)
 {
 	// world space mesh bounds
@@ -246,6 +251,7 @@ void Scene::InitResources(
 		LoadMeshes(scene, device, cmdList);
 		LoadMaterials(scene, device, cmdQueue, srvHeap, srvStartOffset, srvDescriptorSize);
 		LoadEntities(scene->mRootNode);
+		InitLights(device);
 		InitBounds(device, cmdList);
 	}
 
@@ -283,16 +289,55 @@ void Scene::InitResources(
 			m_objectConstantBuffers.at(n)->Map(0, nullptr, ptr);
 		}
 	}
+
+	// Light Constant Buffer
+	{
+		uint32_t lightConstantsSize = sizeof(ObjectConstants);
+
+		D3D12_RESOURCE_DESC resDesc = {};
+		resDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
+		resDesc.Width = lightConstantsSize;
+		resDesc.Height = 1;
+		resDesc.DepthOrArraySize = 1;
+		resDesc.MipLevels = 1;
+		resDesc.Format = DXGI_FORMAT_UNKNOWN;
+		resDesc.SampleDesc.Count = 1;
+		resDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+
+		D3D12_HEAP_PROPERTIES heapDesc = {};
+		heapDesc.Type = D3D12_HEAP_TYPE_UPLOAD; // must be CPU accessible
+		heapDesc.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN; // GPU or system mem
+
+		for (auto n = 0; n < k_gfxBufferCount; ++n)
+		{
+			CHECK(device->CreateCommittedResource(
+				&heapDesc,
+				D3D12_HEAP_FLAG_NONE,
+				&resDesc,
+				D3D12_RESOURCE_STATE_GENERIC_READ,
+				nullptr,
+				IID_PPV_ARGS(m_lightConstantBuffers.at(n).GetAddressOf())
+			));
+
+			// Get ptr to mapped resource
+			auto** ptr = reinterpret_cast<void**>(&m_lightConstantBufferPtr.at(n));
+			m_lightConstantBuffers.at(n)->Map(0, nullptr, ptr);
+		}
+	}
 }
 
 void Scene::Update(uint32_t bufferIndex)
 {
-	ObjectConstants* c = m_objectConstantBufferPtr.at(bufferIndex);
+	// mesh entities
+	ObjectConstants* o = m_objectConstantBufferPtr.at(bufferIndex);
 	for (const auto& meshEntity : m_meshEntities)
 	{
-		c->localToWorldMatrix = meshEntity->GetLocalToWorldMatrix();
-		c++;
+		meshEntity->Fill(o++);
 	}
+
+	// light(s)
+	LightConstants* l = m_lightConstantBufferPtr.at(bufferIndex);
+	m_light->Fill(l);
 }
 
 void Scene::Render(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList, uint32_t bufferIndex, const View& view)
@@ -318,8 +363,9 @@ void Scene::Render(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList, uin
 				// root sig
 				mat->BindPipeline(device, cmdList, RenderPass::Geometry, sm->GetVertexFormat());
 
-				// view constants
+				// constants
 				cmdList->SetGraphicsRootConstantBufferView(0, view.GetConstantBuffer(bufferIndex)->GetGPUVirtualAddress());
+				cmdList->SetGraphicsRootConstantBufferView(2, m_lightConstantBuffers.at(bufferIndex)->GetGPUVirtualAddress());
 
 				currentMaterialHash = hash;
 			}

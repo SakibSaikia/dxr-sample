@@ -198,6 +198,11 @@ StaticMeshEntity::StaticMeshEntity(std::string&& name, const uint64_t meshIndex,
 {
 }
 
+void StaticMeshEntity::Fill(ObjectConstants* objConst) const
+{
+	objConst->localToWorldMatrix = m_localToWorld;
+}
+
 uint64_t StaticMeshEntity::GetMeshIndex() const
 {
 	return m_meshIndex;
