@@ -6,7 +6,7 @@ class MaterialPipeline
 {
 public:
 	MaterialPipeline() = delete;
-	MaterialPipeline(ID3D12Device* device, RenderPass renderPass, VertexFormat::Type vertexFormat, const std::string vs, const std::string ps, const std::string rootSig);
+	MaterialPipeline(ID3D12Device* device, RenderPass::Id renderPass, VertexFormat::Type vertexFormat, const std::string vs, const std::string ps, const std::string rootSig);
 	void Bind(ID3D12GraphicsCommandList* cmdList) const;
 
 private:
@@ -20,9 +20,9 @@ public:
 	Material() = default;
 	Material(const std::string& name);
 
-	virtual void BindPipeline(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList, RenderPass renderPass, VertexFormat::Type vertexFormat) = 0;
-	virtual void BindConstants(ID3D12GraphicsCommandList* cmdList, D3D12_GPU_VIRTUAL_ADDRESS objectConstantsDescriptor) const = 0;
-	virtual size_t GetHash(RenderPass renderPass, VertexFormat::Type vertexFormat) const = 0;
+	virtual void BindPipeline(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList, RenderPass::Id renderPass, VertexFormat::Type vertexFormat) = 0;
+	virtual void BindConstants(RenderPass::Id pass, ID3D12GraphicsCommandList* cmdList, D3D12_GPU_VIRTUAL_ADDRESS objectConstantsDescriptor) const = 0;
+	virtual size_t GetHash(RenderPass::Id renderPass, VertexFormat::Type vertexFormat) const = 0;
 	bool IsValid() const;
 
 protected:
@@ -35,9 +35,9 @@ class NullMaterial : public Material
 {
 public:
 	NullMaterial() = default;
-	void BindPipeline(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList, RenderPass renderPass, VertexFormat::Type vertexFormat) override {};
-	void BindConstants(ID3D12GraphicsCommandList* cmdList, D3D12_GPU_VIRTUAL_ADDRESS objectConstantsDescriptor) const override {};
-	size_t GetHash(RenderPass renderPass, VertexFormat::Type vertexFormat) const override { return 0; }
+	void BindPipeline(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList, RenderPass::Id renderPass, VertexFormat::Type vertexFormat) override {};
+	void BindConstants(RenderPass::Id pass, ID3D12GraphicsCommandList* cmdList, D3D12_GPU_VIRTUAL_ADDRESS objectConstantsDescriptor) const override {};
+	size_t GetHash(RenderPass::Id renderPass, VertexFormat::Type vertexFormat) const override { return 0; }
 };
 
 class DefaultOpaqueMaterial : public Material
@@ -45,18 +45,21 @@ class DefaultOpaqueMaterial : public Material
 	static inline std::string k_vs = "mtl_default.vs.cso";
 	static inline std::string k_ps = "mtl_default.ps.cso";
 	static inline std::string k_rootSig = "mtl_default.rootsig.cso";
+	static inline std::string k_shadowmap_vs = "mtl_shadow_default.vs.cso";
+	static inline std::string k_shadowmap_ps = "mtl_shadow_default.ps.cso";
+	static inline std::string k_shadowmap_rootSig = "mtl_shadow_default.rootsig.cso";
 	static inline uint32_t k_objectConstantsDescriptorIndex = 1;
 	static inline uint32_t k_srvDescriptorIndex = 3;
 
 public:
 	DefaultOpaqueMaterial(std::string& name, const D3D12_GPU_DESCRIPTOR_HANDLE srvHandle);
-	void BindPipeline(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList, RenderPass renderPass, VertexFormat::Type vertexFormat) override;
-	void BindConstants(ID3D12GraphicsCommandList* cmdList, D3D12_GPU_VIRTUAL_ADDRESS objectConstantsDescriptor) const override;
-	size_t GetHash(RenderPass renderPass, VertexFormat::Type vertexFormat) const override;
+	void BindPipeline(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList, RenderPass::Id renderPass, VertexFormat::Type vertexFormat) override;
+	void BindConstants(RenderPass::Id pass, ID3D12GraphicsCommandList* cmdList, D3D12_GPU_VIRTUAL_ADDRESS objectConstantsDescriptor) const override;
+	size_t GetHash(RenderPass::Id renderPass, VertexFormat::Type vertexFormat) const override;
 
 private:
 	D3D12_GPU_DESCRIPTOR_HANDLE m_srvBegin;
-	size_t m_hash;
+	size_t m_hash[RenderPass::Count];
 };
 
 class DefaultMaskedMaterial : public Material
@@ -64,18 +67,22 @@ class DefaultMaskedMaterial : public Material
 	static inline std::string k_vs = "mtl_masked.vs.cso";
 	static inline std::string k_ps = "mtl_masked.ps.cso";
 	static inline std::string k_rootSig = "mtl_masked.rootsig.cso";
+	static inline std::string k_shadowmap_vs = "mtl_shadow_masked.vs.cso";
+	static inline std::string k_shadowmap_ps = "mtl_shadow_masked.ps.cso";
+	static inline std::string k_shadowmap_rootSig = "mtl_shadow_masked.rootsig.cso";
 	static inline uint32_t k_objectConstantsDescriptorIndex = 1;
 	static inline uint32_t k_srvDescriptorIndex = 3;
 
 public:
-	DefaultMaskedMaterial(std::string& name, const D3D12_GPU_DESCRIPTOR_HANDLE srvHandle);
-	void BindPipeline(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList, RenderPass renderPass, VertexFormat::Type vertexFormat) override;
-	void BindConstants(ID3D12GraphicsCommandList* cmdList, D3D12_GPU_VIRTUAL_ADDRESS objectConstantsDescriptor) const override;
-	size_t GetHash(RenderPass renderPass, VertexFormat::Type vertexFormat) const override;
+	DefaultMaskedMaterial(std::string& name, const D3D12_GPU_DESCRIPTOR_HANDLE srvHandle, const D3D12_GPU_DESCRIPTOR_HANDLE opacityMaskSrvHandle);
+	void BindPipeline(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList, RenderPass::Id renderPass, VertexFormat::Type vertexFormat) override;
+	void BindConstants(RenderPass::Id pass, ID3D12GraphicsCommandList* cmdList, D3D12_GPU_VIRTUAL_ADDRESS objectConstantsDescriptor) const override;
+	size_t GetHash(RenderPass::Id renderPass, VertexFormat::Type vertexFormat) const override;
 
 private:
 	D3D12_GPU_DESCRIPTOR_HANDLE m_srvBegin;
-	size_t m_hash;
+	D3D12_GPU_DESCRIPTOR_HANDLE m_opacityMaskSrv;
+	size_t m_hash[RenderPass::Count];
 };
 
 class DebugMaterial : public Material
@@ -86,7 +93,7 @@ class DebugMaterial : public Material
 
 public:
 	DebugMaterial();
-	void BindPipeline(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList, RenderPass renderPass, VertexFormat::Type vertexFormat) override;
-	void BindConstants(ID3D12GraphicsCommandList* cmdList, D3D12_GPU_VIRTUAL_ADDRESS objectConstantsDescriptor) const override {}
-	size_t GetHash(RenderPass renderPass, VertexFormat::Type vertexFormat) const override { return 0; }
+	void BindPipeline(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList, RenderPass::Id renderPass, VertexFormat::Type vertexFormat) override;
+	void BindConstants(RenderPass::Id pass, ID3D12GraphicsCommandList* cmdList, D3D12_GPU_VIRTUAL_ADDRESS objectConstantsDescriptor) const override {}
+	size_t GetHash(RenderPass::Id renderPass, VertexFormat::Type vertexFormat) const override { return 0; }
 };

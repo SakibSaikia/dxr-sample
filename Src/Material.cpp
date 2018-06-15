@@ -22,7 +22,7 @@ Microsoft::WRL::ComPtr<ID3DBlob> LoadBlob(const std::string& filename)
 	return blob;
 }
 
-MaterialPipeline::MaterialPipeline(ID3D12Device* device, RenderPass renderPass, VertexFormat::Type vertexFormat, const std::string vs, const std::string ps, const std::string rootSig)
+MaterialPipeline::MaterialPipeline(ID3D12Device* device, RenderPass::Id renderPass, VertexFormat::Type vertexFormat, const std::string vs, const std::string ps, const std::string rootSig)
 {
 	D3D12_GRAPHICS_PIPELINE_STATE_DESC desc{};
 
@@ -40,11 +40,12 @@ MaterialPipeline::MaterialPipeline(ID3D12Device* device, RenderPass renderPass, 
 		assert(false);
 	}
 
+	// rasterizer state
 	switch (renderPass)
 	{
 	case RenderPass::Geometry:
+	case RenderPass::Shadowmap:
 	case RenderPass::DebugDraw:
-		// rasterizer state
 		desc.RasterizerState.FillMode = D3D12_FILL_MODE_SOLID;
 		desc.RasterizerState.CullMode = D3D12_CULL_MODE_BACK;
 		desc.RasterizerState.FrontCounterClockwise = FALSE;
@@ -56,7 +57,17 @@ MaterialPipeline::MaterialPipeline(ID3D12Device* device, RenderPass renderPass, 
 		desc.RasterizerState.AntialiasedLineEnable = FALSE;
 		desc.RasterizerState.ForcedSampleCount = 0;
 		desc.RasterizerState.ConservativeRaster = D3D12_CONSERVATIVE_RASTERIZATION_MODE_OFF;
-		// blend state
+		break;
+	default:
+		assert(false);
+	}
+
+	// blend state
+	switch (renderPass)
+	{
+	case RenderPass::Geometry:
+	case RenderPass::Shadowmap:
+	case RenderPass::DebugDraw:
 		desc.BlendState.AlphaToCoverageEnable = FALSE;
 		desc.BlendState.IndependentBlendEnable = FALSE;
 		for (auto& rt : desc.BlendState.RenderTarget)
@@ -65,27 +76,63 @@ MaterialPipeline::MaterialPipeline(ID3D12Device* device, RenderPass renderPass, 
 			rt.LogicOpEnable = FALSE;
 			rt.RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL;
 		}
-		// depth stencil state
+		break;
+	default:
+		assert(false);
+	}
+
+	// depth stencil state
+	switch (renderPass)
+	{
+	case RenderPass::Geometry:
+	case RenderPass::Shadowmap:
+	case RenderPass::DebugDraw:
 		desc.DepthStencilState.DepthEnable = TRUE;
 		desc.DepthStencilState.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ALL;
 		desc.DepthStencilState.DepthFunc = D3D12_COMPARISON_FUNC_LESS;
 		desc.DepthStencilState.StencilEnable = FALSE;
-		// RTV
+		break;
+	default:
+		assert(false);
+	}
+
+	// RTV
+	switch (renderPass)
+	{
+	case RenderPass::Geometry:
+	case RenderPass::DebugDraw:
 		desc.NumRenderTargets = 1;
 		desc.RTVFormats[0] = k_backBufferRTVFormat;
 		desc.DSVFormat = k_depthStencilFormatDsv;
-		// misc
+		break;
+	case RenderPass::Shadowmap:
+		// turn off color writes
+		desc.NumRenderTargets = 0;
+		desc.RTVFormats[0] = DXGI_FORMAT_UNKNOWN;
+		desc.DSVFormat = k_depthStencilFormatDsv;
+		break;
+	default:
+		assert(false);
+	}
+
+	// misc
+	switch (renderPass)
+	{
+	case RenderPass::Geometry:
+	case RenderPass::Shadowmap:
+	case RenderPass::DebugDraw:
 		desc.SampleMask = UINT_MAX;
 		desc.SampleDesc.Count = 1;
 		break;
 	default:
 		assert(false);
-
 	}
 
+	// Topology
 	switch (renderPass)
 	{
 	case RenderPass::Geometry:
+	case RenderPass::Shadowmap:
 		desc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
 		break;
 	case RenderPass::DebugDraw:
@@ -145,66 +192,101 @@ DefaultOpaqueMaterial::DefaultOpaqueMaterial(std::string& name, const D3D12_GPU_
 	Material{ name },
 	m_srvBegin{ srvHandle }
 {
-	m_hash = std::hash<std::string>{}(k_vs) ^ 
-			(std::hash<std::string>{}(k_ps) << 1) ^ 
-			(std::hash<std::string>{}(k_rootSig) << 2);
+	m_hash[RenderPass::Geometry] = std::hash<std::string>{}(k_vs) ^ 
+		(std::hash<std::string>{}(k_ps) << 1) ^ 
+		(std::hash<std::string>{}(k_rootSig) << 2);
+
+	m_hash[RenderPass::Shadowmap] = std::hash<std::string>{}(k_shadowmap_vs) ^
+		(std::hash<std::string>{}(k_shadowmap_ps) << 1) ^
+		(std::hash<std::string>{}(k_shadowmap_rootSig) << 2);
 }
 
-void DefaultOpaqueMaterial::BindPipeline(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList, RenderPass renderPass, VertexFormat::Type vertexFormat)
+void DefaultOpaqueMaterial::BindPipeline(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList, RenderPass::Id pass, VertexFormat::Type vertexFormat)
 {
-	auto& pipeline = m_pipelines[static_cast<int>(renderPass)][static_cast<int>(vertexFormat)];
+	auto& pipeline = m_pipelines[pass][static_cast<int>(vertexFormat)];
 
 	// Create a new pipeline and cache it if it has not been created
 	if (!pipeline)
 	{
-		pipeline = std::make_unique<MaterialPipeline>(device, renderPass, vertexFormat, k_vs, k_ps, k_rootSig);
+		if (pass == RenderPass::Geometry)
+		{
+			pipeline = std::make_unique<MaterialPipeline>(device, pass, vertexFormat, k_vs, k_ps, k_rootSig);
+		}
+		else if (pass == RenderPass::Shadowmap)
+		{
+			pipeline = std::make_unique<MaterialPipeline>(device, pass, vertexFormat, k_shadowmap_vs, k_shadowmap_ps, k_shadowmap_rootSig);
+		}
 	}
 
 	pipeline->Bind(cmdList);
 }
 
-void DefaultOpaqueMaterial::BindConstants(ID3D12GraphicsCommandList* cmdList, D3D12_GPU_VIRTUAL_ADDRESS objectConstantsDescriptor) const
+void DefaultOpaqueMaterial::BindConstants(RenderPass::Id pass, ID3D12GraphicsCommandList* cmdList, D3D12_GPU_VIRTUAL_ADDRESS objectConstantsDescriptor) const
 {
 	cmdList->SetGraphicsRootConstantBufferView(k_objectConstantsDescriptorIndex, objectConstantsDescriptor);
-	cmdList->SetGraphicsRootDescriptorTable(k_srvDescriptorIndex, m_srvBegin);
+
+	if (pass == RenderPass::Geometry)
+	{
+		cmdList->SetGraphicsRootDescriptorTable(k_srvDescriptorIndex, m_srvBegin);
+	}
 }
 
-size_t DefaultOpaqueMaterial::GetHash(RenderPass renderPass, VertexFormat::Type vertexFormat) const
+size_t DefaultOpaqueMaterial::GetHash(RenderPass::Id renderPass, VertexFormat::Type vertexFormat) const
 {
-	return	m_hash ^ (static_cast<int>(renderPass) << 3) ^ (static_cast<int>(vertexFormat) << 4);
+	return	m_hash[renderPass] ^ (renderPass << 3) ^ (static_cast<int>(vertexFormat) << 4);
 }
 
-DefaultMaskedMaterial::DefaultMaskedMaterial(std::string& name, const D3D12_GPU_DESCRIPTOR_HANDLE srvHandle) :
+DefaultMaskedMaterial::DefaultMaskedMaterial(std::string& name, const D3D12_GPU_DESCRIPTOR_HANDLE srvHandle, const D3D12_GPU_DESCRIPTOR_HANDLE opacityMaskSrvHandle) :
 	Material{ name },
-	m_srvBegin{ srvHandle }
+	m_srvBegin{ srvHandle },
+	m_opacityMaskSrv{opacityMaskSrvHandle}
 {
-	m_hash = std::hash<std::string>{}(k_vs) ^ 
-			(std::hash<std::string>{}(k_ps) << 1) ^ 
-			(std::hash<std::string>{}(k_rootSig) << 2);
+	m_hash[RenderPass::Geometry] = std::hash<std::string>{}(k_vs) ^
+		(std::hash<std::string>{}(k_ps) << 1) ^ 
+		(std::hash<std::string>{}(k_rootSig) << 2);
+
+	m_hash[RenderPass::Shadowmap] = std::hash<std::string>{}(k_shadowmap_vs) ^
+		(std::hash<std::string>{}(k_shadowmap_ps) << 1) ^
+		(std::hash<std::string>{}(k_shadowmap_rootSig) << 2);
 }
 
-void DefaultMaskedMaterial::BindPipeline(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList, RenderPass renderPass, VertexFormat::Type vertexFormat)
+void DefaultMaskedMaterial::BindPipeline(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList, RenderPass::Id pass, VertexFormat::Type vertexFormat)
 {
-	auto& pipeline = m_pipelines[static_cast<int>(renderPass)][static_cast<int>(vertexFormat)];
+	auto& pipeline = m_pipelines[pass][static_cast<int>(vertexFormat)];
 
 	// Create a new pipeline and cache it if it has not been created
 	if (!pipeline)
 	{
-		pipeline = std::make_unique<MaterialPipeline>(device, renderPass, vertexFormat, k_vs, k_ps, k_rootSig);
+		if (pass == RenderPass::Geometry)
+		{
+			pipeline = std::make_unique<MaterialPipeline>(device, pass, vertexFormat, k_vs, k_ps, k_rootSig);
+		}
+		else if (pass == RenderPass::Shadowmap)
+		{
+			pipeline = std::make_unique<MaterialPipeline>(device, pass, vertexFormat, k_shadowmap_vs, k_shadowmap_ps, k_shadowmap_rootSig);
+		}
 	}
 
 	pipeline->Bind(cmdList);
 }
 
-void DefaultMaskedMaterial::BindConstants(ID3D12GraphicsCommandList* cmdList, D3D12_GPU_VIRTUAL_ADDRESS objectConstantsDescriptor) const
+void DefaultMaskedMaterial::BindConstants(RenderPass::Id pass, ID3D12GraphicsCommandList* cmdList, D3D12_GPU_VIRTUAL_ADDRESS objectConstantsDescriptor) const
 {
 	cmdList->SetGraphicsRootConstantBufferView(k_objectConstantsDescriptorIndex, objectConstantsDescriptor);
-	cmdList->SetGraphicsRootDescriptorTable(k_srvDescriptorIndex, m_srvBegin);
+
+	if (pass == RenderPass::Geometry)
+	{
+		cmdList->SetGraphicsRootDescriptorTable(k_srvDescriptorIndex, m_srvBegin);
+	}
+	else if (pass == RenderPass::Shadowmap)
+	{
+		cmdList->SetGraphicsRootDescriptorTable(k_srvDescriptorIndex, m_opacityMaskSrv);
+	}
 }
 
-size_t DefaultMaskedMaterial::GetHash(RenderPass renderPass, VertexFormat::Type vertexFormat) const
+size_t DefaultMaskedMaterial::GetHash(RenderPass::Id renderPass, VertexFormat::Type vertexFormat) const
 {
-	return	m_hash ^ (static_cast<int>(renderPass) << 3) ^ (static_cast<int>(vertexFormat) << 4);
+	return	m_hash[renderPass] ^ (renderPass << 3) ^ (static_cast<int>(vertexFormat) << 4);
 }
 
 DebugMaterial::DebugMaterial() :
@@ -212,9 +294,9 @@ DebugMaterial::DebugMaterial() :
 {
 }
 
-void DebugMaterial::BindPipeline(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList, RenderPass renderPass, VertexFormat::Type vertexFormat)
+void DebugMaterial::BindPipeline(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList, RenderPass::Id renderPass, VertexFormat::Type vertexFormat)
 {
-	auto& pipeline = m_pipelines[static_cast<int>(renderPass)][static_cast<int>(vertexFormat)];
+	auto& pipeline = m_pipelines[renderPass][static_cast<int>(vertexFormat)];
 
 	// Create a new pipeline and cache it if it has not been created
 	if (!pipeline)

@@ -1,7 +1,6 @@
 #include "Common.hlsl"
 
-#define args    "RootFlags(ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT)" \
-			    ", CBV(b0)" 
+#define args    "RootFlags(ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT) , CBV(b0)" 
 				
 
 struct VsToPs

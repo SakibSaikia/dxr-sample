@@ -99,5 +99,8 @@
     <None Include="DebugMaterial.hlsl">
       <Filter>Shaders</Filter>
     </None>
+    <None Include="Shadowmap.hlsl">
+      <Filter>Shaders</Filter>
+    </None>
   </ItemGroup>
 </Project>

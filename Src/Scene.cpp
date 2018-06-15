@@ -115,8 +115,8 @@ void Scene::LoadMaterials(
 			LoadTexture(roughnessTextureNameStr.C_Str(), device, srvHeap, srvStartOffset + descriptorIdx++, srvDescriptorSize, resourceUpload);
 			LoadTexture(metallicTextureNameStr.C_Str(), device, srvHeap, srvStartOffset + descriptorIdx++, srvDescriptorSize, resourceUpload);
 			LoadTexture(normalmapTextureNameStr.C_Str(), device, srvHeap, srvStartOffset + descriptorIdx++, srvDescriptorSize, resourceUpload);
-			LoadTexture(opacityMaskTextureNameStr.C_Str(), device, srvHeap, srvStartOffset + descriptorIdx++, srvDescriptorSize, resourceUpload);
-			m_materials.push_back(std::make_unique<DefaultMaskedMaterial>(std::string(materialName.C_Str()), headDescriptor));
+			const auto opacityMaskDescriptor = LoadTexture(opacityMaskTextureNameStr.C_Str(), device, srvHeap, srvStartOffset + descriptorIdx++, srvDescriptorSize, resourceUpload);
+			m_materials.push_back(std::make_unique<DefaultMaskedMaterial>(std::string(materialName.C_Str()), headDescriptor, opacityMaskDescriptor));
 		}
 		else if (bHasBaseColorTexture == aiReturn_SUCCESS &&
 				bHasRoughnessTexture == aiReturn_SUCCESS &&
@@ -340,47 +340,57 @@ void Scene::Update(uint32_t bufferIndex)
 	m_light->Fill(l);
 }
 
+void Scene::RenderAllMeshes(RenderPass::Id pass, ID3D12Device* device, ID3D12GraphicsCommandList* cmdList, uint32_t bufferIndex, const View& view)
+{
+	cmdList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+
+	int entityId = 0;
+	size_t currentMaterialHash = 0;
+	for (const auto& meshEntity : m_meshEntities)
+	{
+		StaticMesh* sm = m_meshes.at(meshEntity->GetMeshIndex()).get();
+		Material* mat = m_materials.at(sm->GetMaterialIndex()).get();
+		auto hash = mat->GetHash(pass, sm->GetVertexFormat());
+
+		if (hash != currentMaterialHash)
+		{
+			PIXScopedEvent(cmdList, 0, L"bind_pipeline");
+
+			// root sig
+			mat->BindPipeline(device, cmdList, pass, sm->GetVertexFormat());
+
+			// constants
+			cmdList->SetGraphicsRootConstantBufferView(0, view.GetConstantBuffer(bufferIndex)->GetGPUVirtualAddress());
+			cmdList->SetGraphicsRootConstantBufferView(2, m_lightConstantBuffers.at(bufferIndex)->GetGPUVirtualAddress());
+
+			currentMaterialHash = hash;
+		}
+
+		if (mat->IsValid())
+		{
+			PIXScopedEvent(cmdList, 0, meshEntity->GetName().c_str());
+
+			D3D12_GPU_VIRTUAL_ADDRESS objectConstantsDescriptor = m_objectConstantBuffers.at(bufferIndex)->GetGPUVirtualAddress() + entityId * sizeof(ObjectConstants);
+			mat->BindConstants(pass, cmdList, objectConstantsDescriptor);
+			sm->Render(cmdList);
+		}
+
+		++entityId;
+	}
+}
+
 void Scene::Render(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList, uint32_t bufferIndex, const View& view)
 {
 	PIXScopedEvent(cmdList, 0, L"render_scene");
 
 	{
+		PIXScopedEvent(cmdList, 0, "shadowmap");
+		RenderAllMeshes(RenderPass::Shadowmap, device, cmdList, bufferIndex, view);
+	}
+
+	{
 		PIXScopedEvent(cmdList, 0, L"scene_geo");
-		cmdList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-
-		int entityId = 0;
-		size_t currentMaterialHash = 0;
-		for (const auto& meshEntity : m_meshEntities)
-		{
-			StaticMesh* sm = m_meshes.at(meshEntity->GetMeshIndex()).get();
-			Material* mat = m_materials.at(sm->GetMaterialIndex()).get();
-			auto hash = mat->GetHash(RenderPass::Geometry, sm->GetVertexFormat());
-
-			if (hash != currentMaterialHash)
-			{
-				PIXScopedEvent(cmdList, 0, L"bind_pipeline");
-
-				// root sig
-				mat->BindPipeline(device, cmdList, RenderPass::Geometry, sm->GetVertexFormat());
-
-				// constants
-				cmdList->SetGraphicsRootConstantBufferView(0, view.GetConstantBuffer(bufferIndex)->GetGPUVirtualAddress());
-				cmdList->SetGraphicsRootConstantBufferView(2, m_lightConstantBuffers.at(bufferIndex)->GetGPUVirtualAddress());
-
-				currentMaterialHash = hash;
-			}
-
-			if (mat->IsValid())
-			{
-				PIXScopedEvent(cmdList, 0, meshEntity->GetName().c_str());
-
-				D3D12_GPU_VIRTUAL_ADDRESS objectConstantsDescriptor = m_objectConstantBuffers.at(bufferIndex)->GetGPUVirtualAddress() + entityId * sizeof(ObjectConstants);
-				mat->BindConstants(cmdList, objectConstantsDescriptor);
-				sm->Render(cmdList);
-			}
-
-			++entityId;
-		}
+		RenderAllMeshes(RenderPass::Geometry, device, cmdList, bufferIndex, view);
 	}
 
 	{

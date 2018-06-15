@@ -14,12 +14,16 @@ constexpr DXGI_FORMAT k_depthStencilFormatRaw = DXGI_FORMAT_R24G8_TYPELESS;
 constexpr DXGI_FORMAT k_depthStencilFormatDsv = DXGI_FORMAT_D24_UNORM_S8_UINT;
 constexpr DXGI_FORMAT k_depthStencilFormatSrv = DXGI_FORMAT_R24_UNORM_X8_TYPELESS;
 
-enum class RenderPass
+namespace RenderPass
 {
-	Geometry,
-	DebugDraw,
-	Count
-};
+	enum Id
+	{
+		Geometry,
+		Shadowmap,
+		DebugDraw,
+		Count
+	};
+}
 
 namespace RTV
 {
