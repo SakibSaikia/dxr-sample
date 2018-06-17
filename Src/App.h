@@ -78,8 +78,6 @@ private:
 	View m_view;
 
 	// State Objects
-	D3D12_VIEWPORT m_viewport;
-	D3D12_RECT m_scissorRect;
 	std::vector<D3D12_GRAPHICS_PIPELINE_STATE_DESC> m_renderPassPSOs;
 
 	// Mouse

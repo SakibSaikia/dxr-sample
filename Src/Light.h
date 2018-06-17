@@ -5,13 +5,14 @@ __declspec(align(256)) struct LightConstants
 	DirectX::XMFLOAT3 direction;
 	DirectX::XMFLOAT3 color;
 	float brightness;
+	DirectX::XMFLOAT4X4 shadowMatrix;
 };
 
 class Light
 {
 public:
 	Light(const DirectX::XMFLOAT3 direction, const DirectX::XMFLOAT3 color, const float brightness);
-	void Fill(LightConstants* lightConst) const;
+	void FillConstants(LightConstants* lightConst, const DirectX::BoundingBox& sceneBounds) const;
 
 private:
 	DirectX::XMFLOAT3 m_direction;

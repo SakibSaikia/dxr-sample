@@ -221,13 +221,19 @@ void DefaultOpaqueMaterial::BindPipeline(ID3D12Device* device, ID3D12GraphicsCom
 	pipeline->Bind(cmdList);
 }
 
-void DefaultOpaqueMaterial::BindConstants(RenderPass::Id pass, ID3D12GraphicsCommandList* cmdList, D3D12_GPU_VIRTUAL_ADDRESS objectConstantsDescriptor) const
+void DefaultOpaqueMaterial::BindConstants(RenderPass::Id pass, ID3D12GraphicsCommandList* cmdList, D3D12_GPU_VIRTUAL_ADDRESS objConstants, D3D12_GPU_VIRTUAL_ADDRESS viewConstants, D3D12_GPU_VIRTUAL_ADDRESS lightConstants) const
 {
-	cmdList->SetGraphicsRootConstantBufferView(k_objectConstantsDescriptorIndex, objectConstantsDescriptor);
-
 	if (pass == RenderPass::Geometry)
 	{
+		cmdList->SetGraphicsRootConstantBufferView(k_objectConstantsDescriptorIndex, objConstants);
+		cmdList->SetGraphicsRootConstantBufferView(0, viewConstants);
+		cmdList->SetGraphicsRootConstantBufferView(2, lightConstants);
 		cmdList->SetGraphicsRootDescriptorTable(k_srvDescriptorIndex, m_srvBegin);
+	}
+	else if (pass == RenderPass::Shadowmap)
+	{
+		cmdList->SetGraphicsRootConstantBufferView(0, objConstants);
+		cmdList->SetGraphicsRootConstantBufferView(1, lightConstants);
 	}
 }
 
@@ -270,17 +276,20 @@ void DefaultMaskedMaterial::BindPipeline(ID3D12Device* device, ID3D12GraphicsCom
 	pipeline->Bind(cmdList);
 }
 
-void DefaultMaskedMaterial::BindConstants(RenderPass::Id pass, ID3D12GraphicsCommandList* cmdList, D3D12_GPU_VIRTUAL_ADDRESS objectConstantsDescriptor) const
+void DefaultMaskedMaterial::BindConstants(RenderPass::Id pass, ID3D12GraphicsCommandList* cmdList, D3D12_GPU_VIRTUAL_ADDRESS objConstants, D3D12_GPU_VIRTUAL_ADDRESS viewConstants, D3D12_GPU_VIRTUAL_ADDRESS lightConstants) const
 {
-	cmdList->SetGraphicsRootConstantBufferView(k_objectConstantsDescriptorIndex, objectConstantsDescriptor);
-
 	if (pass == RenderPass::Geometry)
 	{
+		cmdList->SetGraphicsRootConstantBufferView(k_objectConstantsDescriptorIndex, objConstants);
+		cmdList->SetGraphicsRootConstantBufferView(0, viewConstants);
+		cmdList->SetGraphicsRootConstantBufferView(2, lightConstants);
 		cmdList->SetGraphicsRootDescriptorTable(k_srvDescriptorIndex, m_srvBegin);
 	}
 	else if (pass == RenderPass::Shadowmap)
 	{
-		cmdList->SetGraphicsRootDescriptorTable(k_srvDescriptorIndex, m_opacityMaskSrv);
+		cmdList->SetGraphicsRootConstantBufferView(0, objConstants);
+		cmdList->SetGraphicsRootConstantBufferView(1, lightConstants);
+		cmdList->SetGraphicsRootDescriptorTable(k_shadowmap_srvDescriptorIndex, m_opacityMaskSrv);
 	}
 }
 

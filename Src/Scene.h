@@ -13,7 +13,7 @@ class Scene
 public:
 	void InitResources(ID3D12Device* device, ID3D12CommandQueue* cmdQueue, ID3D12GraphicsCommandList* cmdList, ID3D12DescriptorHeap* srvHeap, size_t srvStartOffset, size_t srvDescriptorSize);
 	void Update(uint32_t bufferIndex);
-	void Render(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList, uint32_t bufferIndex, const View& view);
+	void Render(RenderPass::Id pass, ID3D12Device* device, ID3D12GraphicsCommandList* cmdList, uint32_t bufferIndex, const View& view);
 
 private:
 	void LoadMeshes(const aiScene* loader, ID3D12Device* device, ID3D12GraphicsCommandList* cmdList);
@@ -22,8 +22,6 @@ private:
 
 	void InitLights(ID3D12Device* device);
 	void InitBounds(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList);
-
-	void RenderAllMeshes(RenderPass::Id pass, ID3D12Device* device, ID3D12GraphicsCommandList* cmdList, uint32_t bufferIndex, const View& view);
 
 	D3D12_GPU_DESCRIPTOR_HANDLE LoadTexture(const std::string& textureName, ID3D12Device* device, ID3D12DescriptorHeap* srvHeap, const size_t srvOffset, const size_t srvDescriptorSize, DirectX::ResourceUploadBatch& resourceUpload);
 

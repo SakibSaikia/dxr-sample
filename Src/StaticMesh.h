@@ -38,7 +38,7 @@ public:
 	StaticMeshEntity() = delete;
 	StaticMeshEntity(std::string&& name, const uint64_t meshIndex, const DirectX::XMFLOAT4X4& localToWorld);
 
-	void Fill(ObjectConstants* objConst) const;
+	void FillConstants(ObjectConstants* objConst) const;
 	DirectX::XMFLOAT4X4 GetLocalToWorldMatrix() const;
 	uint64_t GetMeshIndex() const;
 	std::string GetName() const;

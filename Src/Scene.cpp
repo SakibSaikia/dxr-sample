@@ -188,7 +188,7 @@ void Scene::LoadEntities(const aiNode* node)
 
 void Scene::InitLights(ID3D12Device* device)
 {
-	m_light = std::make_unique<Light>(DirectX::XMFLOAT3{ 1.f, 1.f, 0.f }, DirectX::XMFLOAT3{ 1.f, 1.f, 1.f }, 10000.f);
+	m_light = std::make_unique<Light>(DirectX::XMFLOAT3{ -1.f, -1.f, 0.f }, DirectX::XMFLOAT3{ 1.f, 1.f, 1.f }, 10000.f);
 }
 
 void Scene::InitBounds(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList)
@@ -332,15 +332,15 @@ void Scene::Update(uint32_t bufferIndex)
 	ObjectConstants* o = m_objectConstantBufferPtr.at(bufferIndex);
 	for (const auto& meshEntity : m_meshEntities)
 	{
-		meshEntity->Fill(o++);
+		meshEntity->FillConstants(o++);
 	}
 
 	// light(s)
 	LightConstants* l = m_lightConstantBufferPtr.at(bufferIndex);
-	m_light->Fill(l);
+	m_light->FillConstants(l, m_sceneBounds);
 }
 
-void Scene::RenderAllMeshes(RenderPass::Id pass, ID3D12Device* device, ID3D12GraphicsCommandList* cmdList, uint32_t bufferIndex, const View& view)
+void Scene::Render(RenderPass::Id pass, ID3D12Device* device, ID3D12GraphicsCommandList* cmdList, uint32_t bufferIndex, const View& view)
 {
 	cmdList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
@@ -359,10 +359,6 @@ void Scene::RenderAllMeshes(RenderPass::Id pass, ID3D12Device* device, ID3D12Gra
 			// root sig
 			mat->BindPipeline(device, cmdList, pass, sm->GetVertexFormat());
 
-			// constants
-			cmdList->SetGraphicsRootConstantBufferView(0, view.GetConstantBuffer(bufferIndex)->GetGPUVirtualAddress());
-			cmdList->SetGraphicsRootConstantBufferView(2, m_lightConstantBuffers.at(bufferIndex)->GetGPUVirtualAddress());
-
 			currentMaterialHash = hash;
 		}
 
@@ -370,38 +366,14 @@ void Scene::RenderAllMeshes(RenderPass::Id pass, ID3D12Device* device, ID3D12Gra
 		{
 			PIXScopedEvent(cmdList, 0, meshEntity->GetName().c_str());
 
-			D3D12_GPU_VIRTUAL_ADDRESS objectConstantsDescriptor = m_objectConstantBuffers.at(bufferIndex)->GetGPUVirtualAddress() + entityId * sizeof(ObjectConstants);
-			mat->BindConstants(pass, cmdList, objectConstantsDescriptor);
+			D3D12_GPU_VIRTUAL_ADDRESS ObjConstants = m_objectConstantBuffers.at(bufferIndex)->GetGPUVirtualAddress() + entityId * sizeof(ObjectConstants);
+			D3D12_GPU_VIRTUAL_ADDRESS viewConstants = view.GetConstantBuffer(bufferIndex)->GetGPUVirtualAddress();
+			D3D12_GPU_VIRTUAL_ADDRESS lightConstants = m_lightConstantBuffers.at(bufferIndex)->GetGPUVirtualAddress();
+
+			mat->BindConstants(pass, cmdList, ObjConstants, viewConstants, lightConstants);
 			sm->Render(cmdList);
 		}
 
 		++entityId;
-	}
-}
-
-void Scene::Render(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList, uint32_t bufferIndex, const View& view)
-{
-	PIXScopedEvent(cmdList, 0, L"render_scene");
-
-	{
-		PIXScopedEvent(cmdList, 0, "shadowmap");
-		RenderAllMeshes(RenderPass::Shadowmap, device, cmdList, bufferIndex, view);
-	}
-
-	{
-		PIXScopedEvent(cmdList, 0, L"scene_geo");
-		RenderAllMeshes(RenderPass::Geometry, device, cmdList, bufferIndex, view);
-	}
-
-	{
-		PIXScopedEvent(cmdList, 0, L"debug_draws");
-		cmdList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_LINELIST);
-		m_debugMaterial.BindPipeline(device, cmdList, RenderPass::DebugDraw, VertexFormat::Type::P3C3);
-		cmdList->SetGraphicsRootConstantBufferView(0, view.GetConstantBuffer(bufferIndex)->GetGPUVirtualAddress());
-
-		for (const auto& debugMesh : m_debugMeshes)
-		{
-			debugMesh->Render(cmdList);
-		}
 	}
 }

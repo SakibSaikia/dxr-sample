@@ -103,7 +103,7 @@ float4 ps_main(VsToPs p) : SV_TARGET
     float3 normal = mul(normalMap, float3x3(p.tangent, p.bitangent, p.normal));
     normal = normalize(mul(normal, (float3x3) viewMatrix));
 
-    float3 light = normalize(mul(lightDir, (float3x3) viewMatrix));
+    float3 light = normalize(mul(-lightDir, (float3x3) viewMatrix));
 
     float3 halfVector = normalize(light + float3(0, 0, 1));
 

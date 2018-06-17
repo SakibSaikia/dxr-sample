@@ -31,7 +31,7 @@ cbuffer LightConstants : register(b2)
     float3 lightDir;
     float3 lightColor;
     float lightBrightness;
-    float4x4 lightViewProjectionMatrix;
+    float4x4 shadowMatrix;
 };
 
 struct VsIn
@@ -48,7 +48,7 @@ VsToPs vs_main(VsIn v)
 {
     VsToPs o;
     float4 worldPos = mul(float4(v.pos, 1.f), localToWorldMatrix);
-    o.ndcPos = mul(worldPos, lightViewProjectionMatrix);
+    o.ndcPos = mul(worldPos, shadowMatrix);
     o.uv = v.uv;
     return o;
 }

@@ -252,21 +252,6 @@ void App::InitScene()
 void App::InitView()
 {
 	m_view.Init(m_d3dDevice.Get(), k_gfxBufferCount, k_screenWidth, k_screenHeight);
-
-	// Viewport
-	{
-		m_viewport.TopLeftX = 0.f;
-		m_viewport.TopLeftY = 0.f;
-		m_viewport.Width = static_cast<float>(k_screenWidth);
-		m_viewport.Height = static_cast<float>(k_screenHeight);
-		m_viewport.MinDepth = 0.f;
-		m_viewport.MaxDepth = 1.f;
-	}
-
-	// Scissor
-	{
-		m_scissorRect = { 0, 0, k_screenWidth, k_screenHeight };
-	}
 }
 
 void App::Init(HWND windowHandle)
@@ -323,27 +308,64 @@ void App::Render()
 			&barrierDesc
 		);
 
-		D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle = GetRenderTargetViewCPU(static_cast<RTV::Id>(RTV::SwapChain + m_gfxBufferIndex));
-		D3D12_CPU_DESCRIPTOR_HANDLE dsvHandle = GetDepthStencilViewCPU(DSV::SceneDepth);
-
-		// Clear
-		float clearColor[] = { .8f, .8f, 1.f, 0.f };
-		m_gfxCmdList->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
-		m_gfxCmdList->ClearDepthStencilView(dsvHandle, D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, 1.f, 0, 0, nullptr);
-
 		// Set descriptor heaps
 		ID3D12DescriptorHeap* descriptorHeaps[] = { m_cbvSrvUavHeap.Get() };
 		m_gfxCmdList->SetDescriptorHeaps(std::extent<decltype(descriptorHeaps)>::value, descriptorHeaps);
 
-		// Set state
-		m_gfxCmdList->RSSetViewports(1, &m_viewport);
-		m_gfxCmdList->RSSetScissorRects(1, &m_scissorRect);
+		{
+			PIXScopedEvent(m_gfxCmdList.Get(), 0, "shadowmap");
 
-		// Set rendertarget
-		m_gfxCmdList->OMSetRenderTargets(1, &rtvHandle, FALSE, &dsvHandle);
+			D3D12_CPU_DESCRIPTOR_HANDLE dsvHandle = GetDepthStencilViewCPU(DSV::Shadowmap);
 
-		// Render scene
-		m_scene.Render(m_d3dDevice.Get(), m_gfxCmdList.Get(), m_gfxBufferIndex, m_view);
+			// clear
+			m_gfxCmdList->ClearDepthStencilView(dsvHandle, D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, 1.f, 0, 0, nullptr);
+
+			// viewport
+			D3D12_VIEWPORT viewport{ 0.f, 0.f, k_shadowmapSize, k_shadowmapSize, 0.f, 1.f };
+			D3D12_RECT screenRect{ 0.f, 0.f, k_shadowmapSize, k_shadowmapSize };
+			m_gfxCmdList->RSSetViewports(1, &viewport);
+			m_gfxCmdList->RSSetScissorRects(1, &screenRect);
+
+			// dsv
+			m_gfxCmdList->OMSetRenderTargets(0, nullptr, FALSE, &dsvHandle);
+
+			m_scene.Render(RenderPass::Shadowmap, m_d3dDevice.Get(), m_gfxCmdList.Get(), m_gfxBufferIndex, m_view);
+		}
+
+		{
+			PIXScopedEvent(m_gfxCmdList.Get(), 0, L"scene_geo");
+
+			D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle = GetRenderTargetViewCPU(static_cast<RTV::Id>(RTV::SwapChain + m_gfxBufferIndex));
+			D3D12_CPU_DESCRIPTOR_HANDLE dsvHandle = GetDepthStencilViewCPU(DSV::SceneDepth);
+
+			// clear
+			float clearColor[] = { .8f, .8f, 1.f, 0.f };
+			m_gfxCmdList->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
+			m_gfxCmdList->ClearDepthStencilView(dsvHandle, D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, 1.f, 0, 0, nullptr);
+
+			// viewport
+			D3D12_VIEWPORT viewport{ 0.f, 0.f, k_screenWidth, k_screenHeight, 0.f, 1.f };
+			D3D12_RECT screenRect{ 0.f, 0.f, k_screenWidth, k_screenHeight };
+			m_gfxCmdList->RSSetViewports(1, &viewport);
+			m_gfxCmdList->RSSetScissorRects(1, &screenRect);
+
+			// rt & dsv
+			m_gfxCmdList->OMSetRenderTargets(1, &rtvHandle, FALSE, &dsvHandle);
+
+			m_scene.Render(RenderPass::Geometry, m_d3dDevice.Get(), m_gfxCmdList.Get(), m_gfxBufferIndex, m_view);
+		}
+
+		/*{
+			PIXScopedEvent(cmdList, 0, L"debug_draws");
+			m_gfxCmdList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_LINELIST);
+			m_debugMaterial.BindPipeline(device, m_gfxCmdList, RenderPass::DebugDraw, VertexFormat::Type::P3C3);
+			m_gfxCmdList->SetGraphicsRootConstantBufferView(0, view.GetConstantBuffer(bufferIndex)->GetGPUVirtualAddress());
+
+			for (const auto& debugMesh : m_debugMeshes)
+			{
+				debugMesh->Render(cmdList);
+			}
+		}*/
 
 		// Transition back buffer from render target to present
 		barrierDesc = {};
