@@ -29,9 +29,10 @@ cbuffer SceneConstants : register(b1)
 cbuffer LightConstants : register(b2)
 {
     float3 lightDir;
+    float _pad;
     float3 lightColor;
     float lightBrightness;
-    float4x4 shadowMatrix;
+    float4x4 lightViewProjectionMatrix;
 };
 
 struct VsIn
@@ -48,7 +49,7 @@ VsToPs vs_main(VsIn v)
 {
     VsToPs o;
     float4 worldPos = mul(float4(v.pos, 1.f), localToWorldMatrix);
-    o.ndcPos = mul(worldPos, shadowMatrix);
+    o.ndcPos = mul(worldPos, lightViewProjectionMatrix);
     o.uv = v.uv;
     return o;
 }

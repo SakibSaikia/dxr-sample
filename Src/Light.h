@@ -3,9 +3,10 @@
 __declspec(align(256)) struct LightConstants
 {
 	DirectX::XMFLOAT3 direction;
+	float _pad;
 	DirectX::XMFLOAT3 color;
 	float brightness;
-	DirectX::XMFLOAT4X4 shadowMatrix;
+	DirectX::XMFLOAT4X4 lightViewProjectionMatrix;
 };
 
 class Light

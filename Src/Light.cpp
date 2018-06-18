@@ -23,9 +23,12 @@ void Light::FillConstants(LightConstants* lightConst, const DirectX::BoundingBox
 
 	DirectX::XMMATRIX lightView = DirectX::XMMatrixLookAtLH(lightPos, targetPos, lightUp);
 
+	// transform bounds to light space
+	DirectX::XMVECTOR lightBoundsCenter = DirectX::XMVector3Transform(boundsCenter, lightView);
+
 	// light projection
-	DirectX::XMVECTOR minExtent = DirectX::XMVectorSubtract(boundsCenter, boundsExtent);
-	DirectX::XMVECTOR maxExtent = DirectX::XMVectorAdd(boundsCenter, boundsExtent);
+	DirectX::XMVECTOR minExtent = DirectX::XMVectorSubtract(lightBoundsCenter, boundsExtent);
+	DirectX::XMVECTOR maxExtent = DirectX::XMVectorAdd(lightBoundsCenter, boundsExtent);
 
 	DirectX::XMFLOAT3 min, max;
 	DirectX::XMStoreFloat3(&min, minExtent);
@@ -37,19 +40,8 @@ void Light::FillConstants(LightConstants* lightConst, const DirectX::BoundingBox
 		min.z, max.z
 	);
 
-	// texture space transform 
-	DirectX::XMMATRIX texTransform{
-		0.5f, 0.f, 0.f, 0.f,
-		0.f, -0.5f, 0.f, 0.f,
-		0.f, 0.f, 1.f, 0.f,
-		0.5f, 0.5f, 0.f, 1.f
-	};
-
-	// shadow matrix 
-	DirectX::XMMATRIX shadowMatrix = lightView * lightProj * texTransform;
-
 	// fill constants
-	DirectX::XMStoreFloat4x4(&lightConst->shadowMatrix, shadowMatrix);
+	DirectX::XMStoreFloat4x4(&lightConst->lightViewProjectionMatrix, lightView * lightProj);
 	lightConst->direction = m_direction;
 	lightConst->color = m_color;
 	lightConst->brightness = m_brightness;
