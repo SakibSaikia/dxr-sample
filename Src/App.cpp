@@ -355,17 +355,11 @@ void App::Render()
 			m_scene.Render(RenderPass::Geometry, m_d3dDevice.Get(), m_gfxCmdList.Get(), m_gfxBufferIndex, m_view);
 		}
 
-		/*{
-			PIXScopedEvent(cmdList, 0, L"debug_draws");
+		{
+			PIXScopedEvent(m_gfxCmdList.Get(), 0, L"debug_draws");
 			m_gfxCmdList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_LINELIST);
-			m_debugMaterial.BindPipeline(device, m_gfxCmdList, RenderPass::DebugDraw, VertexFormat::Type::P3C3);
-			m_gfxCmdList->SetGraphicsRootConstantBufferView(0, view.GetConstantBuffer(bufferIndex)->GetGPUVirtualAddress());
-
-			for (const auto& debugMesh : m_debugMeshes)
-			{
-				debugMesh->Render(cmdList);
-			}
-		}*/
+			m_scene.RenderDebugMeshes(RenderPass::DebugDraw, m_d3dDevice.Get(), m_gfxCmdList.Get(), m_gfxBufferIndex, m_view);
+		}
 
 		// Transition back buffer from render target to present
 		barrierDesc = {};
