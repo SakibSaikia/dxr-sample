@@ -292,11 +292,9 @@ void Scene::InitResources(
 
 	// Light Constant Buffer
 	{
-		uint32_t lightConstantsSize = sizeof(ObjectConstants);
-
 		D3D12_RESOURCE_DESC resDesc = {};
 		resDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
-		resDesc.Width = lightConstantsSize;
+		resDesc.Width = sizeof(LightConstants);
 		resDesc.Height = 1;
 		resDesc.DepthOrArraySize = 1;
 		resDesc.MipLevels = 1;
@@ -340,7 +338,7 @@ void Scene::Update(uint32_t bufferIndex)
 	m_light->FillConstants(l, m_sceneBounds);
 }
 
-void Scene::Render(RenderPass::Id pass, ID3D12Device* device, ID3D12GraphicsCommandList* cmdList, uint32_t bufferIndex, const View& view)
+void Scene::Render(RenderPass::Id pass, ID3D12Device* device, ID3D12GraphicsCommandList* cmdList, uint32_t bufferIndex, const View& view, D3D12_GPU_DESCRIPTOR_HANDLE renderSurfaceSrvBegin)
 {
 	cmdList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
@@ -370,7 +368,7 @@ void Scene::Render(RenderPass::Id pass, ID3D12Device* device, ID3D12GraphicsComm
 			D3D12_GPU_VIRTUAL_ADDRESS viewConstants = view.GetConstantBuffer(bufferIndex)->GetGPUVirtualAddress();
 			D3D12_GPU_VIRTUAL_ADDRESS lightConstants = m_lightConstantBuffers.at(bufferIndex)->GetGPUVirtualAddress();
 
-			mat->BindConstants(pass, cmdList, ObjConstants, viewConstants, lightConstants);
+			mat->BindConstants(pass, cmdList, ObjConstants, viewConstants, lightConstants, renderSurfaceSrvBegin);
 			sm->Render(cmdList);
 		}
 

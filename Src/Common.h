@@ -48,11 +48,11 @@ namespace SRV
 {
 	enum Id
 	{
-		Shadowmap,
+		// RenderSurface SRVs
+		RenderSurfaceBegin,
+		Shadowmap = RenderSurfaceBegin,
 
-		ConstantBufferBegin,
-		ConstantBufferEnd = ConstantBufferBegin + k_constantBufferCount,
-
+		// Material SRVs
 		MaterialTexturesBegin,
 		MaterialTexturesEnd = MaterialTexturesBegin + k_materialTextureCount,
 

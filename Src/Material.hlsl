@@ -4,14 +4,14 @@
 				    ", CBV(b0)" \
 				    ", CBV(b1, visibility = SHADER_VISIBILITY_VERTEX)" \
                     ", CBV(b2, visibility = SHADER_VISIBILITY_PIXEL)" \
-				    ", StaticSampler(s0, visibility = SHADER_VISIBILITY_PIXEL, filter = FILTER_ANISOTROPIC, maxAnisotropy = 8, addressU = TEXTURE_ADDRESS_WRAP, addressV = TEXTURE_ADDRESS_WRAP, borderColor = STATIC_BORDER_COLOR_OPAQUE_WHITE)"
-
+				    ", StaticSampler(s0, visibility = SHADER_VISIBILITY_PIXEL, filter = FILTER_ANISOTROPIC, maxAnisotropy = 8, addressU = TEXTURE_ADDRESS_WRAP, addressV = TEXTURE_ADDRESS_WRAP, borderColor = STATIC_BORDER_COLOR_OPAQUE_WHITE)" \
+                    ", DescriptorTable(SRV(t0, space = 0, numDescriptors = 1), visibility = SHADER_VISIBILITY_PIXEL)"
 #if defined(MASKED)
     #define args	commonArgs \
-				    ", DescriptorTable(SRV(t0, numDescriptors = 5), visibility = SHADER_VISIBILITY_PIXEL)"
+				    ", DescriptorTable(SRV(t0, space = 1, numDescriptors = 5), visibility = SHADER_VISIBILITY_PIXEL)"
 #else
     #define args	commonArgs \
-				    ", DescriptorTable(SRV(t0, numDescriptors = 4), visibility = SHADER_VISIBILITY_PIXEL)"
+				    ", DescriptorTable(SRV(t0, space = 1, numDescriptors = 4), visibility = SHADER_VISIBILITY_PIXEL)"
 #endif
 				
 
@@ -66,12 +66,13 @@ cbuffer LightConstants : register(b2)
 
 SamplerState anisoSampler : register(s0);
 
-Texture2D texBaseColor : register(t0);
-Texture2D texRoughness : register(t1);
-Texture2D texMetallic : register(t2);
-Texture2D texNormalmap : register(t3);
+Texture2D shadowMap : register(t0, space0);
+Texture2D texBaseColor : register(t0, space1);
+Texture2D texRoughness : register(t1, space1);
+Texture2D texMetallic : register(t2, space1);
+Texture2D texNormalmap : register(t3, space1);
 #if defined(MASKED)
-    Texture2D texOpacityMask : register(t4);
+    Texture2D texOpacityMask : register(t4, space1);
 #endif
 
 static const float3 F_0_dielectric = float3(0.04, 0.04, 0.04);

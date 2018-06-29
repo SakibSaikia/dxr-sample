@@ -181,7 +181,7 @@ void App::InitRenderSurfaces()
 			&heapDesc,
 			D3D12_HEAP_FLAG_NONE,
 			&resDesc,
-			D3D12_RESOURCE_STATE_DEPTH_WRITE,
+			D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE,
 			&zClear,
 			IID_PPV_ARGS(m_shadowMapSurface.GetAddressOf())
 		));
@@ -296,24 +296,21 @@ void App::Render()
 	{
 		PIXScopedEvent(m_gfxCmdList.Get(), 0, L"render_frame");
 
-		// Transition back buffer from present to render target
-		D3D12_RESOURCE_BARRIER barrierDesc = {};
-		barrierDesc.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-		barrierDesc.Transition.pResource = m_swapChainBuffers.at(m_gfxBufferIndex).Get();
-		barrierDesc.Transition.StateBefore = D3D12_RESOURCE_STATE_PRESENT;
-		barrierDesc.Transition.StateAfter = D3D12_RESOURCE_STATE_RENDER_TARGET;
-		barrierDesc.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
-		m_gfxCmdList->ResourceBarrier(
-			1,
-			&barrierDesc
-		);
-
 		// Set descriptor heaps
 		ID3D12DescriptorHeap* descriptorHeaps[] = { m_cbvSrvUavHeap.Get() };
 		m_gfxCmdList->SetDescriptorHeaps(std::extent<decltype(descriptorHeaps)>::value, descriptorHeaps);
 
 		{
 			PIXScopedEvent(m_gfxCmdList.Get(), 0, "shadowmap");
+
+			// Transition to depth buffer
+			D3D12_RESOURCE_BARRIER barrierDesc = {};
+			barrierDesc.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+			barrierDesc.Transition.pResource = m_shadowMapSurface.Get();
+			barrierDesc.Transition.StateBefore = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
+			barrierDesc.Transition.StateAfter = D3D12_RESOURCE_STATE_DEPTH_WRITE;
+			barrierDesc.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+			m_gfxCmdList->ResourceBarrier(1, &barrierDesc);
 
 			D3D12_CPU_DESCRIPTOR_HANDLE dsvHandle = GetDepthStencilViewCPU(DSV::Shadowmap);
 
@@ -329,8 +326,22 @@ void App::Render()
 			// dsv
 			m_gfxCmdList->OMSetRenderTargets(0, nullptr, FALSE, &dsvHandle);
 
-			m_scene.Render(RenderPass::Shadowmap, m_d3dDevice.Get(), m_gfxCmdList.Get(), m_gfxBufferIndex, m_view);
+			m_scene.Render(RenderPass::Shadowmap, m_d3dDevice.Get(), m_gfxCmdList.Get(), m_gfxBufferIndex, m_view, GetShaderResourceViewGPU(SRV::RenderSurfaceBegin));
+
+			// Transition to SRV
+			barrierDesc.Transition.StateBefore = D3D12_RESOURCE_STATE_DEPTH_WRITE;
+			barrierDesc.Transition.StateAfter = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
+			m_gfxCmdList->ResourceBarrier(1, &barrierDesc);
 		}
+
+		// Transition back buffer from present to render target
+		D3D12_RESOURCE_BARRIER barrierDesc = {};
+		barrierDesc.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+		barrierDesc.Transition.pResource = m_swapChainBuffers.at(m_gfxBufferIndex).Get();
+		barrierDesc.Transition.StateBefore = D3D12_RESOURCE_STATE_PRESENT;
+		barrierDesc.Transition.StateAfter = D3D12_RESOURCE_STATE_RENDER_TARGET;
+		barrierDesc.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+		m_gfxCmdList->ResourceBarrier(1, &barrierDesc);
 
 		{
 			PIXScopedEvent(m_gfxCmdList.Get(), 0, L"scene_geo");
@@ -352,7 +363,7 @@ void App::Render()
 			// rt & dsv
 			m_gfxCmdList->OMSetRenderTargets(1, &rtvHandle, FALSE, &dsvHandle);
 
-			m_scene.Render(RenderPass::Geometry, m_d3dDevice.Get(), m_gfxCmdList.Get(), m_gfxBufferIndex, m_view);
+			m_scene.Render(RenderPass::Geometry, m_d3dDevice.Get(), m_gfxCmdList.Get(), m_gfxBufferIndex, m_view, GetShaderResourceViewGPU(SRV::RenderSurfaceBegin));
 		}
 
 		{
@@ -368,10 +379,7 @@ void App::Render()
 		barrierDesc.Transition.StateBefore = D3D12_RESOURCE_STATE_RENDER_TARGET;
 		barrierDesc.Transition.StateAfter = D3D12_RESOURCE_STATE_PRESENT;
 		barrierDesc.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
-		m_gfxCmdList->ResourceBarrier(
-			1,
-			&barrierDesc
-		);
+		m_gfxCmdList->ResourceBarrier(1, &barrierDesc);
 	}
 
 	// Execute
