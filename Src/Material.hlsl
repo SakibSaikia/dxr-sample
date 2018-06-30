@@ -3,8 +3,9 @@
 #define commonArgs  "RootFlags(ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT)" \
 				    ", CBV(b0)" \
 				    ", CBV(b1, visibility = SHADER_VISIBILITY_VERTEX)" \
-                    ", CBV(b2, visibility = SHADER_VISIBILITY_PIXEL)" \
+                    ", CBV(b2, visibility = SHADER_VISIBILITY_ALL)" \
 				    ", StaticSampler(s0, visibility = SHADER_VISIBILITY_PIXEL, filter = FILTER_ANISOTROPIC, maxAnisotropy = 8, addressU = TEXTURE_ADDRESS_WRAP, addressV = TEXTURE_ADDRESS_WRAP, borderColor = STATIC_BORDER_COLOR_OPAQUE_WHITE)" \
+                    ", StaticSampler(s1, visibility = SHADER_VISIBILITY_PIXEL, filter = FILTER_COMPARISON_MIN_MAG_LINEAR_MIP_POINT, comparisonFunc = COMPARISON_LESS_EQUAL, addressU = TEXTURE_ADDRESS_BORDER, addressV = TEXTURE_ADDRESS_BORDER, borderColor = STATIC_BORDER_COLOR_OPAQUE_WHITE)" \
                     ", DescriptorTable(SRV(t0, space = 0, numDescriptors = 1), visibility = SHADER_VISIBILITY_PIXEL)"
 #if defined(MASKED)
     #define args	commonArgs \
@@ -17,11 +18,12 @@
 
 struct VsToPs
 {
-	float4 ndcPos	: SV_POSITION;
-    float3 tangent  : INTERP_TANGENT;
-    float3 bitangent: INTERP_BITANGENT;
-	float3 normal	: INTERP_NORMAL;
-	float2 uv		: INTERP_TEXCOORD0;
+	float4 ndcPos	        : SV_POSITION;
+    float3 tangent          : INTERP_TANGENT;
+    float3 bitangent        : INTERP_BITANGENT;
+	float3 normal	        : INTERP_NORMAL;
+	float2 uv		        : INTERP_UV;
+    float3 lightUVAndDepth  : INTERP_SHADOWINFO;
 };
 
 //-----------------------------------------------------------------------------------
@@ -51,20 +53,19 @@ VsToPs vs_main( VsIn v )
     o.normal = mul(v.normal, (float3x3) localToWorldMatrix);
 	o.uv = v.uv;
 
+    float4 lightPos = mul(worldPos, lightViewProjectionMatrix);
+    lightPos /= lightPos.w;
+    o.lightUVAndDepth.xy = lightPos.xy * float2(0.5, -0.5) + float2(0.5, 0.5);
+    o.lightUVAndDepth.z = lightPos.z;
+
 	return o;
 }
 
 
 //-----------------------------------------------------------------------------------
 
-cbuffer LightConstants : register(b2)
-{
-    float3 lightDir;
-    float3 lightColor;
-    float lightBrightness;
-};
-
 SamplerState anisoSampler : register(s0);
+SamplerComparisonState shadowmapSampler : register(s1);
 
 Texture2D shadowMap : register(t0, space0);
 Texture2D texBaseColor : register(t0, space1);
@@ -79,7 +80,7 @@ static const float3 F_0_dielectric = float3(0.04, 0.04, 0.04);
 
 // Tonemap operator
 // See : https://knarkowicz.wordpress.com/2016/01/06/aces-filmic-tone-mapping-curve/
-float3 tonemapACES(float3 x)
+float3 TonemapACES(float3 x)
 {
     float a = 2.51;
     float b = 0.03;
@@ -87,6 +88,19 @@ float3 tonemapACES(float3 x)
     float d = 0.59;
     float e = 0.14;
     return saturate((x * (a * x + b)) / (x * (c * x + d) + e));
+}
+
+float CalcShadowFactor(float2 lightUV, float lightDepth)
+{
+    if (any(lightUV < float2(0.f, 0.f)) || 
+        any(lightUV > float2(1.f, 1.f)))
+    {
+        return 1.f;
+    }
+    else
+    {
+        return shadowMap.SampleCmpLevelZero(shadowmapSampler, lightUV, lightDepth).r;
+    }
 }
 
 [RootSignature(args)]
@@ -126,11 +140,13 @@ float4 ps_main(VsToPs p) : SV_TARGET
     // specular
     outColor += nDotL * reflectance * 0.125 * (roughness + 8.f) * pow(lDotH, roughness);
 
+    outColor *= CalcShadowFactor(p.lightUVAndDepth.xy, p.lightUVAndDepth.z);
+
     // ambient
     outColor += float3(.1f, .1f, .1f) * baseColor.rgb;
 
     // tonemap
-    outColor = tonemapACES(outColor);
+    outColor = TonemapACES(outColor);
 
     // gamma correction
     //outColor = pow(outColor, 1/2.2f);

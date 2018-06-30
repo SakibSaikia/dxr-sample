@@ -44,7 +44,6 @@ MaterialPipeline::MaterialPipeline(ID3D12Device* device, RenderPass::Id renderPa
 	switch (renderPass)
 	{
 	case RenderPass::Geometry:
-	case RenderPass::Shadowmap:
 	case RenderPass::DebugDraw:
 		desc.RasterizerState.FillMode = D3D12_FILL_MODE_SOLID;
 		desc.RasterizerState.CullMode = D3D12_CULL_MODE_BACK;
@@ -52,6 +51,19 @@ MaterialPipeline::MaterialPipeline(ID3D12Device* device, RenderPass::Id renderPa
 		desc.RasterizerState.DepthBias = D3D12_DEFAULT_DEPTH_BIAS;
 		desc.RasterizerState.DepthBiasClamp = D3D12_DEFAULT_DEPTH_BIAS_CLAMP;
 		desc.RasterizerState.SlopeScaledDepthBias = D3D12_DEFAULT_SLOPE_SCALED_DEPTH_BIAS;
+		desc.RasterizerState.DepthClipEnable = TRUE;
+		desc.RasterizerState.MultisampleEnable = FALSE;
+		desc.RasterizerState.AntialiasedLineEnable = FALSE;
+		desc.RasterizerState.ForcedSampleCount = 0;
+		desc.RasterizerState.ConservativeRaster = D3D12_CONSERVATIVE_RASTERIZATION_MODE_OFF;
+		break;
+	case RenderPass::Shadowmap:
+		desc.RasterizerState.FillMode = D3D12_FILL_MODE_SOLID;
+		desc.RasterizerState.CullMode = D3D12_CULL_MODE_BACK;
+		desc.RasterizerState.FrontCounterClockwise = FALSE;
+		desc.RasterizerState.DepthBias = 100000;
+		desc.RasterizerState.DepthBiasClamp = D3D12_DEFAULT_DEPTH_BIAS_CLAMP;
+		desc.RasterizerState.SlopeScaledDepthBias = 1.f;
 		desc.RasterizerState.DepthClipEnable = TRUE;
 		desc.RasterizerState.MultisampleEnable = FALSE;
 		desc.RasterizerState.AntialiasedLineEnable = FALSE;

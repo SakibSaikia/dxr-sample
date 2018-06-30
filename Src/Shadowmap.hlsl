@@ -26,15 +26,6 @@ cbuffer SceneConstants : register(b1)
     float4x4 localToWorldMatrix;
 };
 
-cbuffer LightConstants : register(b2)
-{
-    float3 lightDir;
-    float _pad;
-    float3 lightColor;
-    float lightBrightness;
-    float4x4 lightViewProjectionMatrix;
-};
-
 struct VsIn
 {
     float3 pos          : POSITION;
@@ -63,12 +54,10 @@ VsToPs vs_main(VsIn v)
 #endif
 
 [RootSignature(args)]
-float4 ps_main(VsToPs p) : SV_TARGET
+void ps_main(VsToPs p)
 {
 #ifdef MASKED
 	float mask = texOpacityMask.Sample(anisoSampler, p.uv).r;
 	clip(mask - 0.5f);
 #endif
-
-    return float4(1.f, 1.f, 1.f, 1.f);
 }
