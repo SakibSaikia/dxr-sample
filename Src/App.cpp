@@ -282,9 +282,8 @@ void App::Update(float dt)
 	POINT mouseDelta = { m_currentMousePos.x - m_lastMousePos.x, m_currentMousePos.y - m_lastMousePos.y };
 	m_lastMousePos = m_currentMousePos;
 
-	m_view.Update(dt, mouseDelta, m_gfxBufferIndex);
-
-	m_scene.Update(m_gfxBufferIndex);
+	m_view.Update(dt, mouseDelta);
+	m_scene.Update();
 }
 
 void App::Render()
@@ -446,11 +445,14 @@ void App::FlushCmdQueue()
 
 void App::AdvanceGfxFrame()
 {
+	// Signal current frame is done
 	auto currentFenceValue = m_gfxFenceValues.at(m_gfxBufferIndex);
 	m_cmdQueue->Signal(m_gfxFence.Get(), currentFenceValue);
 
+	// Cycle to next buffer index
 	m_gfxBufferIndex = (m_gfxBufferIndex + 1) % k_gfxBufferCount;
 
+	// If the buffer that was swapped in hasn't finished rendering on the GPU (from a previous submit), then wait!
 	if (m_gfxFence->GetCompletedValue() < m_gfxFenceValues.at(m_gfxBufferIndex))
 	{
 		PIXBeginEvent(0, L"gfx_wait_on_previous_frame");
@@ -458,7 +460,12 @@ void App::AdvanceGfxFrame()
 		WaitForSingleObjectEx(m_gfxFenceEvent, INFINITE, FALSE);
 	}
 
+	// Update fence value for the next frame
 	m_gfxFenceValues[m_gfxBufferIndex] = currentFenceValue + 1;
+
+	// We now know that this is not being used by the GPU. So, update any render resources!
+	m_view.UpdateRenderResources(m_gfxBufferIndex);
+	m_scene.UpdateRenderResources(m_gfxBufferIndex);
 }
 
 void App::OnMouseMove(WPARAM btnState, int x, int y)

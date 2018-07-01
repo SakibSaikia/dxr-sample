@@ -57,11 +57,13 @@ void View::Init(ID3D12Device* device, size_t bufferCount, const size_t width, co
 	}
 }
 
-void View::Update(const float dt, const POINT mouseDelta, const uint32_t bufferIndex)
+void View::Update(const float dt, const POINT mouseDelta)
 {
-	// Update camera
 	m_camera.Update(dt, mouseDelta);
+}
 
+void View::UpdateRenderResources(const uint32_t bufferIndex)
+{
 	// Update constant buffer
 	m_cbufferPtrs.at(bufferIndex)->viewMatrix = m_camera.GetViewMatrix();
 	m_cbufferPtrs.at(bufferIndex)->viewProjectionMatrix = m_camera.GetViewProjectionMatrix();

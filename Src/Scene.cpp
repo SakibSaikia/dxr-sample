@@ -212,17 +212,6 @@ void Scene::InitBounds(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList)
 	{
 		DirectX::BoundingBox::CreateMerged(m_sceneBounds, m_sceneBounds, meshWorldBounds);
 	}
-
-#if 0
-	// debug rendering
-	auto debugMesh = std::make_unique<DebugLineMesh>();
-	debugMesh->Init(device, cmdList, m_meshWorldBounds, DirectX::XMFLOAT3{ 1.0, 0.0, 0.0 });
-	m_debugMeshes.push_back(std::move(debugMesh));
-
-	debugMesh = std::make_unique<DebugLineMesh>();
-	debugMesh->Init(device, cmdList, { m_sceneBounds }, DirectX::XMFLOAT3{ 0.f, 1.f, 0.f });
-	m_debugMeshes.push_back(std::move(debugMesh));
-#endif
 }
 
 void Scene::InitResources(
@@ -253,6 +242,7 @@ void Scene::InitResources(
 		LoadEntities(scene->mRootNode);
 		InitLights(device);
 		InitBounds(device, cmdList);
+		m_debugDraw.Init(device, cmdList);
 	}
 
 	// Object Constant Buffer
@@ -324,7 +314,19 @@ void Scene::InitResources(
 	}
 }
 
-void Scene::Update(uint32_t bufferIndex)
+void Scene::Update()
+{
+#if 0
+	m_debugDraw.AddBox(m_sceneBounds, DirectX::XMFLOAT3{ 0.0, 1.0, 0.0 });
+
+	for (const auto& bb : m_meshWorldBounds)
+	{
+		m_debugDraw.AddBox(bb, DirectX::XMFLOAT3{1.f, 0.f, 0.f});
+	}
+#endif
+}
+
+void Scene::UpdateRenderResources(uint32_t bufferIndex)
 {
 	// mesh entities
 	ObjectConstants* o = m_objectConstantBufferPtr.at(bufferIndex);
@@ -336,6 +338,9 @@ void Scene::Update(uint32_t bufferIndex)
 	// light(s)
 	LightConstants* l = m_lightConstantBufferPtr.at(bufferIndex);
 	m_light->FillConstants(l, m_sceneBounds);
+
+	// debug draw
+	m_debugDraw.UpdateRenderResources(bufferIndex);
 }
 
 void Scene::Render(RenderPass::Id pass, ID3D12Device* device, ID3D12GraphicsCommandList* cmdList, uint32_t bufferIndex, const View& view, D3D12_GPU_DESCRIPTOR_HANDLE renderSurfaceSrvBegin)
@@ -380,9 +385,5 @@ void Scene::RenderDebugMeshes(RenderPass::Id pass, ID3D12Device* device, ID3D12G
 {
 	m_debugMaterial.BindPipeline(device, cmdList, pass, VertexFormat::Type::P3C3);
 	cmdList->SetGraphicsRootConstantBufferView(0, view.GetConstantBuffer(bufferIndex)->GetGPUVirtualAddress());
-
-	for (const auto& debugMesh : m_debugMeshes)
-	{
-		debugMesh->Render(cmdList);
-	}
+	m_debugDraw.Render(cmdList, bufferIndex);
 }

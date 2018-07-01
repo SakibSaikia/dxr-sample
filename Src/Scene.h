@@ -12,7 +12,8 @@ class Scene
 {
 public:
 	void InitResources(ID3D12Device* device, ID3D12CommandQueue* cmdQueue, ID3D12GraphicsCommandList* cmdList, ID3D12DescriptorHeap* srvHeap, size_t srvStartOffset, size_t srvDescriptorSize);
-	void Update(uint32_t bufferIndex);
+	void Update();
+	void UpdateRenderResources(uint32_t bufferIndex);
 	void Render(RenderPass::Id pass, ID3D12Device* device, ID3D12GraphicsCommandList* cmdList, uint32_t bufferIndex, const View& view, D3D12_GPU_DESCRIPTOR_HANDLE renderSurfaceSrvBegin);
 	void RenderDebugMeshes(RenderPass::Id pass, ID3D12Device* device, ID3D12GraphicsCommandList* cmdList, uint32_t bufferIndex, const View& view);
 
@@ -35,7 +36,7 @@ private:
 	std::unique_ptr<Light> m_light;
 
 	DebugMaterial m_debugMaterial;
-	std::vector<std::unique_ptr<DebugLineMesh>> m_debugMeshes;
+	DebugLineMesh m_debugDraw;
 
 	std::array<Microsoft::WRL::ComPtr<ID3D12Resource>, k_gfxBufferCount> m_objectConstantBuffers;
 	std::array<ObjectConstants*, k_gfxBufferCount> m_objectConstantBufferPtr;
