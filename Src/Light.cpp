@@ -53,9 +53,9 @@ void Light::Update(float dt, const DirectX::BoundingBox& sceneBounds)
 		// light view projection
 		DirectX::XMMATRIX viewProjMatrix = view * proj;
 
-		XMStoreFloat4x4(&m_viewMatrix, view);
-		XMStoreFloat4x4(&m_projMatrix, proj);
-		XMStoreFloat4x4(&m_viewProjMatrix, viewProjMatrix);
+		DirectX::XMStoreFloat4x4(&m_viewMatrix, view);
+		DirectX::XMStoreFloat4x4(&m_projMatrix, proj);
+		DirectX::XMStoreFloat4x4(&m_viewProjMatrix, viewProjMatrix);
 
 		m_dirty = false;
 	}

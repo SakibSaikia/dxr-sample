@@ -330,6 +330,7 @@ void Scene::Update(float dt)
 	DirectX::BoundingBox lightBounds = m_sceneBounds;
 	DirectX::XMMATRIX lightTransform = DirectX::XMLoadFloat4x4(&m_light->GetViewMatrix());
 	m_debugDraw.AddTransformedBox(lightBounds, lightTransform, DirectX::XMFLOAT3{ 1.f, 0.f, 0.f });
+	m_debugDraw.AddAxes(lightTransform, 200.f);
 }
 
 void Scene::UpdateRenderResources(uint32_t bufferIndex)

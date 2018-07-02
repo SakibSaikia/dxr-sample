@@ -120,6 +120,48 @@ void DebugLineMesh::AddTransformedBox(const DirectX::BoundingBox& box, const Dir
 	m_numIndices += 24;
 }
 
+void DebugLineMesh::AddAxes(const DirectX::XMMATRIX& transform, float scale)
+{
+	DirectX::XMVECTOR x = DirectX::XMVector3Normalize(transform.r[0]);
+	DirectX::XMVECTOR y = DirectX::XMVector3Normalize(transform.r[1]);
+	DirectX::XMVECTOR z = DirectX::XMVector3Normalize(transform.r[2]);
+	DirectX::XMVECTOR origin = transform.r[3];
+
+	// verts
+	DirectX::XMStoreFloat3(&m_vbCurrentPtr->position, origin);
+	m_vbCurrentPtr->color = { 1.f, 0.f, 0.f };
+	m_vbCurrentPtr++;
+
+	DirectX::XMStoreFloat3(&m_vbCurrentPtr->position, DirectX::XMVectorAdd(origin, DirectX::XMVectorScale(x, scale)));
+	m_vbCurrentPtr->color = { 1.f, 0.f, 0.f };
+	m_vbCurrentPtr++;
+
+	DirectX::XMStoreFloat3(&m_vbCurrentPtr->position, origin);
+	m_vbCurrentPtr->color = { 0.f, 1.f, 0.f };
+	m_vbCurrentPtr++;
+
+	DirectX::XMStoreFloat3(&m_vbCurrentPtr->position, DirectX::XMVectorAdd(origin, DirectX::XMVectorScale(y, scale)));
+	m_vbCurrentPtr->color = { 0.f, 1.f, 0.f };
+	m_vbCurrentPtr++;
+
+	DirectX::XMStoreFloat3(&m_vbCurrentPtr->position, origin);
+	m_vbCurrentPtr->color = { 0.f, 0.f, 1.f };
+	m_vbCurrentPtr++;
+
+	DirectX::XMStoreFloat3(&m_vbCurrentPtr->position, DirectX::XMVectorAdd(origin, DirectX::XMVectorScale(z, scale)));
+	m_vbCurrentPtr->color = { 0.f, 0.f, 1.f };
+	m_vbCurrentPtr++;
+
+	// indices
+	uint32_t indexStride = m_numVerts;
+	*m_ibCurrentPtr++ = indexStride + 0; *m_ibCurrentPtr++ = indexStride + 1;
+	*m_ibCurrentPtr++ = indexStride + 2; *m_ibCurrentPtr++ = indexStride + 3;
+	*m_ibCurrentPtr++ = indexStride + 4; *m_ibCurrentPtr++ = indexStride + 5;
+
+	m_numVerts += 6;
+	m_numIndices += 6;
+}
+
 void DebugLineMesh::Render(ID3D12GraphicsCommandList* cmdList, const uint32_t bufferIndex)
 {
 	// VB descriptor

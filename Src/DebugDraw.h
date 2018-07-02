@@ -12,6 +12,7 @@ public:
 	void Init(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList);
 	void AddBox(const DirectX::BoundingBox& box, const DirectX::XMFLOAT3 color);
 	void AddTransformedBox(const DirectX::BoundingBox& box, const DirectX::XMMATRIX& transform, const DirectX::XMFLOAT3 color);
+	void AddAxes(const DirectX::XMMATRIX& transform, float scale);
 	void Render(ID3D12GraphicsCommandList* cmdList, const uint32_t bufferIndex);
 	void UpdateRenderResources(uint32_t bufferIndex);
 
