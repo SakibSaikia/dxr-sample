@@ -188,7 +188,7 @@ void Scene::LoadEntities(const aiNode* node)
 
 void Scene::InitLights(ID3D12Device* device)
 {
-	m_light = std::make_unique<Light>(DirectX::XMFLOAT3{ -1.f, -1.f, 0.f }, DirectX::XMFLOAT3{ 1.f, 1.f, 1.f }, 10000.f);
+	m_light = std::make_unique<Light>(DirectX::XMFLOAT3{ 1.f, 2.f, 1.f }, DirectX::XMFLOAT3{ 1.f, 1.f, 1.f }, 10000.f);
 }
 
 void Scene::InitBounds(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList)
@@ -331,6 +331,7 @@ void Scene::Update(float dt)
 	DirectX::XMMATRIX lightTransform = DirectX::XMLoadFloat4x4(&m_light->GetViewMatrix());
 	m_debugDraw.AddTransformedBox(lightBounds, lightTransform, DirectX::XMFLOAT3{ 1.f, 0.f, 0.f });
 	m_debugDraw.AddAxes(lightTransform, 200.f);
+	m_debugDraw.AddAxes(DirectX::XMMatrixIdentity(), 200.f);
 }
 
 void Scene::UpdateRenderResources(uint32_t bufferIndex)

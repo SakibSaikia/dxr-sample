@@ -2,10 +2,11 @@
 #include "Light.h"
 
 Light::Light(const DirectX::XMFLOAT3 direction, const DirectX::XMFLOAT3 color, const float brightness) :
-	m_direction{ direction },
 	m_color{ color },
 	m_brightness{ brightness }
 {
+	DirectX::XMVECTOR dir = DirectX::XMLoadFloat3(&direction);
+	DirectX::XMStoreFloat3(&m_direction, DirectX::XMVector2Normalize(dir));
 }
 
 void Light::FillConstants(LightConstants* lightConst) const
@@ -27,7 +28,7 @@ void Light::Update(float dt, const DirectX::BoundingBox& sceneBounds)
 		DirectX::XMVECTOR boundsRadius = DirectX::XMVector3Length(boundsExtent);
 		DirectX::XMVECTOR lightDir = DirectX::XMLoadFloat3(&m_direction);
 
-		DirectX::XMVECTOR lightPos = DirectX::XMVectorScale(DirectX::XMVectorMultiply(boundsRadius, lightDir), -2.f);
+		DirectX::XMVECTOR lightPos = DirectX::XMVectorAdd(boundsCenter, DirectX::XMVectorScale(DirectX::XMVectorMultiply(boundsRadius, lightDir), 2.f));
 		DirectX::XMVECTOR targetPos = boundsCenter;
 		DirectX::XMVECTORF32 lightUp{ 0.f, 1.f, 0.f, 0.f };
 
