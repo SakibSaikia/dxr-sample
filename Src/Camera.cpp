@@ -61,22 +61,22 @@ void Camera::Update(const float dt, const POINT mouseDelta)
 {
 	if ((GetAsyncKeyState('W') & 0x8000) != 0)
 	{
-		Walk(100.f * dt);
+		Walk(1000.f * dt);
 	}
 
 	if ((GetAsyncKeyState('S') & 0x8000) != 0)
 	{
-		Walk(-100.f * dt);
+		Walk(-1000.f * dt);
 	}
 
 	if ((GetAsyncKeyState('A') & 0x8000) != 0)
 	{
-		Strafe(-100.f * dt);
+		Strafe(-1000.f * dt);
 	}
 
 	if ((GetAsyncKeyState('D') & 0x8000) != 0)
 	{
-		Strafe(100.f * dt);
+		Strafe(1000.f * dt);
 	}
 
 	// Make each pixel correspond to a degree.

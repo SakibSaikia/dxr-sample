@@ -13,10 +13,19 @@ class Light
 {
 public:
 	Light(const DirectX::XMFLOAT3 direction, const DirectX::XMFLOAT3 color, const float brightness);
-	void FillConstants(LightConstants* lightConst, const DirectX::BoundingBox& sceneBounds) const;
+	void Update(float dt, const DirectX::BoundingBox& sceneBounds);
+	void FillConstants(LightConstants* lightConst) const;
+	const DirectX::XMFLOAT4X4& GetViewMatrix() const;
+	const DirectX::XMFLOAT4X4& GetProjectionMatrix() const;
+	const DirectX::XMFLOAT4X4& GetViewProjectionMatrix() const;
 
 private:
 	DirectX::XMFLOAT3 m_direction;
 	DirectX::XMFLOAT3 m_color;
 	float m_brightness;
+
+	bool m_dirty = true;
+	DirectX::XMFLOAT4X4 m_viewMatrix;
+	DirectX::XMFLOAT4X4 m_projMatrix;
+	DirectX::XMFLOAT4X4 m_viewProjMatrix;
 };

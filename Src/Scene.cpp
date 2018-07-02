@@ -314,8 +314,10 @@ void Scene::InitResources(
 	}
 }
 
-void Scene::Update()
+void Scene::Update(float dt)
 {
+	m_light->Update(dt, m_sceneBounds);
+
 #if 0
 	m_debugDraw.AddBox(m_sceneBounds, DirectX::XMFLOAT3{ 0.0, 1.0, 0.0 });
 
@@ -324,6 +326,10 @@ void Scene::Update()
 		m_debugDraw.AddBox(bb, DirectX::XMFLOAT3{1.f, 0.f, 0.f});
 	}
 #endif
+
+	DirectX::BoundingBox lightBounds = m_sceneBounds;
+	DirectX::XMMATRIX lightTransform = DirectX::XMLoadFloat4x4(&m_light->GetViewMatrix());
+	m_debugDraw.AddTransformedBox(lightBounds, lightTransform, DirectX::XMFLOAT3{ 1.f, 0.f, 0.f });
 }
 
 void Scene::UpdateRenderResources(uint32_t bufferIndex)
@@ -337,7 +343,7 @@ void Scene::UpdateRenderResources(uint32_t bufferIndex)
 
 	// light(s)
 	LightConstants* l = m_lightConstantBufferPtr.at(bufferIndex);
-	m_light->FillConstants(l, m_sceneBounds);
+	m_light->FillConstants(l);
 
 	// debug draw
 	m_debugDraw.UpdateRenderResources(bufferIndex);

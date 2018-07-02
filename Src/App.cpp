@@ -283,7 +283,7 @@ void App::Update(float dt)
 	m_lastMousePos = m_currentMousePos;
 
 	m_view.Update(dt, mouseDelta);
-	m_scene.Update();
+	m_scene.Update(dt);
 }
 
 void App::Render()

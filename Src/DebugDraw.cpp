@@ -80,6 +80,11 @@ void DebugLineMesh::Init(ID3D12Device* device, ID3D12GraphicsCommandList* cmdLis
 
 void DebugLineMesh::AddBox(const DirectX::BoundingBox& box, const DirectX::XMFLOAT3 color)
 {
+	AddTransformedBox(box, DirectX::XMMatrixIdentity(), color);
+}
+
+void DebugLineMesh::AddTransformedBox(const DirectX::BoundingBox& box, const DirectX::XMMATRIX& transform, const DirectX::XMFLOAT3 color)
+{
 	std::vector<DirectX::XMFLOAT3> boxCorners;
 	boxCorners.resize(8);
 	box.GetCorners(boxCorners.data());
@@ -87,7 +92,13 @@ void DebugLineMesh::AddBox(const DirectX::BoundingBox& box, const DirectX::XMFLO
 	// add verts
 	for (const auto& vert : boxCorners)
 	{
-		*m_vbCurrentPtr++ = { vert, color };
+		DirectX::XMVECTOR pos = DirectX::XMLoadFloat3(&vert);
+		pos = DirectX::XMVector3Transform(pos, transform);
+
+		DirectX::XMStoreFloat3(&m_vbCurrentPtr->position, pos);
+		m_vbCurrentPtr->color = color;
+
+		m_vbCurrentPtr++;
 	}
 
 	// add indices
@@ -107,7 +118,6 @@ void DebugLineMesh::AddBox(const DirectX::BoundingBox& box, const DirectX::XMFLO
 
 	m_numVerts += boxCorners.size();
 	m_numIndices += 24;
-
 }
 
 void DebugLineMesh::Render(ID3D12GraphicsCommandList* cmdList, const uint32_t bufferIndex)
