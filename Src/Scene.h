@@ -11,6 +11,7 @@
 class Scene
 {
 public:
+	~Scene();
 	void InitResources(ID3D12Device* device, ID3D12CommandQueue* cmdQueue, ID3D12GraphicsCommandList* cmdList, ID3D12DescriptorHeap* srvHeap, size_t srvStartOffset, size_t srvDescriptorSize);
 	void Update(float dt);
 	void UpdateRenderResources(uint32_t bufferIndex);

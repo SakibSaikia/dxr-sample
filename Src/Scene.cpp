@@ -2,6 +2,13 @@
 #include "Scene.h"
 #include "View.h"
 
+Scene::~Scene()
+{
+	m_objectConstantBuffer->Unmap(0, nullptr);
+	m_lightConstantBuffer->Unmap(0, nullptr);
+	m_shadowConstantBuffer->Unmap(0, nullptr);
+}
+
 void Scene::LoadMeshes(const aiScene* loader, ID3D12Device* device, ID3D12GraphicsCommandList* cmdList)
 {
 	for (auto meshIdx = 0u; meshIdx < loader->mNumMeshes; meshIdx++)

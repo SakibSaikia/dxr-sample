@@ -15,6 +15,12 @@ constexpr uint32_t GetIndexBufferSize()
 	return k_maxDebugIndices * sizeof(DebugLineMesh::IndexType);
 }
 
+DebugLineMesh::~DebugLineMesh()
+{
+	m_vertexBuffer->Unmap(0, nullptr);
+	m_indexBuffer->Unmap(0, nullptr);
+}
+
 void DebugLineMesh::Init(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList)
 {
 	// CPU accessible
