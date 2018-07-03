@@ -44,5 +44,8 @@ private:
 	std::array<Microsoft::WRL::ComPtr<ID3D12Resource>, k_gfxBufferCount> m_lightConstantBuffers;
 	std::array<LightConstants*, k_gfxBufferCount> m_lightConstantBufferPtr;
 
+	std::array<Microsoft::WRL::ComPtr<ID3D12Resource>, k_gfxBufferCount> m_shadowConstantBuffers;
+	std::array<ShadowConstants*, k_gfxBufferCount> m_shadowConstantBufferPtr;
+
 	DirectX::BoundingBox m_sceneBounds;
 };

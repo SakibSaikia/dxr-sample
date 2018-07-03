@@ -9,12 +9,14 @@ Light::Light(const DirectX::XMFLOAT3 direction, const DirectX::XMFLOAT3 color, c
 	DirectX::XMStoreFloat3(&m_direction, DirectX::XMVector2Normalize(dir));
 }
 
-void Light::FillConstants(LightConstants* lightConst) const
+void Light::FillConstants(LightConstants* lightConst, ShadowConstants* shadowConst) const
 {
 	lightConst->direction = m_direction;
 	lightConst->color = m_color;
 	lightConst->brightness = m_brightness;
-	lightConst->lightViewProjectionMatrix = m_viewProjMatrix;
+
+	shadowConst->lightViewMatrix = m_viewMatrix;
+	shadowConst->lightViewProjectionMatrix = m_viewProjMatrix;
 }
 
 void Light::Update(float dt, const DirectX::BoundingBox& sceneBounds)

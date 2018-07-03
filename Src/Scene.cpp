@@ -312,6 +312,39 @@ void Scene::InitResources(
 			m_lightConstantBuffers.at(n)->Map(0, nullptr, ptr);
 		}
 	}
+
+	// Shadow Constant Buffer
+	{
+		D3D12_RESOURCE_DESC resDesc = {};
+		resDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
+		resDesc.Width = sizeof(ShadowConstants);
+		resDesc.Height = 1;
+		resDesc.DepthOrArraySize = 1;
+		resDesc.MipLevels = 1;
+		resDesc.Format = DXGI_FORMAT_UNKNOWN;
+		resDesc.SampleDesc.Count = 1;
+		resDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+
+		D3D12_HEAP_PROPERTIES heapDesc = {};
+		heapDesc.Type = D3D12_HEAP_TYPE_UPLOAD; // must be CPU accessible
+		heapDesc.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN; // GPU or system mem
+
+		for (auto n = 0; n < k_gfxBufferCount; ++n)
+		{
+			CHECK(device->CreateCommittedResource(
+				&heapDesc,
+				D3D12_HEAP_FLAG_NONE,
+				&resDesc,
+				D3D12_RESOURCE_STATE_GENERIC_READ,
+				nullptr,
+				IID_PPV_ARGS(m_shadowConstantBuffers.at(n).GetAddressOf())
+			));
+
+			// Get ptr to mapped resource
+			auto** ptr = reinterpret_cast<void**>(&m_shadowConstantBufferPtr.at(n));
+			m_shadowConstantBuffers.at(n)->Map(0, nullptr, ptr);
+		}
+	}
 }
 
 void Scene::Update(float dt)
@@ -346,7 +379,8 @@ void Scene::UpdateRenderResources(uint32_t bufferIndex)
 
 	// light(s)
 	LightConstants* l = m_lightConstantBufferPtr.at(bufferIndex);
-	m_light->FillConstants(l);
+	ShadowConstants* s = m_shadowConstantBufferPtr.at(bufferIndex);
+	m_light->FillConstants(l, s);
 
 	// debug draw
 	m_debugDraw.UpdateRenderResources(bufferIndex);
@@ -381,8 +415,11 @@ void Scene::Render(RenderPass::Id pass, ID3D12Device* device, ID3D12GraphicsComm
 			D3D12_GPU_VIRTUAL_ADDRESS ObjConstants = m_objectConstantBuffers.at(bufferIndex)->GetGPUVirtualAddress() + entityId * sizeof(ObjectConstants);
 			D3D12_GPU_VIRTUAL_ADDRESS viewConstants = view.GetConstantBuffer(bufferIndex)->GetGPUVirtualAddress();
 			D3D12_GPU_VIRTUAL_ADDRESS lightConstants = m_lightConstantBuffers.at(bufferIndex)->GetGPUVirtualAddress();
+			D3D12_GPU_VIRTUAL_ADDRESS shadowConstants = m_shadowConstantBuffers.at(bufferIndex)->GetGPUVirtualAddress();
 
-			mat->BindConstants(pass, cmdList, ObjConstants, viewConstants, lightConstants, renderSurfaceSrvBegin);
+			static_assert(sizeof(ShadowConstants) == sizeof(ViewConstants) && L"Size must match so that we can switch out view constants in the shadow map pass!");
+
+			mat->BindConstants(pass, cmdList, ObjConstants, viewConstants, lightConstants, shadowConstants, renderSurfaceSrvBegin);
 			sm->Render(cmdList);
 		}
 

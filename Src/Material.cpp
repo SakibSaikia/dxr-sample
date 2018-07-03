@@ -208,9 +208,9 @@ DefaultOpaqueMaterial::DefaultOpaqueMaterial(std::string& name, const D3D12_GPU_
 		(std::hash<std::string>{}(k_ps) << 1) ^ 
 		(std::hash<std::string>{}(k_rootSig) << 2);
 
-	m_hash[RenderPass::Shadowmap] = std::hash<std::string>{}(k_shadowmap_vs) ^
-		(std::hash<std::string>{}(k_shadowmap_ps) << 1) ^
-		(std::hash<std::string>{}(k_shadowmap_rootSig) << 2);
+	m_hash[RenderPass::Shadowmap] = std::hash<std::string>{}(k_depthonly_vs) ^
+		(std::hash<std::string>{}(k_depthonly_ps) << 1) ^
+		(std::hash<std::string>{}(k_depthonly_rootSig) << 2);
 }
 
 void DefaultOpaqueMaterial::BindPipeline(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList, RenderPass::Id pass, VertexFormat::Type vertexFormat)
@@ -226,27 +226,28 @@ void DefaultOpaqueMaterial::BindPipeline(ID3D12Device* device, ID3D12GraphicsCom
 		}
 		else if (pass == RenderPass::Shadowmap)
 		{
-			pipeline = std::make_unique<MaterialPipeline>(device, pass, vertexFormat, k_shadowmap_vs, k_shadowmap_ps, k_shadowmap_rootSig);
+			pipeline = std::make_unique<MaterialPipeline>(device, pass, vertexFormat, k_depthonly_vs, k_depthonly_ps, k_depthonly_rootSig);
 		}
 	}
 
 	pipeline->Bind(cmdList);
 }
 
-void DefaultOpaqueMaterial::BindConstants(RenderPass::Id pass, ID3D12GraphicsCommandList* cmdList, D3D12_GPU_VIRTUAL_ADDRESS objConstants, D3D12_GPU_VIRTUAL_ADDRESS viewConstants, D3D12_GPU_VIRTUAL_ADDRESS lightConstants, D3D12_GPU_DESCRIPTOR_HANDLE renderSurfaceSrvBegin) const
+void DefaultOpaqueMaterial::BindConstants(RenderPass::Id pass, ID3D12GraphicsCommandList* cmdList, D3D12_GPU_VIRTUAL_ADDRESS objConstants, D3D12_GPU_VIRTUAL_ADDRESS viewConstants, D3D12_GPU_VIRTUAL_ADDRESS lightConstants, D3D12_GPU_VIRTUAL_ADDRESS shadowConstants, D3D12_GPU_DESCRIPTOR_HANDLE renderSurfaceSrvBegin) const
 {
 	if (pass == RenderPass::Geometry)
 	{
-		cmdList->SetGraphicsRootConstantBufferView(k_objectConstantsDescriptorIndex, objConstants);
 		cmdList->SetGraphicsRootConstantBufferView(0, viewConstants);
+		cmdList->SetGraphicsRootConstantBufferView(1, objConstants);
 		cmdList->SetGraphicsRootConstantBufferView(2, lightConstants);
-		 cmdList->SetGraphicsRootDescriptorTable(3, renderSurfaceSrvBegin);
-		cmdList->SetGraphicsRootDescriptorTable(k_srvDescriptorIndex, m_srvBegin);
+		cmdList->SetGraphicsRootConstantBufferView(3, shadowConstants);
+		cmdList->SetGraphicsRootDescriptorTable(4, renderSurfaceSrvBegin);
+		cmdList->SetGraphicsRootDescriptorTable(5, m_srvBegin);
 	}
 	else if (pass == RenderPass::Shadowmap)
 	{
-		cmdList->SetGraphicsRootConstantBufferView(0, objConstants);
-		cmdList->SetGraphicsRootConstantBufferView(1, lightConstants);
+		cmdList->SetGraphicsRootConstantBufferView(0, shadowConstants);
+		cmdList->SetGraphicsRootConstantBufferView(1, objConstants);
 	}
 }
 
@@ -264,9 +265,9 @@ DefaultMaskedMaterial::DefaultMaskedMaterial(std::string& name, const D3D12_GPU_
 		(std::hash<std::string>{}(k_ps) << 1) ^ 
 		(std::hash<std::string>{}(k_rootSig) << 2);
 
-	m_hash[RenderPass::Shadowmap] = std::hash<std::string>{}(k_shadowmap_vs) ^
-		(std::hash<std::string>{}(k_shadowmap_ps) << 1) ^
-		(std::hash<std::string>{}(k_shadowmap_rootSig) << 2);
+	m_hash[RenderPass::Shadowmap] = std::hash<std::string>{}(k_depthonly_vs) ^
+		(std::hash<std::string>{}(k_depthonly_ps) << 1) ^
+		(std::hash<std::string>{}(k_depthonly_rootSig) << 2);
 }
 
 void DefaultMaskedMaterial::BindPipeline(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList, RenderPass::Id pass, VertexFormat::Type vertexFormat)
@@ -282,28 +283,29 @@ void DefaultMaskedMaterial::BindPipeline(ID3D12Device* device, ID3D12GraphicsCom
 		}
 		else if (pass == RenderPass::Shadowmap)
 		{
-			pipeline = std::make_unique<MaterialPipeline>(device, pass, vertexFormat, k_shadowmap_vs, k_shadowmap_ps, k_shadowmap_rootSig);
+			pipeline = std::make_unique<MaterialPipeline>(device, pass, vertexFormat, k_depthonly_vs, k_depthonly_ps, k_depthonly_rootSig);
 		}
 	}
 
 	pipeline->Bind(cmdList);
 }
 
-void DefaultMaskedMaterial::BindConstants(RenderPass::Id pass, ID3D12GraphicsCommandList* cmdList, D3D12_GPU_VIRTUAL_ADDRESS objConstants, D3D12_GPU_VIRTUAL_ADDRESS viewConstants, D3D12_GPU_VIRTUAL_ADDRESS lightConstants, D3D12_GPU_DESCRIPTOR_HANDLE renderSurfaceSrvBegin) const
+void DefaultMaskedMaterial::BindConstants(RenderPass::Id pass, ID3D12GraphicsCommandList* cmdList, D3D12_GPU_VIRTUAL_ADDRESS objConstants, D3D12_GPU_VIRTUAL_ADDRESS viewConstants, D3D12_GPU_VIRTUAL_ADDRESS lightConstants, D3D12_GPU_VIRTUAL_ADDRESS shadowConstants, D3D12_GPU_DESCRIPTOR_HANDLE renderSurfaceSrvBegin) const
 {
 	if (pass == RenderPass::Geometry)
 	{
-		cmdList->SetGraphicsRootConstantBufferView(k_objectConstantsDescriptorIndex, objConstants);
 		cmdList->SetGraphicsRootConstantBufferView(0, viewConstants);
+		cmdList->SetGraphicsRootConstantBufferView(1, objConstants);
 		cmdList->SetGraphicsRootConstantBufferView(2, lightConstants);
-		cmdList->SetGraphicsRootDescriptorTable(3, renderSurfaceSrvBegin);
-		cmdList->SetGraphicsRootDescriptorTable(k_srvDescriptorIndex, m_srvBegin);
+		cmdList->SetGraphicsRootConstantBufferView(3, shadowConstants);
+		cmdList->SetGraphicsRootDescriptorTable(4, renderSurfaceSrvBegin);
+		cmdList->SetGraphicsRootDescriptorTable(5, m_srvBegin);
 	}
 	else if (pass == RenderPass::Shadowmap)
 	{
-		cmdList->SetGraphicsRootConstantBufferView(0, objConstants);
-		cmdList->SetGraphicsRootConstantBufferView(1, lightConstants);
-		cmdList->SetGraphicsRootDescriptorTable(k_shadowmap_srvDescriptorIndex, m_opacityMaskSrv);
+		cmdList->SetGraphicsRootConstantBufferView(0, shadowConstants);
+		cmdList->SetGraphicsRootConstantBufferView(1, objConstants);
+		cmdList->SetGraphicsRootDescriptorTable(2, m_opacityMaskSrv);
 	}
 }
 

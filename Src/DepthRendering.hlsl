@@ -1,8 +1,8 @@
 #include "Common.hlsl"
 
 #define commonArgs  "RootFlags(ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT)" \
-				    ", CBV(b1, visibility = SHADER_VISIBILITY_VERTEX)" \
-                    ", CBV(b2, visibility = SHADER_VISIBILITY_VERTEX)" \
+				    ", CBV(b0, visibility = SHADER_VISIBILITY_VERTEX)" \
+                    ", CBV(b1, visibility = SHADER_VISIBILITY_VERTEX)" \
 
 #if defined(MASKED)
     #define args	commonArgs \
@@ -40,7 +40,7 @@ VsToPs vs_main(VsIn v)
 {
     VsToPs o;
     float4 worldPos = mul(float4(v.pos, 1.f), localToWorldMatrix);
-    o.ndcPos = mul(worldPos, lightViewProjectionMatrix);
+    o.ndcPos = mul(worldPos, viewProjectionMatrix);
     o.uv = v.uv;
     return o;
 }

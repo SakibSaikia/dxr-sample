@@ -21,7 +21,7 @@ public:
 	Material(const std::string& name);
 
 	virtual void BindPipeline(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList, RenderPass::Id renderPass, VertexFormat::Type vertexFormat) = 0;
-	virtual void BindConstants(RenderPass::Id pass, ID3D12GraphicsCommandList* cmdList, D3D12_GPU_VIRTUAL_ADDRESS objConstants, D3D12_GPU_VIRTUAL_ADDRESS viewConstants, D3D12_GPU_VIRTUAL_ADDRESS lightConstants, D3D12_GPU_DESCRIPTOR_HANDLE renderSurfaceSrvBegin) const = 0;
+	virtual void BindConstants(RenderPass::Id pass, ID3D12GraphicsCommandList* cmdList, D3D12_GPU_VIRTUAL_ADDRESS objConstants, D3D12_GPU_VIRTUAL_ADDRESS viewConstants, D3D12_GPU_VIRTUAL_ADDRESS lightConstants, D3D12_GPU_VIRTUAL_ADDRESS shadowConstants, D3D12_GPU_DESCRIPTOR_HANDLE renderSurfaceSrvBegin) const = 0;
 	virtual size_t GetHash(RenderPass::Id renderPass, VertexFormat::Type vertexFormat) const = 0;
 	bool IsValid() const;
 
@@ -36,7 +36,7 @@ class NullMaterial : public Material
 public:
 	NullMaterial() = default;
 	void BindPipeline(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList, RenderPass::Id renderPass, VertexFormat::Type vertexFormat) override {};
-	void BindConstants(RenderPass::Id pass, ID3D12GraphicsCommandList* cmdList, D3D12_GPU_VIRTUAL_ADDRESS objConstants, D3D12_GPU_VIRTUAL_ADDRESS viewConstants, D3D12_GPU_VIRTUAL_ADDRESS lightConstants, D3D12_GPU_DESCRIPTOR_HANDLE renderSurfaceSrvBegin) const override {};
+	void BindConstants(RenderPass::Id pass, ID3D12GraphicsCommandList* cmdList, D3D12_GPU_VIRTUAL_ADDRESS objConstants, D3D12_GPU_VIRTUAL_ADDRESS viewConstants, D3D12_GPU_VIRTUAL_ADDRESS lightConstants, D3D12_GPU_VIRTUAL_ADDRESS shadowConstants, D3D12_GPU_DESCRIPTOR_HANDLE renderSurfaceSrvBegin) const override {};
 	size_t GetHash(RenderPass::Id renderPass, VertexFormat::Type vertexFormat) const override { return 0; }
 };
 
@@ -45,16 +45,14 @@ class DefaultOpaqueMaterial : public Material
 	static inline std::string k_vs = "mtl_default.vs.cso";
 	static inline std::string k_ps = "mtl_default.ps.cso";
 	static inline std::string k_rootSig = "mtl_default.rootsig.cso";
-	static inline std::string k_shadowmap_vs = "mtl_shadow_default.vs.cso";
-	static inline std::string k_shadowmap_ps = "mtl_shadow_default.ps.cso";
-	static inline std::string k_shadowmap_rootSig = "mtl_shadow_default.rootsig.cso";
-	static inline uint32_t k_objectConstantsDescriptorIndex = 1;
-	static inline uint32_t k_srvDescriptorIndex = 4;
+	static inline std::string k_depthonly_vs = "mtl_depthonly_default.vs.cso";
+	static inline std::string k_depthonly_ps = "mtl_depthonly_default.ps.cso";
+	static inline std::string k_depthonly_rootSig = "mtl_depthonly_default.rootsig.cso";
 
 public:
 	DefaultOpaqueMaterial(std::string& name, const D3D12_GPU_DESCRIPTOR_HANDLE srvHandle);
 	void BindPipeline(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList, RenderPass::Id renderPass, VertexFormat::Type vertexFormat) override;
-	void BindConstants(RenderPass::Id pass, ID3D12GraphicsCommandList* cmdList, D3D12_GPU_VIRTUAL_ADDRESS objConstants, D3D12_GPU_VIRTUAL_ADDRESS viewConstants, D3D12_GPU_VIRTUAL_ADDRESS lightConstants, D3D12_GPU_DESCRIPTOR_HANDLE renderSurfaceSrvBegin) const override;
+	void BindConstants(RenderPass::Id pass, ID3D12GraphicsCommandList* cmdList, D3D12_GPU_VIRTUAL_ADDRESS objConstants, D3D12_GPU_VIRTUAL_ADDRESS viewConstants, D3D12_GPU_VIRTUAL_ADDRESS lightConstants, D3D12_GPU_VIRTUAL_ADDRESS shadowConstants, D3D12_GPU_DESCRIPTOR_HANDLE renderSurfaceSrvBegin) const override;
 	size_t GetHash(RenderPass::Id renderPass, VertexFormat::Type vertexFormat) const override;
 
 private:
@@ -67,17 +65,14 @@ class DefaultMaskedMaterial : public Material
 	static inline std::string k_vs = "mtl_masked.vs.cso";
 	static inline std::string k_ps = "mtl_masked.ps.cso";
 	static inline std::string k_rootSig = "mtl_masked.rootsig.cso";
-	static inline std::string k_shadowmap_vs = "mtl_shadow_masked.vs.cso";
-	static inline std::string k_shadowmap_ps = "mtl_shadow_masked.ps.cso";
-	static inline std::string k_shadowmap_rootSig = "mtl_shadow_masked.rootsig.cso";
-	static inline uint32_t k_objectConstantsDescriptorIndex = 1;
-	static inline uint32_t k_srvDescriptorIndex = 4;
-	static inline uint32_t k_shadowmap_srvDescriptorIndex = 2;
+	static inline std::string k_depthonly_vs = "mtl_depthonly_masked.vs.cso";
+	static inline std::string k_depthonly_ps = "mtl_depthonly_masked.ps.cso";
+	static inline std::string k_depthonly_rootSig = "mtl_depthonly_masked.rootsig.cso";
 
 public:
 	DefaultMaskedMaterial(std::string& name, const D3D12_GPU_DESCRIPTOR_HANDLE srvHandle, const D3D12_GPU_DESCRIPTOR_HANDLE opacityMaskSrvHandle);
 	void BindPipeline(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList, RenderPass::Id renderPass, VertexFormat::Type vertexFormat) override;
-	void BindConstants(RenderPass::Id pass, ID3D12GraphicsCommandList* cmdList, D3D12_GPU_VIRTUAL_ADDRESS objConstants, D3D12_GPU_VIRTUAL_ADDRESS viewConstants, D3D12_GPU_VIRTUAL_ADDRESS lightConstants, D3D12_GPU_DESCRIPTOR_HANDLE renderSurfaceSrvBegin) const override;
+	void BindConstants(RenderPass::Id pass, ID3D12GraphicsCommandList* cmdList, D3D12_GPU_VIRTUAL_ADDRESS objConstants, D3D12_GPU_VIRTUAL_ADDRESS viewConstants, D3D12_GPU_VIRTUAL_ADDRESS lightConstants, D3D12_GPU_VIRTUAL_ADDRESS shadowConstants, D3D12_GPU_DESCRIPTOR_HANDLE renderSurfaceSrvBegin) const override;
 	size_t GetHash(RenderPass::Id renderPass, VertexFormat::Type vertexFormat) const override;
 
 private:
@@ -95,6 +90,6 @@ class DebugMaterial : public Material
 public:
 	DebugMaterial();
 	void BindPipeline(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList, RenderPass::Id renderPass, VertexFormat::Type vertexFormat) override;
-	void BindConstants(RenderPass::Id pass, ID3D12GraphicsCommandList* cmdList, D3D12_GPU_VIRTUAL_ADDRESS objConstants, D3D12_GPU_VIRTUAL_ADDRESS viewConstants, D3D12_GPU_VIRTUAL_ADDRESS lightConstants, D3D12_GPU_DESCRIPTOR_HANDLE renderSurfaceSrvBegin) const override {}
+	void BindConstants(RenderPass::Id pass, ID3D12GraphicsCommandList* cmdList, D3D12_GPU_VIRTUAL_ADDRESS objConstants, D3D12_GPU_VIRTUAL_ADDRESS viewConstants, D3D12_GPU_VIRTUAL_ADDRESS lightConstants, D3D12_GPU_VIRTUAL_ADDRESS shadowConstants, D3D12_GPU_DESCRIPTOR_HANDLE renderSurfaceSrvBegin) const override {}
 	size_t GetHash(RenderPass::Id renderPass, VertexFormat::Type vertexFormat) const override { return 0; }
 };

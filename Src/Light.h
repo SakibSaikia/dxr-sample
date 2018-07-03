@@ -6,6 +6,12 @@ __declspec(align(256)) struct LightConstants
 	float _pad;
 	DirectX::XMFLOAT3 color;
 	float brightness;
+};
+
+__declspec(align(256))
+struct ShadowConstants
+{
+	DirectX::XMFLOAT4X4 lightViewMatrix;
 	DirectX::XMFLOAT4X4 lightViewProjectionMatrix;
 };
 
@@ -14,7 +20,7 @@ class Light
 public:
 	Light(const DirectX::XMFLOAT3 direction, const DirectX::XMFLOAT3 color, const float brightness);
 	void Update(float dt, const DirectX::BoundingBox& sceneBounds);
-	void FillConstants(LightConstants* lightConst) const;
+	void FillConstants(LightConstants* lightConst, ShadowConstants* shadowConst) const;
 
 	const DirectX::XMFLOAT4X4& GetViewMatrix() const;
 	const DirectX::XMFLOAT4X4& GetProjectionMatrix() const;
