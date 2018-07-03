@@ -327,10 +327,10 @@ void Scene::Update(float dt)
 	}
 #endif
 
-	DirectX::BoundingBox lightBounds = m_sceneBounds;
-	DirectX::XMMATRIX lightTransform = DirectX::XMLoadFloat4x4(&m_light->GetViewMatrix());
-	m_debugDraw.AddTransformedBox(lightBounds, lightTransform, DirectX::XMFLOAT3{ 1.f, 0.f, 0.f });
-	m_debugDraw.AddAxes(lightTransform, 200.f);
+	DirectX::BoundingBox lightBounds = { {0.f,0.f,0.5f}, {1.f,1.f,0.5f} };
+	DirectX::XMMATRIX mat = DirectX::XMLoadFloat4x4(&m_light->GetViewProjectionMatrix());
+	mat = DirectX::XMMatrixInverse(nullptr, mat);
+	m_debugDraw.AddTransformedBox(lightBounds, mat, DirectX::XMFLOAT3{ 1.f, 0.f, 0.f });
 	m_debugDraw.AddAxes(DirectX::XMMatrixIdentity(), 200.f);
 }
 

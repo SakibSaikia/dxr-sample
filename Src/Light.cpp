@@ -28,22 +28,19 @@ void Light::Update(float dt, const DirectX::BoundingBox& sceneBounds)
 		DirectX::XMVECTOR boundsRadius = DirectX::XMVector3Length(boundsExtent);
 		DirectX::XMVECTOR lightDir = DirectX::XMLoadFloat3(&m_direction);
 
-		DirectX::XMVECTOR lightPos = DirectX::XMVectorAdd(boundsCenter, DirectX::XMVectorScale(DirectX::XMVectorMultiply(boundsRadius, lightDir), 2.f));
+		DirectX::XMVECTOR lightPos = DirectX::XMVectorScale(DirectX::XMVectorMultiply(boundsRadius, lightDir), 2.f);
 		DirectX::XMVECTOR targetPos = boundsCenter;
 		DirectX::XMVECTORF32 lightUp{ 0.f, 1.f, 0.f, 0.f };
 
 		DirectX::XMMATRIX view = DirectX::XMMatrixLookAtLH(lightPos, targetPos, lightUp);
 
 		// transform bounds to light space
-		DirectX::XMVECTOR lightBoundsCenter = DirectX::XMVector3Transform(boundsCenter, view);
+		DirectX::BoundingBox lightBounds;
+		sceneBounds.Transform(lightBounds, view);
 
 		// light projection
-		DirectX::XMVECTOR minExtent = DirectX::XMVectorSubtract(lightBoundsCenter, boundsExtent);
-		DirectX::XMVECTOR maxExtent = DirectX::XMVectorAdd(lightBoundsCenter, boundsExtent);
-
-		DirectX::XMFLOAT3 min, max;
-		DirectX::XMStoreFloat3(&min, minExtent);
-		DirectX::XMStoreFloat3(&max, maxExtent);
+		DirectX::XMFLOAT3 min = { lightBounds.Center.x - lightBounds.Extents.x, lightBounds.Center.y - lightBounds.Extents.y, lightBounds.Center.z - lightBounds.Extents.z };
+		DirectX::XMFLOAT3 max = { lightBounds.Center.x + lightBounds.Extents.x, lightBounds.Center.y + lightBounds.Extents.y, lightBounds.Center.z + lightBounds.Extents.z };
 
 		DirectX::XMMATRIX proj = DirectX::XMMatrixOrthographicOffCenterLH(
 			min.x, max.x,
