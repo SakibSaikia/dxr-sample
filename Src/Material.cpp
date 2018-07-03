@@ -43,6 +43,7 @@ MaterialPipeline::MaterialPipeline(ID3D12Device* device, RenderPass::Id renderPa
 	// rasterizer state
 	switch (renderPass)
 	{
+	case RenderPass::DepthOnly:
 	case RenderPass::Geometry:
 	case RenderPass::DebugDraw:
 		desc.RasterizerState.FillMode = D3D12_FILL_MODE_SOLID;
@@ -77,6 +78,16 @@ MaterialPipeline::MaterialPipeline(ID3D12Device* device, RenderPass::Id renderPa
 	// blend state
 	switch (renderPass)
 	{
+	case RenderPass::DepthOnly:
+		desc.BlendState.AlphaToCoverageEnable = FALSE;
+		desc.BlendState.IndependentBlendEnable = FALSE;
+		for (auto& rt : desc.BlendState.RenderTarget)
+		{
+			rt.BlendEnable = FALSE;
+			rt.LogicOpEnable = FALSE;
+			rt.RenderTargetWriteMask = 0;
+		}
+		break;
 	case RenderPass::Geometry:
 	case RenderPass::Shadowmap:
 	case RenderPass::DebugDraw:
@@ -97,6 +108,12 @@ MaterialPipeline::MaterialPipeline(ID3D12Device* device, RenderPass::Id renderPa
 	switch (renderPass)
 	{
 	case RenderPass::Geometry:
+		desc.DepthStencilState.DepthEnable = TRUE;
+		desc.DepthStencilState.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ZERO;
+		desc.DepthStencilState.DepthFunc = D3D12_COMPARISON_FUNC_EQUAL;
+		desc.DepthStencilState.StencilEnable = FALSE;
+		break;
+	case RenderPass::DepthOnly:
 	case RenderPass::Shadowmap:
 	case RenderPass::DebugDraw:
 		desc.DepthStencilState.DepthEnable = TRUE;
@@ -117,6 +134,7 @@ MaterialPipeline::MaterialPipeline(ID3D12Device* device, RenderPass::Id renderPa
 		desc.RTVFormats[0] = k_backBufferRTVFormat;
 		desc.DSVFormat = k_depthStencilFormatDsv;
 		break;
+	case RenderPass::DepthOnly:
 	case RenderPass::Shadowmap:
 		// turn off color writes
 		desc.NumRenderTargets = 0;
@@ -130,6 +148,7 @@ MaterialPipeline::MaterialPipeline(ID3D12Device* device, RenderPass::Id renderPa
 	// misc
 	switch (renderPass)
 	{
+	case RenderPass::DepthOnly:
 	case RenderPass::Geometry:
 	case RenderPass::Shadowmap:
 	case RenderPass::DebugDraw:
@@ -143,6 +162,7 @@ MaterialPipeline::MaterialPipeline(ID3D12Device* device, RenderPass::Id renderPa
 	// Topology
 	switch (renderPass)
 	{
+	case RenderPass::DepthOnly:
 	case RenderPass::Geometry:
 	case RenderPass::Shadowmap:
 		desc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
@@ -204,6 +224,10 @@ DefaultOpaqueMaterial::DefaultOpaqueMaterial(std::string& name, const D3D12_GPU_
 	Material{ name },
 	m_srvBegin{ srvHandle }
 {
+	m_hash[RenderPass::DepthOnly] = std::hash<std::string>{}(k_depthonly_vs) ^
+		(std::hash<std::string>{}(k_depthonly_ps) << 1) ^
+		(std::hash<std::string>{}(k_depthonly_rootSig) << 2);
+
 	m_hash[RenderPass::Geometry] = std::hash<std::string>{}(k_vs) ^ 
 		(std::hash<std::string>{}(k_ps) << 1) ^ 
 		(std::hash<std::string>{}(k_rootSig) << 2);
@@ -223,6 +247,10 @@ void DefaultOpaqueMaterial::BindPipeline(ID3D12Device* device, ID3D12GraphicsCom
 		if (pass == RenderPass::Geometry)
 		{
 			pipeline = std::make_unique<MaterialPipeline>(device, pass, vertexFormat, k_vs, k_ps, k_rootSig);
+		}
+		else if (pass == RenderPass::DepthOnly)
+		{
+			pipeline = std::make_unique<MaterialPipeline>(device, pass, vertexFormat, k_depthonly_vs, k_depthonly_ps, k_depthonly_rootSig);
 		}
 		else if (pass == RenderPass::Shadowmap)
 		{
@@ -244,6 +272,11 @@ void DefaultOpaqueMaterial::BindConstants(RenderPass::Id pass, ID3D12GraphicsCom
 		cmdList->SetGraphicsRootDescriptorTable(4, renderSurfaceSrvBegin);
 		cmdList->SetGraphicsRootDescriptorTable(5, m_srvBegin);
 	}
+	else if (pass == RenderPass::DepthOnly)
+	{
+		cmdList->SetGraphicsRootConstantBufferView(0, viewConstants);
+		cmdList->SetGraphicsRootConstantBufferView(1, objConstants);
+	}
 	else if (pass == RenderPass::Shadowmap)
 	{
 		cmdList->SetGraphicsRootConstantBufferView(0, shadowConstants);
@@ -261,6 +294,10 @@ DefaultMaskedMaterial::DefaultMaskedMaterial(std::string& name, const D3D12_GPU_
 	m_srvBegin{ srvHandle },
 	m_opacityMaskSrv{opacityMaskSrvHandle}
 {
+	m_hash[RenderPass::DepthOnly] = std::hash<std::string>{}(k_depthonly_vs) ^
+		(std::hash<std::string>{}(k_depthonly_ps) << 1) ^
+		(std::hash<std::string>{}(k_depthonly_rootSig) << 2);
+
 	m_hash[RenderPass::Geometry] = std::hash<std::string>{}(k_vs) ^
 		(std::hash<std::string>{}(k_ps) << 1) ^ 
 		(std::hash<std::string>{}(k_rootSig) << 2);
@@ -281,6 +318,10 @@ void DefaultMaskedMaterial::BindPipeline(ID3D12Device* device, ID3D12GraphicsCom
 		{
 			pipeline = std::make_unique<MaterialPipeline>(device, pass, vertexFormat, k_vs, k_ps, k_rootSig);
 		}
+		else if (pass == RenderPass::DepthOnly)
+		{
+			pipeline = std::make_unique<MaterialPipeline>(device, pass, vertexFormat, k_depthonly_vs, k_depthonly_ps, k_depthonly_rootSig);
+		}
 		else if (pass == RenderPass::Shadowmap)
 		{
 			pipeline = std::make_unique<MaterialPipeline>(device, pass, vertexFormat, k_depthonly_vs, k_depthonly_ps, k_depthonly_rootSig);
@@ -300,6 +341,12 @@ void DefaultMaskedMaterial::BindConstants(RenderPass::Id pass, ID3D12GraphicsCom
 		cmdList->SetGraphicsRootConstantBufferView(3, shadowConstants);
 		cmdList->SetGraphicsRootDescriptorTable(4, renderSurfaceSrvBegin);
 		cmdList->SetGraphicsRootDescriptorTable(5, m_srvBegin);
+	}
+	else if (pass == RenderPass::DepthOnly)
+	{
+		cmdList->SetGraphicsRootConstantBufferView(0, viewConstants);
+		cmdList->SetGraphicsRootConstantBufferView(1, objConstants);
+		cmdList->SetGraphicsRootDescriptorTable(2, m_opacityMaskSrv);
 	}
 	else if (pass == RenderPass::Shadowmap)
 	{

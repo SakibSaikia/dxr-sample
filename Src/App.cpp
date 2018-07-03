@@ -300,6 +300,26 @@ void App::Render()
 		m_gfxCmdList->SetDescriptorHeaps(std::extent<decltype(descriptorHeaps)>::value, descriptorHeaps);
 
 		{
+			PIXScopedEvent(m_gfxCmdList.Get(), 0, L"depth_only");
+
+			D3D12_CPU_DESCRIPTOR_HANDLE dsvHandle = GetDepthStencilViewCPU(DSV::SceneDepth);
+
+			// clear
+			m_gfxCmdList->ClearDepthStencilView(dsvHandle, D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, 1.f, 0, 0, nullptr);
+
+			// viewport
+			D3D12_VIEWPORT viewport{ 0.f, 0.f, k_screenWidth, k_screenHeight, 0.f, 1.f };
+			D3D12_RECT screenRect{ 0.f, 0.f, k_screenWidth, k_screenHeight };
+			m_gfxCmdList->RSSetViewports(1, &viewport);
+			m_gfxCmdList->RSSetScissorRects(1, &screenRect);
+
+			// rt & dsv
+			m_gfxCmdList->OMSetRenderTargets(0, nullptr, FALSE, &dsvHandle);
+
+			m_scene.Render(RenderPass::DepthOnly, m_d3dDevice.Get(), m_gfxCmdList.Get(), m_gfxBufferIndex, m_view, GetShaderResourceViewGPU(SRV::RenderSurfaceBegin));
+		}
+
+		{
 			PIXScopedEvent(m_gfxCmdList.Get(), 0, "shadowmap");
 
 			// Transition to depth buffer
@@ -351,7 +371,6 @@ void App::Render()
 			// clear
 			float clearColor[] = { .8f, .8f, 1.f, 0.f };
 			m_gfxCmdList->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
-			m_gfxCmdList->ClearDepthStencilView(dsvHandle, D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, 1.f, 0, 0, nullptr);
 
 			// viewport
 			D3D12_VIEWPORT viewport{ 0.f, 0.f, k_screenWidth, k_screenHeight, 0.f, 1.f };
