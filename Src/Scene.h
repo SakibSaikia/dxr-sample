@@ -38,14 +38,14 @@ private:
 	DebugMaterial m_debugMaterial;
 	DebugLineMesh m_debugDraw;
 
-	std::array<Microsoft::WRL::ComPtr<ID3D12Resource>, k_gfxBufferCount> m_objectConstantBuffers;
-	std::array<ObjectConstants*, k_gfxBufferCount> m_objectConstantBufferPtr;
+	Microsoft::WRL::ComPtr<ID3D12Resource> m_objectConstantBuffer;
+	ObjectConstants* m_objectConstantBufferPtr;
 
-	std::array<Microsoft::WRL::ComPtr<ID3D12Resource>, k_gfxBufferCount> m_lightConstantBuffers;
-	std::array<LightConstants*, k_gfxBufferCount> m_lightConstantBufferPtr;
+	Microsoft::WRL::ComPtr<ID3D12Resource> m_lightConstantBuffer;
+	LightConstants* m_lightConstantBufferPtr;
 
-	std::array<Microsoft::WRL::ComPtr<ID3D12Resource>, k_gfxBufferCount> m_shadowConstantBuffers;
-	std::array<ShadowConstants*, k_gfxBufferCount> m_shadowConstantBufferPtr;
+	Microsoft::WRL::ComPtr<ID3D12Resource> m_shadowConstantBuffer;
+	ShadowConstants* m_shadowConstantBufferPtr;
 
 	DirectX::BoundingBox m_sceneBounds;
 };

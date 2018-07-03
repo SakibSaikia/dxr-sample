@@ -247,11 +247,9 @@ void Scene::InitResources(
 
 	// Object Constant Buffer
 	{
-		uint32_t objectConstantsSize = sizeof(ObjectConstants);
-
 		D3D12_RESOURCE_DESC resDesc = {};
 		resDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
-		resDesc.Width = objectConstantsSize * m_meshEntities.size();
+		resDesc.Width = sizeof(ObjectConstants) * m_meshEntities.size() * k_gfxBufferCount; // n copies where n = buffer count
 		resDesc.Height = 1;
 		resDesc.DepthOrArraySize = 1;
 		resDesc.MipLevels = 1;
@@ -263,28 +261,26 @@ void Scene::InitResources(
 		heapDesc.Type = D3D12_HEAP_TYPE_UPLOAD; // must be CPU accessible
 		heapDesc.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN; // GPU or system mem
 
-		for (auto n = 0; n < k_gfxBufferCount; ++n)
-		{
-			CHECK(device->CreateCommittedResource(
-				&heapDesc,
-				D3D12_HEAP_FLAG_NONE,
-				&resDesc,
-				D3D12_RESOURCE_STATE_GENERIC_READ,
-				nullptr,
-				IID_PPV_ARGS(m_objectConstantBuffers.at(n).GetAddressOf())
-			));
+		CHECK(device->CreateCommittedResource(
+			&heapDesc,
+			D3D12_HEAP_FLAG_NONE,
+			&resDesc,
+			D3D12_RESOURCE_STATE_GENERIC_READ,
+			nullptr,
+			IID_PPV_ARGS(m_objectConstantBuffer.GetAddressOf())
+		));
 
-			// Get ptr to mapped resource
-			auto** ptr = reinterpret_cast<void**>(&m_objectConstantBufferPtr.at(n));
-			m_objectConstantBuffers.at(n)->Map(0, nullptr, ptr);
-		}
+		// Get ptr to mapped resource
+		auto** ptr = reinterpret_cast<void**>(&m_objectConstantBufferPtr);
+		m_objectConstantBuffer->Map(0, nullptr, ptr);
+
 	}
 
 	// Light Constant Buffer
 	{
 		D3D12_RESOURCE_DESC resDesc = {};
 		resDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
-		resDesc.Width = sizeof(LightConstants);
+		resDesc.Width = sizeof(LightConstants) * k_gfxBufferCount; // n copies where n = buffer count
 		resDesc.Height = 1;
 		resDesc.DepthOrArraySize = 1;
 		resDesc.MipLevels = 1;
@@ -296,28 +292,26 @@ void Scene::InitResources(
 		heapDesc.Type = D3D12_HEAP_TYPE_UPLOAD; // must be CPU accessible
 		heapDesc.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN; // GPU or system mem
 
-		for (auto n = 0; n < k_gfxBufferCount; ++n)
-		{
-			CHECK(device->CreateCommittedResource(
-				&heapDesc,
-				D3D12_HEAP_FLAG_NONE,
-				&resDesc,
-				D3D12_RESOURCE_STATE_GENERIC_READ,
-				nullptr,
-				IID_PPV_ARGS(m_lightConstantBuffers.at(n).GetAddressOf())
-			));
 
-			// Get ptr to mapped resource
-			auto** ptr = reinterpret_cast<void**>(&m_lightConstantBufferPtr.at(n));
-			m_lightConstantBuffers.at(n)->Map(0, nullptr, ptr);
-		}
+		CHECK(device->CreateCommittedResource(
+			&heapDesc,
+			D3D12_HEAP_FLAG_NONE,
+			&resDesc,
+			D3D12_RESOURCE_STATE_GENERIC_READ,
+			nullptr,
+			IID_PPV_ARGS(m_lightConstantBuffer.GetAddressOf())
+		));
+
+		// Get ptr to mapped resource
+		auto** ptr = reinterpret_cast<void**>(&m_lightConstantBufferPtr);
+		m_lightConstantBuffer->Map(0, nullptr, ptr);
 	}
 
 	// Shadow Constant Buffer
 	{
 		D3D12_RESOURCE_DESC resDesc = {};
 		resDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
-		resDesc.Width = sizeof(ShadowConstants);
+		resDesc.Width = sizeof(ShadowConstants) * k_gfxBufferCount; // n copies where n = buffer count
 		resDesc.Height = 1;
 		resDesc.DepthOrArraySize = 1;
 		resDesc.MipLevels = 1;
@@ -329,21 +323,18 @@ void Scene::InitResources(
 		heapDesc.Type = D3D12_HEAP_TYPE_UPLOAD; // must be CPU accessible
 		heapDesc.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN; // GPU or system mem
 
-		for (auto n = 0; n < k_gfxBufferCount; ++n)
-		{
-			CHECK(device->CreateCommittedResource(
-				&heapDesc,
-				D3D12_HEAP_FLAG_NONE,
-				&resDesc,
-				D3D12_RESOURCE_STATE_GENERIC_READ,
-				nullptr,
-				IID_PPV_ARGS(m_shadowConstantBuffers.at(n).GetAddressOf())
-			));
+		CHECK(device->CreateCommittedResource(
+			&heapDesc,
+			D3D12_HEAP_FLAG_NONE,
+			&resDesc,
+			D3D12_RESOURCE_STATE_GENERIC_READ,
+			nullptr,
+			IID_PPV_ARGS(m_shadowConstantBuffer.GetAddressOf())
+		));
 
-			// Get ptr to mapped resource
-			auto** ptr = reinterpret_cast<void**>(&m_shadowConstantBufferPtr.at(n));
-			m_shadowConstantBuffers.at(n)->Map(0, nullptr, ptr);
-		}
+		// Get ptr to mapped resource
+		auto** ptr = reinterpret_cast<void**>(&m_shadowConstantBufferPtr);
+		m_shadowConstantBuffer->Map(0, nullptr, ptr);
 	}
 }
 
@@ -371,15 +362,15 @@ void Scene::Update(float dt)
 void Scene::UpdateRenderResources(uint32_t bufferIndex)
 {
 	// mesh entities
-	ObjectConstants* o = m_objectConstantBufferPtr.at(bufferIndex);
+	ObjectConstants* o = m_objectConstantBufferPtr + bufferIndex * m_meshEntities.size();
 	for (const auto& meshEntity : m_meshEntities)
 	{
 		meshEntity->FillConstants(o++);
 	}
 
 	// light(s)
-	LightConstants* l = m_lightConstantBufferPtr.at(bufferIndex);
-	ShadowConstants* s = m_shadowConstantBufferPtr.at(bufferIndex);
+	LightConstants* l = m_lightConstantBufferPtr + bufferIndex;
+	ShadowConstants* s = m_shadowConstantBufferPtr + bufferIndex;
 	m_light->FillConstants(l, s);
 
 	// debug draw
@@ -412,10 +403,10 @@ void Scene::Render(RenderPass::Id pass, ID3D12Device* device, ID3D12GraphicsComm
 		{
 			PIXScopedEvent(cmdList, 0, meshEntity->GetName().c_str());
 
-			D3D12_GPU_VIRTUAL_ADDRESS ObjConstants = m_objectConstantBuffers.at(bufferIndex)->GetGPUVirtualAddress() + entityId * sizeof(ObjectConstants);
-			D3D12_GPU_VIRTUAL_ADDRESS viewConstants = view.GetConstantBuffer(bufferIndex)->GetGPUVirtualAddress();
-			D3D12_GPU_VIRTUAL_ADDRESS lightConstants = m_lightConstantBuffers.at(bufferIndex)->GetGPUVirtualAddress();
-			D3D12_GPU_VIRTUAL_ADDRESS shadowConstants = m_shadowConstantBuffers.at(bufferIndex)->GetGPUVirtualAddress();
+			D3D12_GPU_VIRTUAL_ADDRESS ObjConstants = m_objectConstantBuffer->GetGPUVirtualAddress() + (bufferIndex * m_meshEntities.size() + entityId) * sizeof(ObjectConstants);
+			D3D12_GPU_VIRTUAL_ADDRESS viewConstants = view.GetConstantBuffer()->GetGPUVirtualAddress() + bufferIndex * sizeof(ViewConstants);
+			D3D12_GPU_VIRTUAL_ADDRESS lightConstants = m_lightConstantBuffer->GetGPUVirtualAddress() + bufferIndex * sizeof(LightConstants);
+			D3D12_GPU_VIRTUAL_ADDRESS shadowConstants = m_shadowConstantBuffer->GetGPUVirtualAddress() + bufferIndex * sizeof(ShadowConstants);
 
 			static_assert(sizeof(ShadowConstants) == sizeof(ViewConstants) && L"Size must match so that we can switch out view constants in the shadow map pass!");
 
@@ -430,6 +421,9 @@ void Scene::Render(RenderPass::Id pass, ID3D12Device* device, ID3D12GraphicsComm
 void Scene::RenderDebugMeshes(RenderPass::Id pass, ID3D12Device* device, ID3D12GraphicsCommandList* cmdList, uint32_t bufferIndex, const View& view)
 {
 	m_debugMaterial.BindPipeline(device, cmdList, pass, VertexFormat::Type::P3C3);
-	cmdList->SetGraphicsRootConstantBufferView(0, view.GetConstantBuffer(bufferIndex)->GetGPUVirtualAddress());
+
+	D3D12_GPU_VIRTUAL_ADDRESS viewConstants = view.GetConstantBuffer()->GetGPUVirtualAddress() + bufferIndex * sizeof(ViewConstants);
+	cmdList->SetGraphicsRootConstantBufferView(0, viewConstants);
+
 	m_debugDraw.Render(cmdList, bufferIndex);
 }

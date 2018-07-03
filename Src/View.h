@@ -18,10 +18,10 @@ public:
 	void Update(float dt, POINT mouseDelta);
 	void UpdateRenderResources(uint32_t bufferIndex);
 
-	ID3D12Resource* GetConstantBuffer(uint32_t index) const;
+	ID3D12Resource* GetConstantBuffer() const;
 
 private:
 	Camera m_camera;
-	std::vector<Microsoft::WRL::ComPtr<ID3D12Resource>> m_cbuffers;
-	std::vector<ViewConstants*> m_cbufferPtrs;
+	Microsoft::WRL::ComPtr<ID3D12Resource> m_cbuffer;
+	ViewConstants* m_cbufferPtr;
 };
