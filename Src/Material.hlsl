@@ -99,7 +99,27 @@ float CalcShadowFactor(float2 lightUV, float lightDepth)
     }
     else
     {
-        return shadowMap.SampleCmpLevelZero(shadowmapSampler, lightUV, lightDepth).r;
+        float shadowFactor = 0.f;
+
+        uint width, height;
+        shadowMap.GetDimensions(width, height);
+
+        float delta = 1.f / (float) width;
+
+        const float2 offsets[9] =
+        {
+            float2(-delta, -delta), float2(0.f, -delta), float2(delta, -delta),
+            float2(-delta, 0.f), float2(0.f, 0.f), float2(delta, 0.f),
+            float2(-delta, delta), float2(0.f, delta), float2(delta, delta)
+        };
+
+        [unroll]
+        for (int i = 0; i < 9; i++)
+        {
+            shadowFactor += shadowMap.SampleCmpLevelZero(shadowmapSampler, lightUV + offsets[i], lightDepth).r;
+        }
+
+        return shadowFactor / 9.f;
     }
 }
 
