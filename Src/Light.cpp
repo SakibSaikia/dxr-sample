@@ -6,7 +6,7 @@ Light::Light(const DirectX::XMFLOAT3 direction, const DirectX::XMFLOAT3 color, c
 	m_brightness{ brightness }
 {
 	DirectX::XMVECTOR dir = DirectX::XMLoadFloat3(&direction);
-	DirectX::XMStoreFloat3(&m_direction, DirectX::XMVector2Normalize(dir));
+	DirectX::XMStoreFloat3(&m_originalDirection, DirectX::XMVector3Normalize(dir));
 }
 
 void Light::FillConstants(LightConstants* lightConst, ShadowConstants* shadowConst) const
@@ -21,6 +21,19 @@ void Light::FillConstants(LightConstants* lightConst, ShadowConstants* shadowCon
 
 void Light::Update(float dt, const DirectX::BoundingBox& sceneBounds)
 {
+	bool animateLight = true;
+	if (animateLight)
+	{
+		static float lightRotationAngle = 0.f;
+		lightRotationAngle += 0.01f*dt;
+
+		DirectX::XMMATRIX r = DirectX::XMMatrixRotationY(lightRotationAngle);
+		DirectX::XMVECTOR lightDir = DirectX::XMLoadFloat3(&m_originalDirection);
+		lightDir = DirectX::XMVector3TransformNormal(lightDir, r);
+		XMStoreFloat3(&m_direction, lightDir);
+		m_dirty = true;
+	}
+
 	if (m_dirty)
 	{
 		DirectX::XMVECTOR boundsCenter = DirectX::XMLoadFloat3(&sceneBounds.Center);

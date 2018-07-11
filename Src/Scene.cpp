@@ -195,7 +195,7 @@ void Scene::LoadEntities(const aiNode* node)
 
 void Scene::InitLights(ID3D12Device* device)
 {
-	m_light = std::make_unique<Light>(DirectX::XMFLOAT3{ 1.f, 2.f, 1.f }, DirectX::XMFLOAT3{ 1.f, 1.f, 1.f }, 10000.f);
+	m_light = std::make_unique<Light>(DirectX::XMFLOAT3{ 0.57735f, 1.57735f, 0.57735f }, DirectX::XMFLOAT3{ 1.f, 1.f, 1.f }, 10000.f);
 }
 
 void Scene::InitBounds(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList)

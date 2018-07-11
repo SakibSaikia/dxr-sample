@@ -27,6 +27,7 @@ public:
 	const DirectX::XMFLOAT4X4& GetViewProjectionMatrix() const;
 
 private:
+	DirectX::XMFLOAT3 m_originalDirection;
 	DirectX::XMFLOAT3 m_direction;
 	DirectX::XMFLOAT3 m_color;
 	float m_brightness;
