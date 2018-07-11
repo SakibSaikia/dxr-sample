@@ -1,4 +1,5 @@
 #include "stdafx.h"
+#include "Common.h"
 #include "Light.h"
 
 Light::Light(const DirectX::XMFLOAT3 direction, const DirectX::XMFLOAT3 color, const float brightness) :
@@ -7,6 +8,7 @@ Light::Light(const DirectX::XMFLOAT3 direction, const DirectX::XMFLOAT3 color, c
 {
 	DirectX::XMVECTOR dir = DirectX::XMLoadFloat3(&direction);
 	DirectX::XMStoreFloat3(&m_originalDirection, DirectX::XMVector3Normalize(dir));
+	m_direction = m_originalDirection;
 }
 
 void Light::FillConstants(LightConstants* lightConst, ShadowConstants* shadowConst) const
@@ -25,7 +27,7 @@ void Light::Update(float dt, const DirectX::BoundingBox& sceneBounds)
 	if (animateLight)
 	{
 		static float lightRotationAngle = 0.f;
-		lightRotationAngle += 0.01f*dt;
+		lightRotationAngle += 0.05f*dt;
 
 		DirectX::XMMATRIX r = DirectX::XMMatrixRotationY(lightRotationAngle);
 		DirectX::XMVECTOR lightDir = DirectX::XMLoadFloat3(&m_originalDirection);
@@ -56,6 +58,17 @@ void Light::Update(float dt, const DirectX::BoundingBox& sceneBounds)
 		// light projection
 		DirectX::XMFLOAT3 min = { lightBounds.Center.x - lightBounds.Extents.x, lightBounds.Center.y - lightBounds.Extents.y, lightBounds.Center.z - lightBounds.Extents.z };
 		DirectX::XMFLOAT3 max = { lightBounds.Center.x + lightBounds.Extents.x, lightBounds.Center.y + lightBounds.Extents.y, lightBounds.Center.z + lightBounds.Extents.z };
+
+		// lock to texel increments
+		// see : https://docs.microsoft.com/en-us/windows/desktop/DxTechArts/common-techniques-to-improve-shadow-depth-maps
+		float boundsSize;
+		DirectX::XMStoreFloat(&boundsSize, boundsRadius);
+		float worldUnitsPerTexel = 2.f * boundsSize / (float) k_shadowmapSize;
+
+		min.x = floor(min.x / worldUnitsPerTexel) * worldUnitsPerTexel;
+		min.y = floor(min.y / worldUnitsPerTexel) * worldUnitsPerTexel;
+		max.x = floor(max.x / worldUnitsPerTexel) * worldUnitsPerTexel;
+		max.y = floor(max.y / worldUnitsPerTexel) * worldUnitsPerTexel;
 
 		DirectX::XMMATRIX proj = DirectX::XMMatrixOrthographicOffCenterLH(
 			min.x, max.x,
