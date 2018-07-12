@@ -349,18 +349,19 @@ void Scene::Update(float dt)
 {
 	m_light->Update(dt, m_sceneBounds);
 
-#if 0
+#if 1
 	m_debugDraw.AddBox(m_sceneBounds, DirectX::XMFLOAT3{ 0.0, 1.0, 0.0 });
 
-	for (const auto& bb : m_meshWorldBounds)
-	{
-		m_debugDraw.AddBox(bb, DirectX::XMFLOAT3{1.f, 0.f, 0.f});
-	}
-
+	// shadow frustum
 	DirectX::BoundingBox lightBounds = { {0.f,0.f,0.5f}, {1.f,1.f,0.5f} };
 	DirectX::XMMATRIX mat = DirectX::XMLoadFloat4x4(&m_light->GetViewProjectionMatrix());
 	mat = DirectX::XMMatrixInverse(nullptr, mat);
 	m_debugDraw.AddTransformedBox(lightBounds, mat, DirectX::XMFLOAT3{ 1.f, 0.f, 0.f });
+
+	// light location
+	DirectX::XMMATRIX m = DirectX::XMLoadFloat4x4(&m_light->GetViewMatrix());
+	m = DirectX::XMMatrixInverse(nullptr, m);
+	m_debugDraw.AddAxes(m, 200.f);
 
 	m_debugDraw.AddAxes(DirectX::XMMatrixIdentity(), 200.f);
 #endif

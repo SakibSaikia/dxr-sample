@@ -51,13 +51,13 @@ void Light::Update(float dt, const DirectX::BoundingBox& sceneBounds)
 
 		DirectX::XMMATRIX view = DirectX::XMMatrixLookAtLH(lightPos, targetPos, lightUp);
 
-		// transform bounds to light space
-		DirectX::BoundingBox lightBounds;
-		sceneBounds.Transform(lightBounds, view);
+		DirectX::BoundingSphere lightBounds;
+		DirectX::BoundingSphere::CreateFromBoundingBox(lightBounds, sceneBounds);
+		lightBounds.Transform(lightBounds, view);
 
 		// light projection
-		DirectX::XMFLOAT3 min = { lightBounds.Center.x - lightBounds.Extents.x, lightBounds.Center.y - lightBounds.Extents.y, lightBounds.Center.z - lightBounds.Extents.z };
-		DirectX::XMFLOAT3 max = { lightBounds.Center.x + lightBounds.Extents.x, lightBounds.Center.y + lightBounds.Extents.y, lightBounds.Center.z + lightBounds.Extents.z };
+		DirectX::XMFLOAT3 min = { lightBounds.Center.x - lightBounds.Radius, lightBounds.Center.y - lightBounds.Radius, lightBounds.Center.z - lightBounds.Radius };
+		DirectX::XMFLOAT3 max = { lightBounds.Center.x + lightBounds.Radius, lightBounds.Center.y + lightBounds.Radius, lightBounds.Center.z + lightBounds.Radius };
 
 		// lock to texel increments
 		// see : https://docs.microsoft.com/en-us/windows/desktop/DxTechArts/common-techniques-to-improve-shadow-depth-maps
