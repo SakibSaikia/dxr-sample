@@ -99,10 +99,8 @@
     <None Include="DebugMaterial.hlsl">
       <Filter>Shaders</Filter>
     </None>
-  </ItemGroup>
-  <ItemGroup>
-    <FxCompile Include="DepthRendering.hlsl">
+    <None Include="DepthRendering.hlsl">
       <Filter>Shaders</Filter>
-    </FxCompile>
+    </None>
   </ItemGroup>
 </Project>
