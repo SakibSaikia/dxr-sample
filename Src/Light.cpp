@@ -23,7 +23,7 @@ void Light::FillConstants(LightConstants* lightConst, ShadowConstants* shadowCon
 
 void Light::Update(float dt, const DirectX::BoundingBox& sceneBounds)
 {
-	bool animateLight = true;
+	bool animateLight = false;
 	if (animateLight)
 	{
 		static float lightRotationAngle = 0.f;
@@ -58,17 +58,6 @@ void Light::Update(float dt, const DirectX::BoundingBox& sceneBounds)
 		// light projection
 		DirectX::XMFLOAT3 min = { lightBounds.Center.x - lightBounds.Radius, lightBounds.Center.y - lightBounds.Radius, lightBounds.Center.z - lightBounds.Radius };
 		DirectX::XMFLOAT3 max = { lightBounds.Center.x + lightBounds.Radius, lightBounds.Center.y + lightBounds.Radius, lightBounds.Center.z + lightBounds.Radius };
-
-		// lock to texel increments
-		// see : https://docs.microsoft.com/en-us/windows/desktop/DxTechArts/common-techniques-to-improve-shadow-depth-maps
-		float boundsSize;
-		DirectX::XMStoreFloat(&boundsSize, boundsRadius);
-		float worldUnitsPerTexel = 2.f * boundsSize / (float) k_shadowmapSize;
-
-		min.x = floor(min.x / worldUnitsPerTexel) * worldUnitsPerTexel;
-		min.y = floor(min.y / worldUnitsPerTexel) * worldUnitsPerTexel;
-		max.x = floor(max.x / worldUnitsPerTexel) * worldUnitsPerTexel;
-		max.y = floor(max.y / worldUnitsPerTexel) * worldUnitsPerTexel;
 
 		DirectX::XMMATRIX proj = DirectX::XMMatrixOrthographicOffCenterLH(
 			min.x, max.x,

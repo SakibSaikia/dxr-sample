@@ -349,7 +349,7 @@ void Scene::Update(float dt)
 {
 	m_light->Update(dt, m_sceneBounds);
 
-#if 1
+#if 0
 	m_debugDraw.AddBox(m_sceneBounds, DirectX::XMFLOAT3{ 0.0, 1.0, 0.0 });
 
 	// shadow frustum
