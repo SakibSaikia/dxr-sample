@@ -23,15 +23,7 @@ D3D12_GPU_DESCRIPTOR_HANDLE Texture::CreateDescriptor(ID3D12Device* device, ID3D
 {
 	D3D12_CPU_DESCRIPTOR_HANDLE cpuHnd;
 	cpuHnd.ptr = srvHeap->GetCPUDescriptorHandleForHeapStart().ptr + offsetInHeap * descriptorSize;
-
-	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
-	srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-	srvDesc.Format = m_resource->GetDesc().Format;
-	srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
-	srvDesc.Texture2D.MostDetailedMip = 0;
-	srvDesc.Texture2D.MipLevels = m_resource->GetDesc().MipLevels;
-	srvDesc.Texture2D.ResourceMinLODClamp = 0.0f;
-	device->CreateShaderResourceView(m_resource.Get(), &srvDesc, cpuHnd);
+	device->CreateShaderResourceView(m_resource.Get(), nullptr /*default descriptor*/, cpuHnd);
 
 	D3D12_GPU_DESCRIPTOR_HANDLE gpuHnd;
 	gpuHnd.ptr = srvHeap->GetGPUDescriptorHandleForHeapStart().ptr + offsetInHeap * descriptorSize;
