@@ -31,12 +31,50 @@ void App::InitBaseD3D()
 
 	D3D12EnableExperimentalFeatures(1, &D3D12ExperimentalShaderModelsID, nullptr, nullptr);
 
-	// Device
-	CHECK(D3D12CreateDevice(
-		nullptr,
-		D3D_FEATURE_LEVEL_11_0,
-		IID_PPV_ARGS(m_d3dDevice.GetAddressOf())
-	));
+	// Enumerate adapters and create device
+	uint32_t i = 0;
+	Microsoft::WRL::ComPtr<IDXGIAdapter> adapter;
+	bool deviceCreated = false;
+	while(m_dxgiFactory->EnumAdapters(i++, adapter.GetAddressOf()) != DXGI_ERROR_NOT_FOUND)
+	{
+		DXGI_ADAPTER_DESC desc;
+		adapter->GetDesc(&desc);
+
+		std::wstring out = L"*** Adapter : ";
+		out += desc.Description;
+
+		if (desc.VendorId == 0x1002 /*AMD*/ || desc.VendorId == 0x10DE /*NV*/)
+		{
+			CHECK(D3D12CreateDevice(
+				adapter.Get(),
+				D3D_FEATURE_LEVEL_11_0,
+				IID_PPV_ARGS(m_d3dDevice.GetAddressOf())
+			));
+
+			out += L" ... OK\n";
+			OutputDebugString(out.c_str());
+
+			deviceCreated = true;
+
+			break;
+		}
+		else
+		{
+			out += L" ... SKIP\n";
+			OutputDebugString(out.c_str());
+		}
+	}
+
+	if (!deviceCreated)
+	{
+		OutputDebugString(L"*** Adapter : Use default fallback");
+
+		CHECK(D3D12CreateDevice(
+			nullptr,
+			D3D_FEATURE_LEVEL_11_0,
+			IID_PPV_ARGS(m_d3dDevice.GetAddressOf())
+		));
+	}
 
 	// Cached descriptor size
 	m_rtvDescriptorSize = m_d3dDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
