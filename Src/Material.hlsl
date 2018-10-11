@@ -20,6 +20,7 @@
 struct VsToPs
 {
 	float4 ndcPos	        : SV_POSITION;
+    float4 viewPos          : INTERP_VIEWPOS;
     float3 tangent          : INTERP_TANGENT;
     float3 bitangent        : INTERP_BITANGENT;
 	float3 normal	        : INTERP_NORMAL;
@@ -48,11 +49,12 @@ VsToPs vs_main( VsIn v )
 {
 	VsToPs o;
 	float4 worldPos = mul(float4(v.pos, 1.f), localToWorldMatrix);
-	o.ndcPos = mul(worldPos, viewProjectionMatrix);
-    o.tangent = mul(v.tangent, (float3x3) localToWorldMatrix);
-    o.bitangent = mul(v.bitangent, (float3x3) localToWorldMatrix);
-    o.normal = mul(v.normal, (float3x3) localToWorldMatrix);
-	o.uv = v.uv;
+	o.ndcPos        = mul(worldPos, viewProjectionMatrix);
+    o.viewPos       = mul(worldPos, viewMatrix);
+    o.tangent       = mul(v.tangent, (float3x3) localToWorldMatrix);
+    o.bitangent     = mul(v.bitangent, (float3x3) localToWorldMatrix);
+    o.normal        = mul(v.normal, (float3x3) localToWorldMatrix);
+	o.uv            = v.uv;
 
     float4 lightPos = mul(worldPos, lightViewProjectionMatrix);
     lightPos /= lightPos.w;
@@ -139,38 +141,39 @@ float4 ps_main(VsToPs p) : SV_TARGET
     float3 normal = mul(normalMap, float3x3(p.tangent, p.bitangent, p.normal));
     normal = normalize(mul(normal, (float3x3) viewMatrix));
 
-    float3 light = normalize(mul(lightDir, (float3x3) viewMatrix));
-
-    float3 halfVector = normalize(light + float3(0, 0, 1));
-
+    // lighting calculations in view space
+    float3 viewVec = p.viewPos.xyz/p.viewPos.w;
+    float3 lightVec = normalize(mul(lightDir, (float3x3) viewMatrix));
+    float3 halfVec = normalize(lightVec + viewVec);
     float metallic = texMetallic.Sample(anisoSampler, p.uv).r;
-
     float roughness = texRoughness.Sample(anisoSampler, p.uv).r;
+    float3 reflectanceF0 = lerp(F_0_dielectric, baseColor.rgb, metallic);
+    float3 albedo = (1.f - metallic) * baseColor.rgb;
 
-    float3 F_0 = lerp(baseColor.rgb, F_0_dielectric, metallic);
+    float nDotL = max(dot(normal, lightVec), 0.f);
+    float nDotH = max(dot(normal, halfVec), 0.f);
+    float nDotV = max(dot(normal, viewVec), 0.f);
 
-    float nDotL = max(dot(normal, light), 0.f);
-
-    float lDotH = max(dot(light, halfVector), 0.f);
-
-    float3 reflectance = F_0 + (1.f - F_0) * pow((1 - nDotL), 5.f);
-
-    // diffuse
-    float3 outColor = (1.f - metallic) * nDotL * baseColor.rgb;
+    float3 reflectance = reflectanceF0 + (1.f - reflectanceF0) * pow((1 - nDotV), 5.f);
 
     // specular
-    outColor += nDotL * reflectance * 0.125 * (roughness + 8.f) * pow(lDotH, roughness);
+    float3 specularBRDF = reflectance * 0.125 * (roughness + 8.f) * pow(nDotH, roughness);
 
-    outColor *= CalcShadowFactor(p.lightUVAndDepth.xy, p.lightUVAndDepth.z);
+    // diffuse + energy conservation
+    float3 diffuseBRDF = min(1.f - specularBRDF, albedo);
 
-    // ambient
-    outColor += float3(.1f, .1f, .1f) * baseColor.rgb;
+    // Attenuation
+    float lightAttenuation = CalcShadowFactor(p.lightUVAndDepth.xy, p.lightUVAndDepth.z);
+
+    // lit color
+    float3 ambient = float3(.01f, .01f, .01f) * albedo;
+    float3 outColor = lightAttenuation * nDotL * (diffuseBRDF + specularBRDF) + ambient;
 
     // tonemap
     outColor = TonemapACES(outColor);
 
     // gamma correction
-    //outColor = pow(outColor, 1/2.2f);
+    outColor = pow(outColor, 1/2.2f);
 
     return float4(outColor, 1.f);
 }
