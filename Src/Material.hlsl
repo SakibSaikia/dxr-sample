@@ -160,7 +160,7 @@ float4 ps_main(VsToPs p) : SV_TARGET
     float3 specularBRDF = reflectance * 0.125 * (roughness + 8.f) * pow(nDotH, roughness);
 
     // diffuse + energy conservation
-    float3 diffuseBRDF = min(1.f - specularBRDF, albedo);
+    float3 diffuseBRDF = (1.f - specularBRDF) * albedo;
 
     // Attenuation
     float lightAttenuation = CalcShadowFactor(p.lightUVAndDepth.xy, p.lightUVAndDepth.z);
