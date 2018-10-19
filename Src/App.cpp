@@ -275,16 +275,25 @@ void App::InitDescriptorHeaps()
 	CHECK(m_d3dDevice->CreateDescriptorHeap(&cbvSrvUavHeapDesc, IID_PPV_ARGS(m_cbvSrvUavHeap.GetAddressOf())));
 }
 
+void App::InitUploadBuffer()
+{
+	m_uploadBuffer.Init(m_d3dDevice.Get(), k_uploadBufferSize);
+}
+
 void App::InitScene()
 {
 	m_scene.InitResources(
 		m_d3dDevice.Get(), 
 		m_cmdQueue.Get(), 
 		m_gfxCmdList.Get(), 
+		&m_uploadBuffer,
 		m_cbvSrvUavHeap.Get(),
 		SRV::MaterialTexturesBegin,
 		m_cbvSrvUavDescriptorSize
 	);
+
+	// make sure all resources have finished copying
+	m_uploadBuffer.Flush();
 }
 
 void App::InitView()
@@ -299,6 +308,7 @@ void App::Init(HWND windowHandle)
 	InitSwapChain(windowHandle);
 	InitDescriptorHeaps();
 	InitRenderSurfaces();
+	InitUploadBuffer();
 	InitScene();
 	InitView();
 

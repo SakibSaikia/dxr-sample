@@ -2,6 +2,7 @@
 #include "Common.h"
 #include "View.h"
 #include "Scene.h"
+#include "UploadBuffer.h"
 
 class App
 {
@@ -23,6 +24,7 @@ private:
 	void InitCommandObjects();
 	void InitSwapChain(HWND windowHandle);
 	void InitDescriptorHeaps();
+	void InitUploadBuffer();
 	void InitView();
 	void InitScene();
 	void InitRenderSurfaces();
@@ -70,6 +72,9 @@ private:
 	uint32_t m_dsvDescriptorSize = 0;
 	uint32_t m_cbvSrvUavDescriptorSize = 0;
 	uint32_t m_samplerDescriptorSize = 0;
+
+	// For uploading resources to GPU
+	UploadBuffer m_uploadBuffer;
 
 	// Scene
 	Scene m_scene;

@@ -8,6 +8,7 @@ constexpr size_t k_screenHeight = 720;
 constexpr size_t k_shadowmapSize = 2048;
 constexpr size_t k_constantBufferCount = 4;
 constexpr size_t k_materialTextureCount = 128;
+constexpr size_t k_uploadBufferSize = 10 * 1024 * 1024; // 10 MB
 constexpr DXGI_FORMAT k_backBufferFormat = DXGI_FORMAT_R10G10B10A2_UNORM;
 constexpr DXGI_FORMAT k_backBufferRTVFormat = DXGI_FORMAT_R10G10B10A2_UNORM;
 constexpr DXGI_FORMAT k_depthStencilFormatRaw = DXGI_FORMAT_R24G8_TYPELESS;
