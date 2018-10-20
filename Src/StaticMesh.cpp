@@ -2,20 +2,23 @@
 #include "StaticMesh.h"
 #include "App.h"
 
-void StaticMesh::Init(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList, std::vector<VertexType> vertexData, std::vector<IndexType> indexData, const uint32_t matIndex)
+void StaticMesh::Init(
+	ID3D12Device* device, 
+	ID3D12GraphicsCommandList* cmdList, 
+	UploadBuffer* uploadBuffer, 
+	ResourceHeap* resourceHeap,
+	std::vector<VertexType> vertexData, 
+	std::vector<IndexType> indexData, 
+	const uint32_t matIndex)
 {
 	// bounding box
 	const auto data = reinterpret_cast<DirectX::XMFLOAT3*>(vertexData.data());
 	DirectX::BoundingBox::CreateFromPoints(m_bounds, vertexData.size(), data, sizeof(VertexType));
 
-
-	Microsoft::WRL::ComPtr<ID3D12Resource> vertexBufferUpload;
-	Microsoft::WRL::ComPtr<ID3D12Resource> indexBufferUpload;
-
 	m_numIndices = indexData.size();
 	m_materialIndex = matIndex;
 
-	// default vertex buffer
+	// vertex buffer
 	D3D12_RESOURCE_DESC vbDesc = {};
 	vbDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
 	vbDesc.Width = vertexData.size() * sizeof(VertexType);
@@ -26,20 +29,18 @@ void StaticMesh::Init(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList, 
 	vbDesc.SampleDesc.Count = 1;
 	vbDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
 
-	D3D12_HEAP_PROPERTIES heapProp = {};
-	heapProp.Type = D3D12_HEAP_TYPE_DEFAULT;
-	heapProp.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
+	size_t offsetInHeap = resourceHeap->GetAlloc(vbDesc.Width);
 
-	CHECK(device->CreateCommittedResource(
-		&heapProp,
-		D3D12_HEAP_FLAG_NONE,
+	CHECK(device->CreatePlacedResource(
+		resourceHeap->GetHeap(),
+		offsetInHeap,
 		&vbDesc,
 		D3D12_RESOURCE_STATE_COPY_DEST,
 		nullptr,
 		IID_PPV_ARGS(m_vertexBuffer.GetAddressOf())
 	));
 
-	// default index buffer
+	// index buffer
 	D3D12_RESOURCE_DESC ibDesc = {};
 	ibDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
 	ibDesc.Width = indexData.size() * sizeof(IndexType);
@@ -50,72 +51,47 @@ void StaticMesh::Init(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList, 
 	ibDesc.SampleDesc.Count = 1;
 	ibDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
 
-	CHECK(device->CreateCommittedResource(
-		&heapProp,
-		D3D12_HEAP_FLAG_NONE,
+	offsetInHeap = resourceHeap->GetAlloc(ibDesc.Width);
+
+	CHECK(device->CreatePlacedResource(
+		resourceHeap->GetHeap(),
+		offsetInHeap,
 		&ibDesc,
 		D3D12_RESOURCE_STATE_COPY_DEST,
 		nullptr,
 		IID_PPV_ARGS(m_indexBuffer.GetAddressOf())
 	));
 
-	// upload vertex buffer
-	D3D12_HEAP_PROPERTIES uploadHeapProp = {};
-	uploadHeapProp.Type = D3D12_HEAP_TYPE_UPLOAD;
-	uploadHeapProp.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
-
-	CHECK(device->CreateCommittedResource(
-		&uploadHeapProp,
-		D3D12_HEAP_FLAG_NONE,
-		&vbDesc,
-		D3D12_RESOURCE_STATE_GENERIC_READ,
-		nullptr,
-		IID_PPV_ARGS(vertexBufferUpload.GetAddressOf())
-	));
-
-	// upload index buffer
-	CHECK(device->CreateCommittedResource(
-		&uploadHeapProp,
-		D3D12_HEAP_FLAG_NONE,
-		&ibDesc,
-		D3D12_RESOURCE_STATE_GENERIC_READ,
-		nullptr,
-		IID_PPV_ARGS(indexBufferUpload.GetAddressOf())
-	));
-
 	// copy vertex data to upload buffer
-	uint64_t vbRowSizeInBytes;
+	uint64_t vbSizeInBytes;
 	D3D12_PLACED_SUBRESOURCE_FOOTPRINT vbLayout;
 	device->GetCopyableFootprints(
 		&vbDesc,
 		0 /*subresource index*/, 1 /* num subresources */, 0 /*offset*/,
-		&vbLayout, nullptr, &vbRowSizeInBytes, nullptr);
+		&vbLayout, nullptr, &vbSizeInBytes, nullptr);
 
-	uint8_t* destPtr;
-	vertexBufferUpload->Map(0, nullptr, reinterpret_cast<void**>(&destPtr));
+	auto[destVbPtr, vbOffset] = uploadBuffer->GetAlloc(vbSizeInBytes);
 	const auto* pSrc = reinterpret_cast<const uint8_t*>(vertexData.data());
-	memcpy(destPtr, pSrc, vbRowSizeInBytes);
-	vertexBufferUpload->Unmap(0, nullptr);
+	memcpy(destVbPtr, pSrc, vbSizeInBytes);
 
 	// copy index data to upload buffer
-	uint64_t ibRowSizeInBytes;
+	uint64_t ibSizeInBytes;
 	D3D12_PLACED_SUBRESOURCE_FOOTPRINT ibLayout;
 	device->GetCopyableFootprints(
 		&ibDesc,
 		0 /*subresource index*/, 1 /* num subresources */, 0 /*offset*/,
-		&ibLayout, nullptr, &ibRowSizeInBytes, nullptr);
+		&ibLayout, nullptr, &ibSizeInBytes, nullptr);
 
-	indexBufferUpload->Map(0, nullptr, reinterpret_cast<void**>(&destPtr));
+	auto[destIbPtr, ibOffset] = uploadBuffer->GetAlloc(ibSizeInBytes);
 	pSrc = reinterpret_cast<const uint8_t*>(indexData.data());
-	memcpy(destPtr, pSrc, ibRowSizeInBytes);
-	indexBufferUpload->Unmap(0, nullptr);
+	memcpy(destIbPtr, pSrc, ibSizeInBytes);
 
 	// schedule copy to default vertex buffer
 	cmdList->CopyBufferRegion(
 		m_vertexBuffer.Get(),
 		0,
-		vertexBufferUpload.Get(),
-		vbLayout.Offset,
+		uploadBuffer->GetResource(),
+		vbOffset,
 		vbLayout.Footprint.Width
 	);
 
@@ -123,8 +99,8 @@ void StaticMesh::Init(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList, 
 	cmdList->CopyBufferRegion(
 		m_indexBuffer.Get(),
 		0,
-		indexBufferUpload.Get(),
-		ibLayout.Offset,
+		uploadBuffer->GetResource(),
+		ibOffset,
 		ibLayout.Footprint.Width
 	);
 
@@ -161,12 +137,6 @@ void StaticMesh::Init(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList, 
 	m_indexBufferView.BufferLocation = m_indexBuffer->GetGPUVirtualAddress();
 	m_indexBufferView.Format = DXGI_FORMAT_R16_UINT;
 	m_indexBufferView.SizeInBytes = indexData.size() * sizeof(IndexType);
-
-	// Flush here so that the upload buffers do not go out of scope
-	// TODO(sakib): do not create and destroy upload buffers for each mesh. 
-	// Instead have a common upload buffer(s) that is large enough.
-	AppInstance()->SubmitCommands();
-	AppInstance()->FlushCmdQueue();
 }
 
 void StaticMesh::Render(ID3D12GraphicsCommandList* cmdList)

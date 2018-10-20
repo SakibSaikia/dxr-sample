@@ -2,6 +2,8 @@
 #include "Common.h"
 #include "View.h"
 #include "Scene.h"
+#include "UploadBuffer.h"
+#include "ResourceHeap.h"
 
 class App
 {
@@ -23,6 +25,8 @@ private:
 	void InitCommandObjects();
 	void InitSwapChain(HWND windowHandle);
 	void InitDescriptorHeaps();
+	void InitUploadBuffer();
+	void InitResourceHeaps();
 	void InitView();
 	void InitScene();
 	void InitRenderSurfaces();
@@ -65,11 +69,17 @@ private:
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_dsvHeap;
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_cbvSrvUavHeap;
 
+	// Resource heaps
+	ResourceHeap m_vertexAndIndexDataHeap;
+
 	// Descriptor size
 	uint32_t m_rtvDescriptorSize = 0;
 	uint32_t m_dsvDescriptorSize = 0;
 	uint32_t m_cbvSrvUavDescriptorSize = 0;
 	uint32_t m_samplerDescriptorSize = 0;
+
+	// For uploading resources to GPU
+	UploadBuffer m_uploadBuffer;
 
 	// Scene
 	Scene m_scene;
