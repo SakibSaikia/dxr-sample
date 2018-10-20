@@ -6,6 +6,9 @@ fxc /E"args" /Trootsig_1_1 /Fo"..\Src\CompiledShaders\mtl_default.rootsig.cso" /
 fxc /E"vs_main" /Tvs_5_1 /Fo"..\Src\CompiledShaders\mtl_masked.vs.cso" /nologo /Zpr /D"MASKED" ..\Src\Material.hlsl
 fxc /E"ps_main" /Tps_5_1 /Fo"..\Src\CompiledShaders\mtl_masked.ps.cso" /nologo /Zpr /D"MASKED" ..\Src\Material.hlsl
 fxc /E"args" /Trootsig_1_1 /Fo"..\Src\CompiledShaders\mtl_masked.rootsig.cso" /nologo /D"MASKED" ..\Src\Material.hlsl
+fxc /E"vs_main" /Tvs_5_1 /Fo"..\Src\CompiledShaders\mtl_untextured.vs.cso" /nologo /Zpr /D"UNTEXTURED" ..\Src\Material.hlsl
+fxc /E"ps_main" /Tps_5_1 /Fo"..\Src\CompiledShaders\mtl_untextured.ps.cso" /nologo /Zpr /D"UNTEXTURED" ..\Src\Material.hlsl
+fxc /E"args" /Trootsig_1_1 /Fo"..\Src\CompiledShaders\mtl_untextured.rootsig.cso" /nologo /D"UNTEXTURED" ..\Src\Material.hlsl
 
 fxc /E"vs_main" /Tvs_5_1 /Fo"..\Src\CompiledShaders\mtl_depthonly_default.vs.cso" /nologo /Zpr ..\Src\DepthRendering.hlsl
 fxc /E"ps_main" /Tps_5_1 /Fo"..\Src\CompiledShaders\mtl_depthonly_default.ps.cso" /nologo /Zpr ..\Src\DepthRendering.hlsl

@@ -104,7 +104,7 @@ void StaticMesh::Init(
 		ibLayout.Footprint.Width
 	);
 
-	// transition default vertex buffer
+	// transition vertex buffer
 	D3D12_RESOURCE_BARRIER vbBarrierDesc = {};
 	vbBarrierDesc.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
 	vbBarrierDesc.Transition.pResource = m_vertexBuffer.Get();
@@ -116,7 +116,7 @@ void StaticMesh::Init(
 		&vbBarrierDesc
 	);
 
-	// transition default index buffer
+	// transition index buffer
 	D3D12_RESOURCE_BARRIER ibBarrierDesc = {};
 	ibBarrierDesc.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
 	ibBarrierDesc.Transition.pResource = m_indexBuffer.Get();

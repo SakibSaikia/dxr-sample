@@ -40,6 +40,34 @@ public:
 	size_t GetHash(RenderPass::Id renderPass, VertexFormat::Type vertexFormat) const override { return 0; }
 };
 
+class UntexturedMaterial : public Material
+{
+	static inline std::string k_vs = "mtl_untextured.vs.cso";
+	static inline std::string k_ps = "mtl_untextured.ps.cso";
+	static inline std::string k_rootSig = "mtl_untextured.rootsig.cso";
+	static inline std::string k_depthonly_vs = "mtl_depthonly_default.vs.cso";
+	static inline std::string k_depthonly_ps = "mtl_depthonly_default.ps.cso";
+	static inline std::string k_depthonly_rootSig = "mtl_depthonly_default.rootsig.cso";
+
+public:
+	__declspec(align(256))
+	struct Constants
+	{
+		DirectX::XMFLOAT3 baseColor;
+		float metallic;
+		float roughness;
+	};
+
+	UntexturedMaterial(std::string& name, Microsoft::WRL::ComPtr<ID3D12Resource> constantBuffer);
+	void BindPipeline(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList, RenderPass::Id renderPass, VertexFormat::Type vertexFormat) override;
+	void BindConstants(RenderPass::Id pass, ID3D12GraphicsCommandList* cmdList, D3D12_GPU_VIRTUAL_ADDRESS objConstants, D3D12_GPU_VIRTUAL_ADDRESS viewConstants, D3D12_GPU_VIRTUAL_ADDRESS lightConstants, D3D12_GPU_VIRTUAL_ADDRESS shadowConstants, D3D12_GPU_DESCRIPTOR_HANDLE renderSurfaceSrvBegin) const override;
+	size_t GetHash(RenderPass::Id renderPass, VertexFormat::Type vertexFormat) const override;
+
+private:
+	Microsoft::WRL::ComPtr<ID3D12Resource> m_constantBuffer;
+	size_t m_hash[RenderPass::Count];
+};
+
 class DefaultOpaqueMaterial : public Material
 {
 	static inline std::string k_vs = "mtl_default.vs.cso";

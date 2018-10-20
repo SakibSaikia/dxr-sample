@@ -76,8 +76,11 @@ D3D12_GPU_DESCRIPTOR_HANDLE Scene::LoadTexture(const std::string& textureName, I
 
 void Scene::LoadMaterials(
 	const aiScene* loader, 
-	ID3D12Device* device, 
+	ID3D12Device* device,
+	ID3D12GraphicsCommandList* cmdList,
 	ID3D12CommandQueue* cmdQueue,
+	UploadBuffer* uploadBuffer, 
+	ResourceHeap* mtlConstantsHeap,
 	ID3D12DescriptorHeap* srvHeap, 
 	const size_t srvStartOffset, 
 	const size_t srvDescriptorSize)
@@ -138,8 +141,69 @@ void Scene::LoadMaterials(
 		}
 		else
 		{
-			// Invalid material
-			m_materials.push_back(std::make_unique<NullMaterial>());
+			// Use untextured material
+
+			UntexturedMaterial::Constants mtlConstantData;
+			mtlConstantData.baseColor = DirectX::XMFLOAT3{ 0.75, 0.75, 0.75 };
+			mtlConstantData.metallic = 0.f;
+			mtlConstantData.roughness = 0.5;
+
+			D3D12_RESOURCE_DESC cbDesc = {};
+			cbDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
+			cbDesc.Width = sizeof(UntexturedMaterial::Constants);
+			cbDesc.Height = 1;
+			cbDesc.DepthOrArraySize = 1;
+			cbDesc.MipLevels = 1;
+			cbDesc.Format = DXGI_FORMAT_UNKNOWN;
+			cbDesc.SampleDesc.Count = 1;
+			cbDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+
+			size_t offsetInHeap = mtlConstantsHeap->GetAlloc(cbDesc.Width, k_constantBufferAlignment);
+
+			Microsoft::WRL::ComPtr<ID3D12Resource> mtlCb;
+			CHECK(device->CreatePlacedResource(
+				mtlConstantsHeap->GetHeap(),
+				offsetInHeap,
+				&cbDesc,
+				D3D12_RESOURCE_STATE_COPY_DEST,
+				nullptr,
+				IID_PPV_ARGS(mtlCb.GetAddressOf())
+			));
+
+			// copy constant data to upload buffer
+			uint64_t cbSizeInBytes;
+			D3D12_PLACED_SUBRESOURCE_FOOTPRINT cbLayout;
+			device->GetCopyableFootprints(
+				&cbDesc,
+				0 /*subresource index*/, 1 /* num subresources */, 0 /*offset*/,
+				&cbLayout, nullptr, &cbSizeInBytes, nullptr);
+
+			auto[uploadPtr, uploadOffset] = uploadBuffer->GetAlloc(cbSizeInBytes);
+			const auto* pSrc = reinterpret_cast<const uint8_t*>(&mtlConstantData);
+			memcpy(uploadPtr, pSrc, cbSizeInBytes);
+
+			// schedule copy to default vertex buffer
+			cmdList->CopyBufferRegion(
+				mtlCb.Get(),
+				0,
+				uploadBuffer->GetResource(),
+				uploadOffset,
+				cbLayout.Footprint.Width
+			);
+
+			// transition to constant buffer
+			D3D12_RESOURCE_BARRIER cbBarrierDesc = {};
+			cbBarrierDesc.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+			cbBarrierDesc.Transition.pResource = mtlCb.Get();
+			cbBarrierDesc.Transition.StateBefore = D3D12_RESOURCE_STATE_COPY_DEST;
+			cbBarrierDesc.Transition.StateAfter = D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER;
+			cbBarrierDesc.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+			cmdList->ResourceBarrier(
+				1,
+				&cbBarrierDesc
+			);
+
+			m_materials.push_back(std::make_unique<UntexturedMaterial>(std::string("untextured_mtl"), mtlCb));
 		}
 	}
 
@@ -226,7 +290,8 @@ void Scene::InitResources(
 	ID3D12CommandQueue* cmdQueue, 
 	ID3D12GraphicsCommandList* cmdList, 
 	UploadBuffer* uploadBuffer,
-	ResourceHeap* resourceHeap,
+	ResourceHeap* meshDataHeap,
+	ResourceHeap* mtlConstantsHeap,
 	ID3D12DescriptorHeap* srvHeap, 
 	const size_t srvStartOffset,
 	const size_t srvDescriptorSize)
@@ -246,8 +311,8 @@ void Scene::InitResources(
 
 		assert(scene != nullptr && L"Failed to load scene");
 
-		LoadMeshes(scene, device, cmdList, uploadBuffer, resourceHeap);
-		LoadMaterials(scene, device, cmdQueue, srvHeap, srvStartOffset, srvDescriptorSize);
+		LoadMeshes(scene, device, cmdList, uploadBuffer, meshDataHeap);
+		LoadMaterials(scene, device, cmdList, cmdQueue, uploadBuffer, mtlConstantsHeap, srvHeap, srvStartOffset, srvDescriptorSize);
 		LoadEntities(scene->mRootNode);
 		InitLights(device);
 		InitBounds(device, cmdList);

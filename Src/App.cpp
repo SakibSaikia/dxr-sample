@@ -283,6 +283,7 @@ void App::InitUploadBuffer()
 void App::InitResourceHeaps()
 {
 	m_vertexAndIndexDataHeap.Init(m_d3dDevice.Get(), k_vertexAndIndexDataSize);
+	m_materialConstantsHeap.Init(m_d3dDevice.Get(), k_materialConstantsSize);
 }
 
 void App::InitScene()
@@ -293,6 +294,7 @@ void App::InitScene()
 		m_gfxCmdList.Get(), 
 		&m_uploadBuffer,
 		&m_vertexAndIndexDataHeap,
+		&m_materialConstantsHeap,
 		m_cbvSrvUavHeap.Get(),
 		SRV::MaterialTexturesBegin,
 		m_cbvSrvUavDescriptorSize

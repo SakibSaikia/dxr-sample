@@ -269,8 +269,8 @@ void DefaultOpaqueMaterial::BindConstants(RenderPass::Id pass, ID3D12GraphicsCom
 		cmdList->SetGraphicsRootConstantBufferView(1, objConstants);
 		cmdList->SetGraphicsRootConstantBufferView(2, lightConstants);
 		cmdList->SetGraphicsRootConstantBufferView(3, shadowConstants);
-		cmdList->SetGraphicsRootDescriptorTable(4, renderSurfaceSrvBegin);
-		cmdList->SetGraphicsRootDescriptorTable(5, m_srvBegin);
+		cmdList->SetGraphicsRootDescriptorTable(5, renderSurfaceSrvBegin);
+		cmdList->SetGraphicsRootDescriptorTable(6, m_srvBegin);
 	}
 	else if (pass == RenderPass::DepthOnly)
 	{
@@ -339,8 +339,8 @@ void DefaultMaskedMaterial::BindConstants(RenderPass::Id pass, ID3D12GraphicsCom
 		cmdList->SetGraphicsRootConstantBufferView(1, objConstants);
 		cmdList->SetGraphicsRootConstantBufferView(2, lightConstants);
 		cmdList->SetGraphicsRootConstantBufferView(3, shadowConstants);
-		cmdList->SetGraphicsRootDescriptorTable(4, renderSurfaceSrvBegin);
-		cmdList->SetGraphicsRootDescriptorTable(5, m_srvBegin);
+		cmdList->SetGraphicsRootDescriptorTable(5, renderSurfaceSrvBegin);
+		cmdList->SetGraphicsRootDescriptorTable(6, m_srvBegin);
 	}
 	else if (pass == RenderPass::DepthOnly)
 	{
@@ -377,4 +377,73 @@ void DebugMaterial::BindPipeline(ID3D12Device* device, ID3D12GraphicsCommandList
 	}
 
 	pipeline->Bind(cmdList);
+}
+
+UntexturedMaterial::UntexturedMaterial(std::string& name, Microsoft::WRL::ComPtr<ID3D12Resource> constantBuffer) :
+	Material{ name },
+	m_constantBuffer{ constantBuffer }
+{
+	m_hash[RenderPass::DepthOnly] = std::hash<std::string>{}(k_depthonly_vs) ^
+		(std::hash<std::string>{}(k_depthonly_ps) << 1) ^
+		(std::hash<std::string>{}(k_depthonly_rootSig) << 2);
+
+	m_hash[RenderPass::Geometry] = std::hash<std::string>{}(k_vs) ^
+		(std::hash<std::string>{}(k_ps) << 1) ^
+		(std::hash<std::string>{}(k_rootSig) << 2);
+
+	m_hash[RenderPass::Shadowmap] = std::hash<std::string>{}(k_depthonly_vs) ^
+		(std::hash<std::string>{}(k_depthonly_ps) << 1) ^
+		(std::hash<std::string>{}(k_depthonly_rootSig) << 2);
+}
+
+void UntexturedMaterial::BindPipeline(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList, RenderPass::Id pass, VertexFormat::Type vertexFormat)
+{
+	auto& pipeline = m_pipelines[pass][static_cast<int>(vertexFormat)];
+
+	// Create a new pipeline and cache it if it has not been created
+	if (!pipeline)
+	{
+		if (pass == RenderPass::Geometry)
+		{
+			pipeline = std::make_unique<MaterialPipeline>(device, pass, vertexFormat, k_vs, k_ps, k_rootSig);
+		}
+		else if (pass == RenderPass::DepthOnly)
+		{
+			pipeline = std::make_unique<MaterialPipeline>(device, pass, vertexFormat, k_depthonly_vs, k_depthonly_ps, k_depthonly_rootSig);
+		}
+		else if (pass == RenderPass::Shadowmap)
+		{
+			pipeline = std::make_unique<MaterialPipeline>(device, pass, vertexFormat, k_depthonly_vs, k_depthonly_ps, k_depthonly_rootSig);
+		}
+	}
+
+	pipeline->Bind(cmdList);
+}
+
+void UntexturedMaterial::BindConstants(RenderPass::Id pass, ID3D12GraphicsCommandList* cmdList, D3D12_GPU_VIRTUAL_ADDRESS objConstants, D3D12_GPU_VIRTUAL_ADDRESS viewConstants, D3D12_GPU_VIRTUAL_ADDRESS lightConstants, D3D12_GPU_VIRTUAL_ADDRESS shadowConstants, D3D12_GPU_DESCRIPTOR_HANDLE renderSurfaceSrvBegin) const
+{
+	if (pass == RenderPass::Geometry)
+	{
+		cmdList->SetGraphicsRootConstantBufferView(0, viewConstants);
+		cmdList->SetGraphicsRootConstantBufferView(1, objConstants);
+		cmdList->SetGraphicsRootConstantBufferView(2, lightConstants);
+		cmdList->SetGraphicsRootConstantBufferView(3, shadowConstants);
+		cmdList->SetGraphicsRootConstantBufferView(4, m_constantBuffer->GetGPUVirtualAddress());
+		cmdList->SetGraphicsRootDescriptorTable(5, renderSurfaceSrvBegin);
+	}
+	else if (pass == RenderPass::DepthOnly)
+	{
+		cmdList->SetGraphicsRootConstantBufferView(0, viewConstants);
+		cmdList->SetGraphicsRootConstantBufferView(1, objConstants);
+	}
+	else if (pass == RenderPass::Shadowmap)
+	{
+		cmdList->SetGraphicsRootConstantBufferView(0, shadowConstants);
+		cmdList->SetGraphicsRootConstantBufferView(1, objConstants);
+	}
+}
+
+size_t UntexturedMaterial::GetHash(RenderPass::Id renderPass, VertexFormat::Type vertexFormat) const
+{
+	return	m_hash[renderPass] ^ (renderPass << 3) ^ (static_cast<int>(vertexFormat) << 4);
 }

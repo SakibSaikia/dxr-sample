@@ -71,6 +71,7 @@ private:
 
 	// Resource heaps
 	ResourceHeap m_vertexAndIndexDataHeap;
+	ResourceHeap m_materialConstantsHeap;
 
 	// Descriptor size
 	uint32_t m_rtvDescriptorSize = 0;
