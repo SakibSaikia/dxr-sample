@@ -88,9 +88,6 @@ private:
 	// View
 	View m_view;
 
-	// State Objects
-	std::vector<D3D12_GRAPHICS_PIPELINE_STATE_DESC> m_renderPassPSOs;
-
 	// Mouse
 	POINT m_currentMousePos = { 0, 0 };
 	POINT m_lastMousePos = { 0, 0 };
