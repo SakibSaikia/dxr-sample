@@ -2,6 +2,7 @@
 
 #include "Common.h"
 #include "UploadBuffer.h"
+#include "ResourceHeap.h"
 
 __declspec(align(256)) struct ObjectConstants
 {
@@ -15,7 +16,7 @@ public:
 	using IndexType = uint16_t;
 
 	StaticMesh() = default;
-	void Init(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList, UploadBuffer* uploadBuffer, std::vector<VertexType> vertexData, std::vector<IndexType> indexData, uint32_t matIndex);
+	void Init(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList, UploadBuffer* uploadBuffer, ResourceHeap* resourceHeap, std::vector<VertexType> vertexData, std::vector<IndexType> indexData, uint32_t matIndex);
 	void Render(ID3D12GraphicsCommandList* cmdList);
 
 	uint32_t GetMaterialIndex() const;

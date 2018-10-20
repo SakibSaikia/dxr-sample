@@ -2,7 +2,14 @@
 #include "StaticMesh.h"
 #include "App.h"
 
-void StaticMesh::Init(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList, UploadBuffer* uploadBuffer, std::vector<VertexType> vertexData, std::vector<IndexType> indexData, const uint32_t matIndex)
+void StaticMesh::Init(
+	ID3D12Device* device, 
+	ID3D12GraphicsCommandList* cmdList, 
+	UploadBuffer* uploadBuffer, 
+	ResourceHeap* resourceHeap,
+	std::vector<VertexType> vertexData, 
+	std::vector<IndexType> indexData, 
+	const uint32_t matIndex)
 {
 	// bounding box
 	const auto data = reinterpret_cast<DirectX::XMFLOAT3*>(vertexData.data());
@@ -11,7 +18,7 @@ void StaticMesh::Init(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList, 
 	m_numIndices = indexData.size();
 	m_materialIndex = matIndex;
 
-	// default vertex buffer
+	// vertex buffer
 	D3D12_RESOURCE_DESC vbDesc = {};
 	vbDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
 	vbDesc.Width = vertexData.size() * sizeof(VertexType);
@@ -22,20 +29,18 @@ void StaticMesh::Init(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList, 
 	vbDesc.SampleDesc.Count = 1;
 	vbDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
 
-	D3D12_HEAP_PROPERTIES heapProp = {};
-	heapProp.Type = D3D12_HEAP_TYPE_DEFAULT;
-	heapProp.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
+	size_t offsetInHeap = resourceHeap->GetAlloc(vbDesc.Width);
 
-	CHECK(device->CreateCommittedResource(
-		&heapProp,
-		D3D12_HEAP_FLAG_NONE,
+	CHECK(device->CreatePlacedResource(
+		resourceHeap->GetHeap(),
+		offsetInHeap,
 		&vbDesc,
 		D3D12_RESOURCE_STATE_COPY_DEST,
 		nullptr,
 		IID_PPV_ARGS(m_vertexBuffer.GetAddressOf())
 	));
 
-	// default index buffer
+	// index buffer
 	D3D12_RESOURCE_DESC ibDesc = {};
 	ibDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
 	ibDesc.Width = indexData.size() * sizeof(IndexType);
@@ -46,9 +51,11 @@ void StaticMesh::Init(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList, 
 	ibDesc.SampleDesc.Count = 1;
 	ibDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
 
-	CHECK(device->CreateCommittedResource(
-		&heapProp,
-		D3D12_HEAP_FLAG_NONE,
+	offsetInHeap = resourceHeap->GetAlloc(ibDesc.Width);
+
+	CHECK(device->CreatePlacedResource(
+		resourceHeap->GetHeap(),
+		offsetInHeap,
 		&ibDesc,
 		D3D12_RESOURCE_STATE_COPY_DEST,
 		nullptr,

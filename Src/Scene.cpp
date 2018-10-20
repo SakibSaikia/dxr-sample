@@ -9,7 +9,7 @@ Scene::~Scene()
 	m_shadowConstantBuffer->Unmap(0, nullptr);
 }
 
-void Scene::LoadMeshes(const aiScene* loader, ID3D12Device* device, ID3D12GraphicsCommandList* cmdList, UploadBuffer* uploadBuffer)
+void Scene::LoadMeshes(const aiScene* loader, ID3D12Device* device, ID3D12GraphicsCommandList* cmdList, UploadBuffer* uploadBuffer, ResourceHeap* resourceHeap)
 {
 	for (auto meshIdx = 0u; meshIdx < loader->mNumMeshes; meshIdx++)
 	{
@@ -46,7 +46,7 @@ void Scene::LoadMeshes(const aiScene* loader, ID3D12Device* device, ID3D12Graphi
 		}
 
 		auto mesh = std::make_unique<StaticMesh>();
-		mesh->Init(device, cmdList, uploadBuffer, std::move(vertexData), std::move(indexData), srcMesh->mMaterialIndex);
+		mesh->Init(device, cmdList, uploadBuffer, resourceHeap, std::move(vertexData), std::move(indexData), srcMesh->mMaterialIndex);
 		m_meshes.push_back(std::move(mesh));
 	}
 }
@@ -226,6 +226,7 @@ void Scene::InitResources(
 	ID3D12CommandQueue* cmdQueue, 
 	ID3D12GraphicsCommandList* cmdList, 
 	UploadBuffer* uploadBuffer,
+	ResourceHeap* resourceHeap,
 	ID3D12DescriptorHeap* srvHeap, 
 	const size_t srvStartOffset,
 	const size_t srvDescriptorSize)
@@ -245,7 +246,7 @@ void Scene::InitResources(
 
 		assert(scene != nullptr && L"Failed to load scene");
 
-		LoadMeshes(scene, device, cmdList, uploadBuffer);
+		LoadMeshes(scene, device, cmdList, uploadBuffer, resourceHeap);
 		LoadMaterials(scene, device, cmdQueue, srvHeap, srvStartOffset, srvDescriptorSize);
 		LoadEntities(scene->mRootNode);
 		InitLights(device);

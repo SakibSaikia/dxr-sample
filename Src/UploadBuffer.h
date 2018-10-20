@@ -7,7 +7,6 @@ class UploadBuffer
 public:
 	using Alloc = std::pair<uint8_t*, size_t>;
 
-
 	~UploadBuffer();
 	void Init(ID3D12Device* device, const size_t sizeInBytes);
 	Alloc GetAlloc(const size_t sizeInBytes);
