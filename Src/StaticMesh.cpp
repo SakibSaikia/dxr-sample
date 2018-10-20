@@ -8,10 +8,6 @@ void StaticMesh::Init(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList, 
 	const auto data = reinterpret_cast<DirectX::XMFLOAT3*>(vertexData.data());
 	DirectX::BoundingBox::CreateFromPoints(m_bounds, vertexData.size(), data, sizeof(VertexType));
 
-
-	Microsoft::WRL::ComPtr<ID3D12Resource> vertexBufferUpload;
-	Microsoft::WRL::ComPtr<ID3D12Resource> indexBufferUpload;
-
 	m_numIndices = indexData.size();
 	m_materialIndex = matIndex;
 
