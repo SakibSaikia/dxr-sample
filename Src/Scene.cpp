@@ -299,7 +299,7 @@ void Scene::InitResources(
 	// Load scene
 	{
 		Assimp::Importer importer;
-		const aiScene* scene = importer.ReadFile(R"(..\Content\bunny\bunny.obj)",
+		const aiScene* scene = importer.ReadFile(R"(..\Content\sponza\obj\sponza.obj)",
 			aiProcess_CalcTangentSpace |
 			aiProcess_Triangulate |
 			aiProcess_JoinIdenticalVertices |

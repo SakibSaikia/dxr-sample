@@ -21,11 +21,6 @@ struct VsToPs
 
 //-----------------------------------------------------------------------------------
 
-cbuffer SceneConstants : register(b1)
-{
-    float4x4 localToWorldMatrix;
-};
-
 struct VsIn
 {
     float3 pos          : POSITION;
@@ -39,8 +34,8 @@ struct VsIn
 VsToPs vs_main(VsIn v)
 {
     VsToPs o;
-    float4 worldPos = mul(float4(v.pos, 1.f), localToWorldMatrix);
-    o.ndcPos = mul(worldPos, viewProjectionMatrix);
+    float4 worldPos = mul(float4(v.pos, 1.f), cb_object.localToWorldMatrix);
+    o.ndcPos = mul(worldPos, cb_view.viewProjectionMatrix);
     o.uv = v.uv;
     return o;
 }

@@ -6,7 +6,6 @@ constexpr size_t k_gfxBufferCount = 2;
 constexpr size_t k_screenWidth = 1280;
 constexpr size_t k_screenHeight = 720;
 constexpr size_t k_shadowmapSize = 2048;
-constexpr size_t k_constantBufferCount = 4;
 constexpr size_t k_materialTextureCount = 128;
 constexpr size_t k_uploadBufferSize = 40 * 1024 * 1024; // 40 MB
 constexpr size_t k_vertexAndIndexDataSize = 60 * 1024 * 1024; // 60 MB

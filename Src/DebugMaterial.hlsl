@@ -23,7 +23,7 @@ VsToPs vs_main( VsIn v )
 	VsToPs o;
 
 	float4 worldPos = float4(v.pos, 1.f);
-	o.ndcPos = mul(worldPos, viewProjectionMatrix);
+	o.ndcPos = mul(worldPos, cb_view.viewProjectionMatrix);
     o.color = float4(v.color, 1.f);
 
 	return o;

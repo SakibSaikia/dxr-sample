@@ -1,26 +1,39 @@
-cbuffer ViewConstants : register(b0)
+struct ViewConstants
 {
 	float4x4 viewMatrix;
 	float4x4 viewProjectionMatrix;
 };
 
-cbuffer LightConstants : register(b2)
+struct ObjectConstants
 {
-    float3 lightDir         : packoffset(c0);
-    float3 lightColor       : packoffset(c1);
-    float lightBrightness   : packoffset(c1.w);
+    float4x4 localToWorldMatrix;
+};
+
+struct LightConstants
+{
+    float3 lightDir;
+    float _pad;
+    float3 lightColor;
+    float lightBrightness;
 };
 
 // same size as ViewConstants so that we can switch it out in the DepthRendering shader to render shadowmaps
-cbuffer ShadowConstants : register(b3)
+struct ShadowConstants
 {
     float4x4 lightViewMatrix;
     float4x4 lightViewProjectionMatrix;
 };
 
-cbuffer MaterialConstants : register(b4)
+struct MaterialConstants
 {
-    float3 mtlBaseColor    : packoffset(c0);
-    float mtlMetallic      : packoffset(c0.w);
-    float mtlRoughness     : packoffset(c1);
+    float3 baseColor;
+    float metallic;
+    float roughness;
 };
+
+
+ConstantBuffer<ViewConstants> cb_view : register(b0);
+ConstantBuffer<ObjectConstants> cb_object : register(b1);
+ConstantBuffer<LightConstants> cb_light : register(b2);
+ConstantBuffer<ShadowConstants> cb_shadow : register(b3);
+ConstantBuffer<MaterialConstants> cb_material : register(b4);

@@ -38,11 +38,6 @@ struct VsToPs
 
 //-----------------------------------------------------------------------------------
 
-cbuffer SceneConstants : register(b1)
-{
-	float4x4 localToWorldMatrix;
-};
-
 struct VsIn
 {
 	float3 pos		    : POSITION;
@@ -56,17 +51,17 @@ struct VsIn
 VsToPs vs_main( VsIn v )
 {
 	VsToPs o;
-	float4 worldPos = mul(float4(v.pos, 1.f), localToWorldMatrix);
-	o.ndcPos        = mul(worldPos, viewProjectionMatrix);
-    o.viewPos       = mul(worldPos, viewMatrix);
-    o.normal        = mul(v.normal, (float3x3) localToWorldMatrix);
+	float4 worldPos = mul(float4(v.pos, 1.f), cb_object.localToWorldMatrix);
+	o.ndcPos        = mul(worldPos, cb_view.viewProjectionMatrix);
+    o.viewPos       = mul(worldPos, cb_view.viewMatrix);
+    o.normal        = mul(v.normal, (float3x3) cb_object.localToWorldMatrix);
 #if !defined(UNTEXTURED)
-    o.tangent       = mul(v.tangent, (float3x3) localToWorldMatrix);
-    o.bitangent     = mul(v.bitangent, (float3x3) localToWorldMatrix);
+    o.tangent       = mul(v.tangent, (float3x3) cb_object.localToWorldMatrix);
+    o.bitangent     = mul(v.bitangent, (float3x3) cb_object.localToWorldMatrix);
 	o.uv            = v.uv;
 #endif
 
-    float4 lightPos = mul(worldPos, lightViewProjectionMatrix);
+    float4 lightPos = mul(worldPos, cb_shadow.lightViewProjectionMatrix);
     lightPos /= lightPos.w;
     o.lightUVAndDepth.xy = lightPos.xy * float2(0.5, -0.5) + float2(0.5, 0.5);
     o.lightUVAndDepth.z = lightPos.z;
@@ -156,17 +151,17 @@ float4 ps_main(VsToPs p) : SV_TARGET
     float3 normalMap = texNormalmap.Sample(anisoSampler, p.uv).rgb;
     normalMap = 2.f * normalMap - 1.f;
     float3 normal = mul(normalMap, float3x3(p.tangent, p.bitangent, p.normal));
-    normal = normalize(mul(normal, (float3x3) viewMatrix));
+    normal = normalize(mul(normal, (float3x3) cb_view.viewMatrix));
 #else
-    float3 baseColor = mtlBaseColor;
-    float metallic = mtlMetallic;
-    float roughness = mtlRoughness;
+    float3 baseColor = cb_material.baseColor;
+    float metallic = cb_material.metallic;
+    float roughness = cb_material.roughness;
     float3 normal = normalize(p.normal);
 #endif
 
     // lighting calculations in view space
     float3 viewVec = p.viewPos.xyz/p.viewPos.w;
-    float3 lightVec = normalize(mul(lightDir, (float3x3) viewMatrix));
+    float3 lightVec = normalize(mul(cb_light.lightDir, (float3x3) cb_view.viewMatrix));
     float3 halfVec = normalize(lightVec + viewVec);
     float3 reflectanceF0 = lerp(F_0_dielectric, baseColor.rgb, metallic);
     float3 albedo = (1.f - metallic) * baseColor.rgb;
