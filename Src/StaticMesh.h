@@ -13,7 +13,7 @@ class StaticMesh
 {
 public:
 	using VertexType = VertexFormat::P3N3T3B3U2;
-	using IndexType = uint16_t;
+	using IndexType = uint32_t;
 
 	StaticMesh() = default;
 	void Init(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList, UploadBuffer* uploadBuffer, ResourceHeap* resourceHeap, std::vector<VertexType> vertexData, std::vector<IndexType> indexData, uint32_t matIndex);
