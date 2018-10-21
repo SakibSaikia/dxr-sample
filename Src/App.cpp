@@ -339,7 +339,7 @@ void App::Update(float dt)
 	POINT mouseDelta = { m_currentMousePos.x - m_lastMousePos.x, m_currentMousePos.y - m_lastMousePos.y };
 	m_lastMousePos = m_currentMousePos;
 
-	m_view.Update(dt, mouseDelta);
+	m_view.Update(dt, m_buttonState,  mouseDelta);
 	m_scene.Update(dt);
 }
 
@@ -546,5 +546,6 @@ void App::AdvanceGfxFrame()
 
 void App::OnMouseMove(WPARAM btnState, int x, int y)
 {
+	m_buttonState = btnState;
 	m_currentMousePos = { x, y };
 }

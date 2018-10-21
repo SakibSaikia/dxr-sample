@@ -124,7 +124,7 @@ void FirstPersonCamera::Init(const float aspectRatio)
 	XMStoreFloat4x4(&m_projMatrix, proj);
 }
 
-void FirstPersonCamera::Update(const float dt, const POINT mouseDelta)
+void FirstPersonCamera::Update(const float dt, WPARAM mouseBtnState, const POINT mouseDelta)
 {
 	if ((GetAsyncKeyState('W') & 0x8000) != 0)
 	{
@@ -154,4 +154,42 @@ void FirstPersonCamera::Update(const float dt, const POINT mouseDelta)
 	RotateWorldY(dx);
 
 	UpdateViewMatrix();
+}
+
+void TrackballCamera::Init(const float aspectRatio)
+{
+	DirectX::XMMATRIX proj = DirectX::XMMatrixPerspectiveFovLH(0.25f * 3.1415926535f, aspectRatio, 1.0f, 10000.0f);
+	XMStoreFloat4x4(&m_projMatrix, proj);
+}
+
+void TrackballCamera::Update(const float dt, WPARAM mouseBtnState, POINT mouseDelta)
+{
+	if ((mouseBtnState & MK_LBUTTON) != 0)
+	{
+		Rotate(dt);
+	}
+
+	if ((mouseBtnState & MK_RBUTTON) != 0)
+	{
+		Zoom(dt);
+	}
+
+	// Make each pixel correspond to a degree.
+	float dx = DirectX::XMConvertToRadians(1.f*static_cast<float>(mouseDelta.x));
+	float dy = DirectX::XMConvertToRadians(1.f*static_cast<float>(mouseDelta.y));
+
+	//Pitch(dy);
+	//RotateWorldY(dx);
+
+	UpdateViewMatrix();
+}
+
+void TrackballCamera::Rotate(float d)
+{
+
+}
+
+void TrackballCamera::Zoom(float d)
+{
+
 }

@@ -43,9 +43,9 @@ void View::Init(ID3D12Device* device, size_t bufferCount, const size_t width, co
 	}
 }
 
-void View::Update(const float dt, const POINT mouseDelta)
+void View::Update(const float dt, const WPARAM mouseBtnState, const POINT mouseDelta)
 {
-	m_camera.Update(dt, mouseDelta);
+	m_camera.Update(dt, mouseBtnState, mouseDelta);
 }
 
 void View::UpdateRenderResources(const uint32_t bufferIndex)

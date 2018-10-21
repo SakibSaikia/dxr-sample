@@ -4,7 +4,7 @@ class Camera
 {
 public:
 	virtual void Init(float aspectRatio) = 0;
-	virtual void Update(float dt, POINT mouseDelta) = 0;
+	virtual void Update(float dt, WPARAM mouseBtnState, POINT mouseDelta) = 0;
 	DirectX::XMFLOAT4X4 GetViewMatrix();
 	DirectX::XMFLOAT4X4 GetProjectionMatrix();
 	DirectX::XMFLOAT4X4 GetViewProjectionMatrix();
@@ -28,11 +28,22 @@ class FirstPersonCamera : public Camera
 {
 public:
 	void Init(float aspectRatio) override;
-	void Update(float dt, POINT mouseDelta) override;
+	void Update(float dt, WPARAM mouseBtnState, POINT mouseDelta) override;
 
 private:
 	void Strafe(float d);
 	void Walk(float d);
 	void Pitch(float angle);
 	void RotateWorldY(float angle);
+};
+
+class TrackballCamera : public Camera
+{
+public:
+	void Init(float aspectRatio) override;
+	void Update(float dt, WPARAM mouseBtnState, POINT mouseDelta) override;
+
+private:
+	void Rotate(float d);
+	void Zoom(float d);
 };

@@ -89,6 +89,7 @@ private:
 	View m_view;
 
 	// Mouse
+	WPARAM m_buttonState = {};
 	POINT m_currentMousePos = { 0, 0 };
 	POINT m_lastMousePos = { 0, 0 };
 };
