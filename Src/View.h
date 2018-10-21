@@ -21,7 +21,7 @@ public:
 	ID3D12Resource* GetConstantBuffer() const;
 
 private:
-	Camera m_camera;
+	FirstPersonCamera m_camera;
 	Microsoft::WRL::ComPtr<ID3D12Resource> m_cbuffer;
 	ViewConstants* m_cbufferPtr;
 };
