@@ -163,9 +163,17 @@ void FirstPersonCamera::Update(const float dt, WPARAM mouseBtnState, const POINT
 
 void TrackballCamera::SphericalToViewBasis()
 {
-	m_position = { m_radius * std::sin(m_azimuth) * std::cos(m_elev), m_radius * std::cos(m_azimuth), m_radius * std::sin(m_azimuth) * std::sin(m_elev) };
-	m_up = { 0.f, 1.f, 0.f };
+	m_position = { m_radius * std::sin(m_elev) * std::cos(m_azimuth), m_radius * std::cos(m_elev), m_radius * std::sin(m_elev) * std::sin(m_azimuth) };
 	m_look = { -m_position.x, -m_position.y, -m_position.z };
+
+	if (m_worldUpDir > 0.f)
+	{
+		m_up = { 0.f, 1.f, 0.f };
+	}
+	else
+	{
+		m_up = { 0.f, -1.f, 0.f };
+	}
 
 	DirectX::XMVECTOR U = DirectX::XMLoadFloat3(&m_up);
 	DirectX::XMVECTOR L = DirectX::XMLoadFloat3(&m_look);
@@ -178,8 +186,8 @@ void TrackballCamera::Init(const float aspectRatio)
 	XMStoreFloat4x4(&m_projMatrix, proj);
 
 	m_radius = 5.f;
-	m_elev = 1.5f * DirectX::XM_PI;
-	m_azimuth = 0.25f * DirectX::XM_PI;
+	m_elev = 0.25f * DirectX::XM_PI;
+	m_azimuth = 1.5f * DirectX::XM_PI;
 	m_worldUpDir = 1.f;
 	m_viewDirty = true;
 
@@ -212,25 +220,25 @@ void TrackballCamera::Rotate(float dx, float dy)
 {
 	if (m_worldUpDir > 0.f)
 	{
-		m_elev += dx;
+		m_azimuth -= dx;
 	}
 	else
 	{
-		m_elev -= dx;
+		m_azimuth += dx;
 	}
 
-	m_azimuth += dy;
+	m_elev -= dy;
 
-	if (m_azimuth > DirectX::XM_2PI)
+	if (m_elev > DirectX::XM_2PI)
 	{
-		m_azimuth -= DirectX::XM_2PI;
+		m_elev -= DirectX::XM_2PI;
 	}
-	else if(m_azimuth < -DirectX::XM_2PI)
+	else if(m_elev < -DirectX::XM_2PI)
 	{
-		m_azimuth += DirectX::XM_2PI;
+		m_elev += DirectX::XM_2PI;
 	}
 
-	if ((m_azimuth > 0 && m_azimuth < DirectX::XM_PI) || (m_azimuth < -DirectX::XM_PI && m_azimuth > -DirectX::XM_2PI)) 
+	if ((m_elev > 0 && m_elev < DirectX::XM_PI) || (m_elev < -DirectX::XM_PI && m_elev > -DirectX::XM_2PI))
 	{
 		m_worldUpDir = 1.0f;
 	}
