@@ -122,6 +122,11 @@ void FirstPersonCamera::Init(const float aspectRatio)
 {
 	DirectX::XMMATRIX proj = DirectX::XMMatrixPerspectiveFovLH(0.25f * 3.1415926535f, aspectRatio, 1.0f, 10000.0f);
 	XMStoreFloat4x4(&m_projMatrix, proj);
+
+	m_position = { 0.f, 0.f, 0.f };
+	m_right = { 1.f, 0.f, 0.f };
+	m_up = { 0.f, 1.f, 0.f };
+	m_look = { 0.f, 0.f, 1.f };
 }
 
 void FirstPersonCamera::Update(const float dt, WPARAM mouseBtnState, const POINT mouseDelta)
@@ -156,40 +161,89 @@ void FirstPersonCamera::Update(const float dt, WPARAM mouseBtnState, const POINT
 	UpdateViewMatrix();
 }
 
+void TrackballCamera::SphericalToViewBasis()
+{
+	m_position = { m_radius * std::sin(m_azimuth) * std::cos(m_elev), m_radius * std::cos(m_azimuth), m_radius * std::sin(m_azimuth) * std::sin(m_elev) };
+	m_up = { 0.f, 1.f, 0.f };
+	m_look = { -m_position.x, -m_position.y, -m_position.z };
+
+	DirectX::XMVECTOR U = DirectX::XMLoadFloat3(&m_up);
+	DirectX::XMVECTOR L = DirectX::XMLoadFloat3(&m_look);
+	DirectX::XMStoreFloat3(&m_right, DirectX::XMVector3Normalize(DirectX::XMVector3Cross(U, L)));
+}
+
 void TrackballCamera::Init(const float aspectRatio)
 {
 	DirectX::XMMATRIX proj = DirectX::XMMatrixPerspectiveFovLH(0.25f * 3.1415926535f, aspectRatio, 1.0f, 10000.0f);
 	XMStoreFloat4x4(&m_projMatrix, proj);
+
+	m_radius = 5.f;
+	m_elev = 1.5f * DirectX::XM_PI;
+	m_azimuth = 0.25f * DirectX::XM_PI;
+	m_worldUpDir = 1.f;
+	m_viewDirty = true;
+
+	SphericalToViewBasis();
+	UpdateViewMatrix();
 }
 
 void TrackballCamera::Update(const float dt, WPARAM mouseBtnState, POINT mouseDelta)
 {
+	// Make each pixel correspond to a degree
+	float dx = DirectX::XMConvertToRadians(static_cast<float>(mouseDelta.x));
+	float dy = DirectX::XMConvertToRadians(static_cast<float>(mouseDelta.y));
+
 	if ((mouseBtnState & MK_LBUTTON) != 0)
 	{
-		Rotate(dt);
+		Rotate(dx, dy);
 	}
 
 	if ((mouseBtnState & MK_RBUTTON) != 0)
 	{
-		Zoom(dt);
+		float deltaSize = std::sqrt(dx*dx + dy*dy);
+		Zoom(std::copysign(deltaSize, -dx));
 	}
 
-	// Make each pixel correspond to a degree.
-	float dx = DirectX::XMConvertToRadians(1.f*static_cast<float>(mouseDelta.x));
-	float dy = DirectX::XMConvertToRadians(1.f*static_cast<float>(mouseDelta.y));
-
-	//Pitch(dy);
-	//RotateWorldY(dx);
-
+	SphericalToViewBasis();
 	UpdateViewMatrix();
 }
 
-void TrackballCamera::Rotate(float d)
+void TrackballCamera::Rotate(float dx, float dy)
 {
+	if (m_worldUpDir > 0.f)
+	{
+		m_elev += dx;
+	}
+	else
+	{
+		m_elev -= dx;
+	}
 
+	m_azimuth += dy;
+
+	if (m_azimuth > DirectX::XM_2PI)
+	{
+		m_azimuth -= DirectX::XM_2PI;
+	}
+	else if(m_azimuth < -DirectX::XM_2PI)
+	{
+		m_azimuth += DirectX::XM_2PI;
+	}
+
+	if ((m_azimuth > 0 && m_azimuth < DirectX::XM_PI) || (m_azimuth < -DirectX::XM_PI && m_azimuth > -DirectX::XM_2PI)) 
+	{
+		m_worldUpDir = 1.0f;
+	}
+	else 
+	{
+		m_worldUpDir = -1.0f;
+	}
+
+	m_viewDirty = true;
 }
 
 void TrackballCamera::Zoom(float d)
 {
-
+	m_radius += 0.25f * d;
+	m_viewDirty = true;
 }

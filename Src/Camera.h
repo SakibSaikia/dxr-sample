@@ -13,10 +13,10 @@ protected:
 	void UpdateViewMatrix();
 
 protected:
-	DirectX::XMFLOAT3 m_position = { 0.f, 0.f, 0.f };
-	DirectX::XMFLOAT3 m_right = { 1.f, 0.f, 0.f };
-	DirectX::XMFLOAT3 m_up = { 0.f, 1.f, 0.f };
-	DirectX::XMFLOAT3 m_look = { 0.f, 0.f, 1.f };
+	DirectX::XMFLOAT3 m_position;
+	DirectX::XMFLOAT3 m_right;
+	DirectX::XMFLOAT3 m_up;
+	DirectX::XMFLOAT3 m_look;
 
 	bool m_viewDirty = false;
 	DirectX::XMFLOAT4X4 m_viewMatrix;
@@ -44,6 +44,13 @@ public:
 	void Update(float dt, WPARAM mouseBtnState, POINT mouseDelta) override;
 
 private:
-	void Rotate(float d);
+	void Rotate(float dx, float dy);
 	void Zoom(float d);
+	void SphericalToViewBasis();
+
+private:
+	float m_azimuth;
+	float m_elev;
+	float m_radius;
+	float m_worldUpDir;
 };
