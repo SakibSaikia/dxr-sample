@@ -22,7 +22,7 @@ Microsoft::WRL::ComPtr<ID3DBlob> LoadBlob(const std::string& filename)
 	return blob;
 }
 
-MaterialPipeline::MaterialPipeline(ID3D12Device* device, RenderPass::Id renderPass, VertexFormat::Type vertexFormat, const std::string vs, const std::string ps, const std::string rootSig)
+MaterialPipeline::MaterialPipeline(ID3D12Device5* device, RenderPass::Id renderPass, VertexFormat::Type vertexFormat, const std::string vs, const std::string ps, const std::string rootSig)
 {
 	D3D12_GRAPHICS_PIPELINE_STATE_DESC desc{};
 
@@ -237,7 +237,7 @@ DefaultOpaqueMaterial::DefaultOpaqueMaterial(std::string& name, const D3D12_GPU_
 		(std::hash<std::string>{}(k_depthonly_rootSig) << 2);
 }
 
-void DefaultOpaqueMaterial::BindPipeline(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList, RenderPass::Id pass, VertexFormat::Type vertexFormat)
+void DefaultOpaqueMaterial::BindPipeline(ID3D12Device5* device, ID3D12GraphicsCommandList* cmdList, RenderPass::Id pass, VertexFormat::Type vertexFormat)
 {
 	auto& pipeline = m_pipelines[pass][static_cast<int>(vertexFormat)];
 
@@ -307,7 +307,7 @@ DefaultMaskedMaterial::DefaultMaskedMaterial(std::string& name, const D3D12_GPU_
 		(std::hash<std::string>{}(k_depthonly_rootSig) << 2);
 }
 
-void DefaultMaskedMaterial::BindPipeline(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList, RenderPass::Id pass, VertexFormat::Type vertexFormat)
+void DefaultMaskedMaterial::BindPipeline(ID3D12Device5* device, ID3D12GraphicsCommandList* cmdList, RenderPass::Id pass, VertexFormat::Type vertexFormat)
 {
 	auto& pipeline = m_pipelines[pass][static_cast<int>(vertexFormat)];
 
@@ -366,7 +366,7 @@ DebugMaterial::DebugMaterial() :
 {
 }
 
-void DebugMaterial::BindPipeline(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList, RenderPass::Id renderPass, VertexFormat::Type vertexFormat)
+void DebugMaterial::BindPipeline(ID3D12Device5* device, ID3D12GraphicsCommandList* cmdList, RenderPass::Id renderPass, VertexFormat::Type vertexFormat)
 {
 	auto& pipeline = m_pipelines[renderPass][static_cast<int>(vertexFormat)];
 
@@ -396,7 +396,7 @@ UntexturedMaterial::UntexturedMaterial(std::string& name, Microsoft::WRL::ComPtr
 		(std::hash<std::string>{}(k_depthonly_rootSig) << 2);
 }
 
-void UntexturedMaterial::BindPipeline(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList, RenderPass::Id pass, VertexFormat::Type vertexFormat)
+void UntexturedMaterial::BindPipeline(ID3D12Device5* device, ID3D12GraphicsCommandList* cmdList, RenderPass::Id pass, VertexFormat::Type vertexFormat)
 {
 	auto& pipeline = m_pipelines[pass][static_cast<int>(vertexFormat)];
 

@@ -1,7 +1,7 @@
 #include "stdafx.h"
 #include "Texture.h"
 
-void Texture::Init(ID3D12Device* device, DirectX::ResourceUploadBatch& resourceUpload, const std::string& name)
+void Texture::Init(ID3D12Device5* device, DirectX::ResourceUploadBatch& resourceUpload, const std::string& name)
 {
 	m_name = name;
 
@@ -19,7 +19,7 @@ void Texture::Init(ID3D12Device* device, DirectX::ResourceUploadBatch& resourceU
 	));
 }
 
-D3D12_GPU_DESCRIPTOR_HANDLE Texture::CreateDescriptor(ID3D12Device* device, ID3D12DescriptorHeap* srvHeap, const size_t offsetInHeap, const size_t descriptorSize) const
+D3D12_GPU_DESCRIPTOR_HANDLE Texture::CreateDescriptor(ID3D12Device5* device, ID3D12DescriptorHeap* srvHeap, const size_t offsetInHeap, const size_t descriptorSize) const
 {
 	D3D12_CPU_DESCRIPTOR_HANDLE cpuHnd;
 	cpuHnd.ptr = srvHeap->GetCPUDescriptorHandleForHeapStart().ptr + offsetInHeap * descriptorSize;

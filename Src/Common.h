@@ -39,16 +39,6 @@ namespace RTV
 	};
 }
 
-namespace DSV
-{
-	enum Id
-	{
-		SceneDepth,
-		Shadowmap,
-		Count
-	};
-}
-
 namespace SRV
 {
 	enum Id

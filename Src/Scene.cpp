@@ -9,7 +9,7 @@ Scene::~Scene()
 	m_shadowConstantBuffer->Unmap(0, nullptr);
 }
 
-void Scene::LoadMeshes(const aiScene* loader, ID3D12Device* device, ID3D12GraphicsCommandList* cmdList, UploadBuffer* uploadBuffer, ResourceHeap* resourceHeap)
+void Scene::LoadMeshes(const aiScene* loader, ID3D12Device5* device, ID3D12GraphicsCommandList* cmdList, UploadBuffer* uploadBuffer, ResourceHeap* resourceHeap)
 {
 	for (auto meshIdx = 0u; meshIdx < loader->mNumMeshes; meshIdx++)
 	{
@@ -51,7 +51,7 @@ void Scene::LoadMeshes(const aiScene* loader, ID3D12Device* device, ID3D12Graphi
 	}
 }
 
-D3D12_GPU_DESCRIPTOR_HANDLE Scene::LoadTexture(const std::string& textureName, ID3D12Device* device, ID3D12DescriptorHeap* srvHeap, const size_t srvOffset, const size_t srvDescriptorSize, DirectX::ResourceUploadBatch& resourceUpload)
+D3D12_GPU_DESCRIPTOR_HANDLE Scene::LoadTexture(const std::string& textureName, ID3D12Device5* device, ID3D12DescriptorHeap* srvHeap, const size_t srvOffset, const size_t srvDescriptorSize, DirectX::ResourceUploadBatch& resourceUpload)
 {
 	Texture* tex;
 	auto texIter = std::find_if(m_textures.cbegin(), m_textures.cend(),
@@ -76,7 +76,7 @@ D3D12_GPU_DESCRIPTOR_HANDLE Scene::LoadTexture(const std::string& textureName, I
 
 void Scene::LoadMaterials(
 	const aiScene* loader, 
-	ID3D12Device* device,
+	ID3D12Device5* device,
 	ID3D12GraphicsCommandList* cmdList,
 	ID3D12CommandQueue* cmdQueue,
 	UploadBuffer* uploadBuffer, 
@@ -257,12 +257,12 @@ void Scene::LoadEntities(const aiNode* node)
 	);
 }
 
-void Scene::InitLights(ID3D12Device* device)
+void Scene::InitLights(ID3D12Device5* device)
 {
 	m_light = std::make_unique<Light>(DirectX::XMFLOAT3{ 0.57735f, 1.57735f, 0.57735f }, DirectX::XMFLOAT3{ 1.f, 1.f, 1.f }, 10000.f);
 }
 
-void Scene::InitBounds(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList)
+void Scene::InitBounds(ID3D12Device5* device, ID3D12GraphicsCommandList* cmdList)
 {
 	// world space mesh bounds
 	m_meshWorldBounds.resize(m_meshEntities.size());
@@ -286,7 +286,7 @@ void Scene::InitBounds(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList)
 }
 
 void Scene::InitResources(
-	ID3D12Device* device, 
+	ID3D12Device5* device, 
 	ID3D12CommandQueue* cmdQueue, 
 	ID3D12GraphicsCommandList* cmdList, 
 	UploadBuffer* uploadBuffer,
@@ -452,7 +452,7 @@ void Scene::UpdateRenderResources(uint32_t bufferIndex)
 	m_debugDraw.UpdateRenderResources(bufferIndex);
 }
 
-void Scene::Render(RenderPass::Id pass, ID3D12Device* device, ID3D12GraphicsCommandList* cmdList, uint32_t bufferIndex, const View& view, D3D12_GPU_DESCRIPTOR_HANDLE renderSurfaceSrvBegin)
+void Scene::Render(RenderPass::Id pass, ID3D12Device5* device, ID3D12GraphicsCommandList* cmdList, uint32_t bufferIndex, const View& view, D3D12_GPU_DESCRIPTOR_HANDLE renderSurfaceSrvBegin)
 {
 	cmdList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
@@ -493,7 +493,7 @@ void Scene::Render(RenderPass::Id pass, ID3D12Device* device, ID3D12GraphicsComm
 	}
 }
 
-void Scene::RenderDebugMeshes(RenderPass::Id pass, ID3D12Device* device, ID3D12GraphicsCommandList* cmdList, uint32_t bufferIndex, const View& view)
+void Scene::RenderDebugMeshes(RenderPass::Id pass, ID3D12Device5* device, ID3D12GraphicsCommandList* cmdList, uint32_t bufferIndex, const View& view)
 {
 	m_debugMaterial.BindPipeline(device, cmdList, pass, VertexFormat::Type::P3C3);
 

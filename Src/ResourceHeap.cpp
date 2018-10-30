@@ -1,7 +1,7 @@
 #include "stdafx.h"
 #include "ResourceHeap.h"
 
-void ResourceHeap::Init(ID3D12Device* device, const size_t sizeInBytes)
+void ResourceHeap::Init(ID3D12Device5* device, const size_t sizeInBytes)
 {
 	D3D12_HEAP_DESC heapDesc = {};
 	heapDesc.SizeInBytes = sizeInBytes;

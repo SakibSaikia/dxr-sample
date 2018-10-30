@@ -7,7 +7,7 @@ class ResourceHeap
 public:
 	using Alloc = size_t;
 
-	void Init(ID3D12Device* device, const size_t sizeInBytes);
+	void Init(ID3D12Device5* device, const size_t sizeInBytes);
 	Alloc GetAlloc(const size_t sizeInBytes, const size_t alignment = k_defaultResourceAlignment);
 	ID3D12Heap* GetHeap() const;
 

@@ -32,7 +32,6 @@ private:
 	void InitRenderSurfaces();
 
 	D3D12_CPU_DESCRIPTOR_HANDLE GetRenderTargetViewCPU(RTV::Id rtvId) const;
-	D3D12_CPU_DESCRIPTOR_HANDLE GetDepthStencilViewCPU(DSV::Id dsvId) const;
 	D3D12_CPU_DESCRIPTOR_HANDLE GetShaderResourceViewCPU(SRV::Id srvId) const;
 	D3D12_GPU_DESCRIPTOR_HANDLE GetShaderResourceViewGPU(SRV::Id srvId) const;
 
@@ -45,7 +44,7 @@ private:
 	Microsoft::WRL::ComPtr<ID3D12Debug> m_debugController;
 #endif
 	Microsoft::WRL::ComPtr<IDXGIFactory4> m_dxgiFactory;
-	Microsoft::WRL::ComPtr<ID3D12Device> m_d3dDevice;
+	Microsoft::WRL::ComPtr<ID3D12Device5> m_d3dDevice;
 
 	// Command objects
 	Microsoft::WRL::ComPtr<ID3D12CommandQueue> m_cmdQueue;
@@ -59,14 +58,9 @@ private:
 	// Swap chain
 	Microsoft::WRL::ComPtr<IDXGISwapChain1> m_swapChain;
 	std::array<Microsoft::WRL::ComPtr<ID3D12Resource>, k_gfxBufferCount> m_swapChainBuffers;
-	Microsoft::WRL::ComPtr<ID3D12Resource> m_depthStencilBuffer;
-
-	// Render surfaces
-	Microsoft::WRL::ComPtr<ID3D12Resource> m_shadowMapSurface;
 
 	// Descriptor heaps
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_rtvHeap;
-	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_dsvHeap;
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_cbvSrvUavHeap;
 
 	// Resource heaps

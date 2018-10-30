@@ -3,7 +3,7 @@
 #include "App.h"
 
 void StaticMesh::Init(
-	ID3D12Device* device, 
+	ID3D12Device5* device, 
 	ID3D12GraphicsCommandList* cmdList, 
 	UploadBuffer* uploadBuffer, 
 	ResourceHeap* resourceHeap,
@@ -11,13 +11,16 @@ void StaticMesh::Init(
 	std::vector<IndexType> indexData, 
 	const uint32_t matIndex)
 {
-	// bounding box
-	const auto data = reinterpret_cast<DirectX::XMFLOAT3*>(vertexData.data());
-	DirectX::BoundingBox::CreateFromPoints(m_bounds, vertexData.size(), data, sizeof(VertexType));
-
 	m_numIndices = indexData.size();
 	m_materialIndex = matIndex;
 
+	CreateVertexBuffer(device, cmdList, uploadBuffer, resourceHeap, vertexData);
+	CreateIndexBuffer(device, cmdList, uploadBuffer, resourceHeap, indexData);
+	
+}
+
+void StaticMesh::CreateVertexBuffer(ID3D12Device5* device, ID3D12GraphicsCommandList* cmdList, UploadBuffer* uploadBuffer, ResourceHeap* resourceHeap, const std::vector<VertexType>& vertexData)
+{
 	// vertex buffer
 	D3D12_RESOURCE_DESC vbDesc = {};
 	vbDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
@@ -40,6 +43,47 @@ void StaticMesh::Init(
 		IID_PPV_ARGS(m_vertexBuffer.GetAddressOf())
 	));
 
+	// copy vertex data to upload buffer
+	uint64_t vbSizeInBytes;
+	D3D12_PLACED_SUBRESOURCE_FOOTPRINT vbLayout;
+	device->GetCopyableFootprints(
+		&vbDesc,
+		0 /*subresource index*/, 1 /* num subresources */, 0 /*offset*/,
+		&vbLayout, nullptr, &vbSizeInBytes, nullptr);
+
+	auto[destVbPtr, vbOffset] = uploadBuffer->GetAlloc(vbSizeInBytes);
+	const auto* pSrc = reinterpret_cast<const uint8_t*>(vertexData.data());
+	memcpy(destVbPtr, pSrc, vbSizeInBytes);
+
+	// schedule copy to default vertex buffer
+	cmdList->CopyBufferRegion(
+		m_vertexBuffer.Get(),
+		0,
+		uploadBuffer->GetResource(),
+		vbOffset,
+		vbLayout.Footprint.Width
+	);
+
+	// transition vertex buffer
+	D3D12_RESOURCE_BARRIER vbBarrierDesc = {};
+	vbBarrierDesc.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+	vbBarrierDesc.Transition.pResource = m_vertexBuffer.Get();
+	vbBarrierDesc.Transition.StateBefore = D3D12_RESOURCE_STATE_COPY_DEST;
+	vbBarrierDesc.Transition.StateAfter = D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER;
+	vbBarrierDesc.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+	cmdList->ResourceBarrier(
+		1,
+		&vbBarrierDesc
+	);
+
+	// VB descriptor
+	m_vertexBufferView.BufferLocation = m_vertexBuffer->GetGPUVirtualAddress();
+	m_vertexBufferView.StrideInBytes = sizeof(VertexType);
+	m_vertexBufferView.SizeInBytes = vertexData.size() * sizeof(VertexType);
+}
+
+void StaticMesh::CreateIndexBuffer(ID3D12Device5* device, ID3D12GraphicsCommandList* cmdList, UploadBuffer* uploadBuffer, ResourceHeap* resourceHeap, const std::vector<IndexType>& indexData)
+{
 	// index buffer
 	D3D12_RESOURCE_DESC ibDesc = {};
 	ibDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
@@ -62,18 +106,6 @@ void StaticMesh::Init(
 		IID_PPV_ARGS(m_indexBuffer.GetAddressOf())
 	));
 
-	// copy vertex data to upload buffer
-	uint64_t vbSizeInBytes;
-	D3D12_PLACED_SUBRESOURCE_FOOTPRINT vbLayout;
-	device->GetCopyableFootprints(
-		&vbDesc,
-		0 /*subresource index*/, 1 /* num subresources */, 0 /*offset*/,
-		&vbLayout, nullptr, &vbSizeInBytes, nullptr);
-
-	auto[destVbPtr, vbOffset] = uploadBuffer->GetAlloc(vbSizeInBytes);
-	const auto* pSrc = reinterpret_cast<const uint8_t*>(vertexData.data());
-	memcpy(destVbPtr, pSrc, vbSizeInBytes);
-
 	// copy index data to upload buffer
 	uint64_t ibSizeInBytes;
 	D3D12_PLACED_SUBRESOURCE_FOOTPRINT ibLayout;
@@ -86,15 +118,6 @@ void StaticMesh::Init(
 	pSrc = reinterpret_cast<const uint8_t*>(indexData.data());
 	memcpy(destIbPtr, pSrc, ibSizeInBytes);
 
-	// schedule copy to default vertex buffer
-	cmdList->CopyBufferRegion(
-		m_vertexBuffer.Get(),
-		0,
-		uploadBuffer->GetResource(),
-		vbOffset,
-		vbLayout.Footprint.Width
-	);
-
 	// schedule copy to default index buffer
 	cmdList->CopyBufferRegion(
 		m_indexBuffer.Get(),
@@ -102,18 +125,6 @@ void StaticMesh::Init(
 		uploadBuffer->GetResource(),
 		ibOffset,
 		ibLayout.Footprint.Width
-	);
-
-	// transition vertex buffer
-	D3D12_RESOURCE_BARRIER vbBarrierDesc = {};
-	vbBarrierDesc.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-	vbBarrierDesc.Transition.pResource = m_vertexBuffer.Get();
-	vbBarrierDesc.Transition.StateBefore = D3D12_RESOURCE_STATE_COPY_DEST;
-	vbBarrierDesc.Transition.StateAfter = D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER;
-	vbBarrierDesc.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
-	cmdList->ResourceBarrier(
-		1,
-		&vbBarrierDesc
 	);
 
 	// transition index buffer
@@ -128,15 +139,27 @@ void StaticMesh::Init(
 		&ibBarrierDesc
 	);
 
-	// VB descriptor
-	m_vertexBufferView.BufferLocation = m_vertexBuffer->GetGPUVirtualAddress();
-	m_vertexBufferView.StrideInBytes = sizeof(VertexType);
-	m_vertexBufferView.SizeInBytes = vertexData.size() * sizeof(VertexType);
-
 	// IB descriptor
 	m_indexBufferView.BufferLocation = m_indexBuffer->GetGPUVirtualAddress();
 	m_indexBufferView.Format = DXGI_FORMAT_R32_UINT;
 	m_indexBufferView.SizeInBytes = indexData.size() * sizeof(IndexType);
+}
+
+void StaticMesh::CreateBLAS(ID3D12Device5* device, ID3D12GraphicsCommandList* cmdList, UploadBuffer* uploadBuffer, ResourceHeap* resourceHeap, const std::vector<VertexType>& vertexData, const std::vector<IndexType>& indexData)
+{
+	D3D12_RAYTRACING_GEOMETRY_DESC desc{};
+	desc.Type = D3D12_RAYTRACING_GEOMETRY_TYPE_TRIANGLES;
+	desc.Triangles.VertexBuffer.StartAddress = m_vertexBuffer->GetGPUVirtualAddress();
+	desc.Triangles.VertexBuffer.StrideInBytes = m_vertexBufferView.StrideInBytes;
+	desc.Triangles.VertexCount = vertexData.size();
+	desc.Triangles.VertexFormat = DXGI_FORMAT_R32G32B32_FLOAT;
+	desc.Triangles.IndexBuffer = m_indexBuffer->GetGPUVirtualAddress();
+	desc.Triangles.IndexFormat = m_indexBufferView.Format;
+	desc.Triangles.IndexCount = indexData.size();
+
+	D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAGS buildFlags = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_PREFER_FAST_TRACE;
+
+
 }
 
 void StaticMesh::Render(ID3D12GraphicsCommandList* cmdList)

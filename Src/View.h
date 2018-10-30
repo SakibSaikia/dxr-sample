@@ -14,7 +14,7 @@ class View
 public:
 	~View();
 
-	void Init(ID3D12Device* device, size_t bufferCount, size_t width, size_t height);
+	void Init(ID3D12Device5* device, size_t bufferCount, size_t width, size_t height);
 	void Update(float dt, WPARAM mouseBtnState, POINT mouseDelta);
 	void UpdateRenderResources(uint32_t bufferIndex);
 

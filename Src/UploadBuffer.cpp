@@ -12,7 +12,7 @@ ID3D12Resource* UploadBuffer::GetResource() const
 	return m_buffer.Get();
 }
 
-void UploadBuffer::Init(ID3D12Device* device, const size_t sizeInBytes)
+void UploadBuffer::Init(ID3D12Device5* device, const size_t sizeInBytes)
 {
 	D3D12_HEAP_PROPERTIES heapDesc = {};
 	heapDesc.Type = D3D12_HEAP_TYPE_UPLOAD;

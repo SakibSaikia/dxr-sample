@@ -7,7 +7,7 @@ View::~View()
 	m_cbuffer->Unmap(0, nullptr);
 }
 
-void View::Init(ID3D12Device* device, size_t bufferCount, const size_t width, const size_t height)
+void View::Init(ID3D12Device5* device, size_t bufferCount, const size_t width, const size_t height)
 {
 	float aspectRatio = static_cast<float>(width) / height;
 	m_camera.Init(aspectRatio);

@@ -21,16 +21,6 @@ void App::InitBaseD3D()
 	// DXGI
 	CHECK(CreateDXGIFactory1(IID_PPV_ARGS(m_dxgiFactory.GetAddressOf())));
 
-	// Enable SM6
-	static const GUID D3D12ExperimentalShaderModelsID = { /* 76f5573e-f13a-40f5-b297-81ce9e18933f */
-		0x76f5573e,
-		0xf13a,
-		0x40f5,
-		{ 0xb2, 0x97, 0x81, 0xce, 0x9e, 0x18, 0x93, 0x3f }
-	};
-
-	D3D12EnableExperimentalFeatures(1, &D3D12ExperimentalShaderModelsID, nullptr, nullptr);
-
 	// Enumerate adapters and create device
 	uint32_t i = 0;
 	Microsoft::WRL::ComPtr<IDXGIAdapter> adapter;
@@ -43,19 +33,28 @@ void App::InitBaseD3D()
 		std::wstring out = L"*** Adapter : ";
 		out += desc.Description;
 
-		if (desc.VendorId == 0x1002 /*AMD*/ || desc.VendorId == 0x10DE /*NV*/)
+		if (desc.VendorId == 0x10DE /*NV*/)
 		{
 			CHECK(D3D12CreateDevice(
 				adapter.Get(),
-				D3D_FEATURE_LEVEL_11_0,
+				D3D_FEATURE_LEVEL_12_1,
 				IID_PPV_ARGS(m_d3dDevice.GetAddressOf())
 			));
+
+			// Check for ray tracing support
+			D3D12_FEATURE_DATA_D3D12_OPTIONS5 features{};
+			CHECK(m_d3dDevice->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS5, &features, sizeof(features)));
+			if (features.RaytracingTier < D3D12_RAYTRACING_TIER_1_0)
+			{
+				m_d3dDevice.Reset();
+				OutputDebugString(L"ERROR: Failed to find DXR capable HW");
+				exit(-1);
+			}
 
 			out += L" ... OK\n";
 			OutputDebugString(out.c_str());
 
 			deviceCreated = true;
-
 			break;
 		}
 		else
@@ -63,17 +62,6 @@ void App::InitBaseD3D()
 			out += L" ... SKIP\n";
 			OutputDebugString(out.c_str());
 		}
-	}
-
-	if (!deviceCreated)
-	{
-		OutputDebugString(L"*** Adapter : Use default fallback");
-
-		CHECK(D3D12CreateDevice(
-			nullptr,
-			D3D_FEATURE_LEVEL_11_0,
-			IID_PPV_ARGS(m_d3dDevice.GetAddressOf())
-		));
 	}
 
 	// Cached descriptor size
@@ -128,8 +116,7 @@ void App::InitSwapChain(HWND windowHandle)
 	swapChainDesc.SampleDesc.Count = 1;
 	swapChainDesc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
 	swapChainDesc.BufferCount = k_gfxBufferCount;
-	swapChainDesc.Flags = DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH;
-	swapChainDesc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_SEQUENTIAL;
+	swapChainDesc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
 
 	CHECK(m_dxgiFactory->CreateSwapChainForHwnd(
 		m_cmdQueue.Get(),
@@ -158,99 +145,6 @@ void App::InitRenderSurfaces()
 			rtvHeapHandle.ptr += m_rtvDescriptorSize;
 		}
 	}
-
-	// Depth Stencil View
-	{
-		D3D12_RESOURCE_DESC resDesc = {};
-		resDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
-		resDesc.Width = k_screenWidth;
-		resDesc.Height = k_screenHeight;
-		resDesc.DepthOrArraySize = 1;
-		resDesc.MipLevels = 1;
-		resDesc.Format = k_depthStencilFormatRaw;
-		resDesc.SampleDesc.Count = 1; // No MSAA
-		resDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
-
-		D3D12_CLEAR_VALUE zClear;
-		zClear.Format = k_depthStencilFormatDsv;
-		zClear.DepthStencil.Depth = 1.f;
-		zClear.DepthStencil.Stencil = 0;
-
-		CHECK(m_d3dDevice->CreateCommittedResource(
-			&heapDesc,
-			D3D12_HEAP_FLAG_NONE,
-			&resDesc,
-			D3D12_RESOURCE_STATE_DEPTH_WRITE,
-			&zClear,
-			IID_PPV_ARGS(m_depthStencilBuffer.GetAddressOf())
-		));
-
-		// Descriptor to mip level 0
-		D3D12_DEPTH_STENCIL_VIEW_DESC dsvDesc = {};
-		dsvDesc.Format = k_depthStencilFormatDsv;
-		dsvDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2D;
-		dsvDesc.Texture2D.MipSlice = 0;
-		dsvDesc.Flags = D3D12_DSV_FLAG_NONE; // Modify if you want a read-only DSV
-		m_d3dDevice->CreateDepthStencilView(
-			m_depthStencilBuffer.Get(),
-			&dsvDesc,
-			GetDepthStencilViewCPU(DSV::SceneDepth)
-		);
-	}
-
-	// shadowmap
-	{
-		D3D12_RESOURCE_DESC resDesc{};
-		resDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
-		resDesc.Width = k_shadowmapSize;
-		resDesc.Height = k_shadowmapSize;
-		resDesc.DepthOrArraySize = 1;
-		resDesc.MipLevels = 1;
-		resDesc.Format = k_depthStencilFormatRaw;
-		resDesc.SampleDesc.Count = 1;
-		resDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
-
-		D3D12_CLEAR_VALUE zClear;
-		zClear.Format = k_depthStencilFormatDsv;
-		zClear.DepthStencil.Depth = 1.f;
-		zClear.DepthStencil.Stencil = 0;
-
-		CHECK(m_d3dDevice->CreateCommittedResource(
-			&heapDesc,
-			D3D12_HEAP_FLAG_NONE,
-			&resDesc,
-			D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE,
-			&zClear,
-			IID_PPV_ARGS(m_shadowMapSurface.GetAddressOf())
-		));
-
-		// DSV
-		D3D12_DEPTH_STENCIL_VIEW_DESC dsvDesc{};
-		dsvDesc.Format = k_depthStencilFormatDsv;
-		dsvDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2D;
-		dsvDesc.Texture2D.MipSlice = 0;
-		dsvDesc.Flags = D3D12_DSV_FLAG_NONE;
-		m_d3dDevice->CreateDepthStencilView(
-			m_shadowMapSurface.Get(),
-			&dsvDesc,
-			GetDepthStencilViewCPU(DSV::Shadowmap)
-		);
-
-		// SRV
-		D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc{};
-		srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-		srvDesc.Format = k_depthStencilFormatSrv;
-		srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
-		srvDesc.Texture2D.MostDetailedMip = 0;
-		srvDesc.Texture2D.MipLevels = 1;
-		srvDesc.Texture2D.ResourceMinLODClamp = 0.0f;
-		srvDesc.Texture2D.PlaneSlice = 0;
-		m_d3dDevice->CreateShaderResourceView(
-			m_shadowMapSurface.Get(), 
-			&srvDesc, 
-			GetShaderResourceViewCPU(SRV::Shadowmap)
-		);
-	}
 }
 
 void App::InitDescriptorHeaps()
@@ -260,12 +154,6 @@ void App::InitDescriptorHeaps()
 	rtvHeapDesc.NumDescriptors = RTV::Count;
 	rtvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
 	CHECK(m_d3dDevice->CreateDescriptorHeap(&rtvHeapDesc, IID_PPV_ARGS(m_rtvHeap.GetAddressOf())));
-
-	// dsv heap
-	D3D12_DESCRIPTOR_HEAP_DESC dsvHeapDesc = {};
-	dsvHeapDesc.NumDescriptors = DSV::Count;
-	dsvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_DSV;
-	CHECK(m_d3dDevice->CreateDescriptorHeap(&dsvHeapDesc, IID_PPV_ARGS(m_dsvHeap.GetAddressOf())));
 
 	// srv heap
 	D3D12_DESCRIPTOR_HEAP_DESC cbvSrvUavHeapDesc = {};
@@ -359,8 +247,6 @@ void App::Render()
 		{
 			PIXScopedEvent(m_gfxCmdList.Get(), 0, L"depth_only");
 
-			D3D12_CPU_DESCRIPTOR_HANDLE dsvHandle = GetDepthStencilViewCPU(DSV::SceneDepth);
-
 			// clear
 			m_gfxCmdList->ClearDepthStencilView(dsvHandle, D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, 1.f, 0, 0, nullptr);
 
@@ -387,8 +273,6 @@ void App::Render()
 			barrierDesc.Transition.StateAfter = D3D12_RESOURCE_STATE_DEPTH_WRITE;
 			barrierDesc.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
 			m_gfxCmdList->ResourceBarrier(1, &barrierDesc);
-
-			D3D12_CPU_DESCRIPTOR_HANDLE dsvHandle = GetDepthStencilViewCPU(DSV::Shadowmap);
 
 			// clear
 			m_gfxCmdList->ClearDepthStencilView(dsvHandle, D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, 1.f, 0, 0, nullptr);
@@ -423,8 +307,7 @@ void App::Render()
 			PIXScopedEvent(m_gfxCmdList.Get(), 0, L"scene_geo");
 
 			D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle = GetRenderTargetViewCPU(static_cast<RTV::Id>(RTV::SwapChain + m_gfxBufferIndex));
-			D3D12_CPU_DESCRIPTOR_HANDLE dsvHandle = GetDepthStencilViewCPU(DSV::SceneDepth);
-
+			
 			// clear
 			float clearColor[] = { .8f, .8f, 1.f, 0.f };
 			m_gfxCmdList->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
@@ -476,13 +359,6 @@ D3D12_CPU_DESCRIPTOR_HANDLE App::GetRenderTargetViewCPU(RTV::Id rtvId) const
 {
 	D3D12_CPU_DESCRIPTOR_HANDLE hnd;
 	hnd.ptr = m_rtvHeap->GetCPUDescriptorHandleForHeapStart().ptr + rtvId * m_rtvDescriptorSize;
-	return hnd;
-}
-
-D3D12_CPU_DESCRIPTOR_HANDLE App::GetDepthStencilViewCPU(DSV::Id dsvId) const
-{
-	D3D12_CPU_DESCRIPTOR_HANDLE hnd;
-	hnd.ptr = m_dsvHeap->GetCPUDescriptorHandleForHeapStart().ptr + dsvId * m_dsvDescriptorSize;
 	return hnd;
 }
 

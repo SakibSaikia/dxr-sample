@@ -21,7 +21,7 @@ DebugLineMesh::~DebugLineMesh()
 	m_indexBuffer->Unmap(0, nullptr);
 }
 
-void DebugLineMesh::Init(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList)
+void DebugLineMesh::Init(ID3D12Device5* device, ID3D12GraphicsCommandList* cmdList)
 {
 	// CPU accessible
 	D3D12_HEAP_PROPERTIES heapProp = {};
