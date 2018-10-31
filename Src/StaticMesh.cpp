@@ -4,8 +4,9 @@
 
 void StaticMesh::Init(
 	ID3D12Device5* device, 
-	ID3D12GraphicsCommandList* cmdList, 
+	ID3D12GraphicsCommandList4* cmdList, 
 	UploadBuffer* uploadBuffer, 
+	ResourceHeap* scratchHeap,
 	ResourceHeap* resourceHeap,
 	std::vector<VertexType> vertexData, 
 	std::vector<IndexType> indexData, 
@@ -16,10 +17,10 @@ void StaticMesh::Init(
 
 	CreateVertexBuffer(device, cmdList, uploadBuffer, resourceHeap, vertexData);
 	CreateIndexBuffer(device, cmdList, uploadBuffer, resourceHeap, indexData);
-	
+	CreateBLAS(device, cmdList, scratchHeap, resourceHeap, vertexData.size(), indexData.size());
 }
 
-void StaticMesh::CreateVertexBuffer(ID3D12Device5* device, ID3D12GraphicsCommandList* cmdList, UploadBuffer* uploadBuffer, ResourceHeap* resourceHeap, const std::vector<VertexType>& vertexData)
+void StaticMesh::CreateVertexBuffer(ID3D12Device5* device, ID3D12GraphicsCommandList4* cmdList, UploadBuffer* uploadBuffer, ResourceHeap* resourceHeap, const std::vector<VertexType>& vertexData)
 {
 	// vertex buffer
 	D3D12_RESOURCE_DESC vbDesc = {};
@@ -32,7 +33,7 @@ void StaticMesh::CreateVertexBuffer(ID3D12Device5* device, ID3D12GraphicsCommand
 	vbDesc.SampleDesc.Count = 1;
 	vbDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
 
-	size_t offsetInHeap = resourceHeap->GetAlloc(vbDesc.Width);
+	const auto offsetInHeap = resourceHeap->GetAlloc(vbDesc.Width);
 
 	CHECK(device->CreatePlacedResource(
 		resourceHeap->GetHeap(),
@@ -82,7 +83,7 @@ void StaticMesh::CreateVertexBuffer(ID3D12Device5* device, ID3D12GraphicsCommand
 	m_vertexBufferView.SizeInBytes = vertexData.size() * sizeof(VertexType);
 }
 
-void StaticMesh::CreateIndexBuffer(ID3D12Device5* device, ID3D12GraphicsCommandList* cmdList, UploadBuffer* uploadBuffer, ResourceHeap* resourceHeap, const std::vector<IndexType>& indexData)
+void StaticMesh::CreateIndexBuffer(ID3D12Device5* device, ID3D12GraphicsCommandList4* cmdList, UploadBuffer* uploadBuffer, ResourceHeap* resourceHeap, const std::vector<IndexType>& indexData)
 {
 	// index buffer
 	D3D12_RESOURCE_DESC ibDesc = {};
@@ -95,7 +96,7 @@ void StaticMesh::CreateIndexBuffer(ID3D12Device5* device, ID3D12GraphicsCommandL
 	ibDesc.SampleDesc.Count = 1;
 	ibDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
 
-	offsetInHeap = resourceHeap->GetAlloc(ibDesc.Width);
+	const auto offsetInHeap = resourceHeap->GetAlloc(ibDesc.Width);
 
 	CHECK(device->CreatePlacedResource(
 		resourceHeap->GetHeap(),
@@ -145,24 +146,100 @@ void StaticMesh::CreateIndexBuffer(ID3D12Device5* device, ID3D12GraphicsCommandL
 	m_indexBufferView.SizeInBytes = indexData.size() * sizeof(IndexType);
 }
 
-void StaticMesh::CreateBLAS(ID3D12Device5* device, ID3D12GraphicsCommandList* cmdList, UploadBuffer* uploadBuffer, ResourceHeap* resourceHeap, const std::vector<VertexType>& vertexData, const std::vector<IndexType>& indexData)
+void StaticMesh::CreateBLAS(ID3D12Device5* device, ID3D12GraphicsCommandList4* cmdList, ResourceHeap* scratchHeap, ResourceHeap* resourceHeap, const size_t numVerts, const size_t numIndices)
 {
-	D3D12_RAYTRACING_GEOMETRY_DESC desc{};
-	desc.Type = D3D12_RAYTRACING_GEOMETRY_TYPE_TRIANGLES;
-	desc.Triangles.VertexBuffer.StartAddress = m_vertexBuffer->GetGPUVirtualAddress();
-	desc.Triangles.VertexBuffer.StrideInBytes = m_vertexBufferView.StrideInBytes;
-	desc.Triangles.VertexCount = vertexData.size();
-	desc.Triangles.VertexFormat = DXGI_FORMAT_R32G32B32_FLOAT;
-	desc.Triangles.IndexBuffer = m_indexBuffer->GetGPUVirtualAddress();
-	desc.Triangles.IndexFormat = m_indexBufferView.Format;
-	desc.Triangles.IndexCount = indexData.size();
+	// Geometry description for bottom level acceleration structure
+	D3D12_RAYTRACING_GEOMETRY_DESC geoDesc{};
+	geoDesc.Type = D3D12_RAYTRACING_GEOMETRY_TYPE_TRIANGLES;
+	geoDesc.Triangles.VertexBuffer.StartAddress = m_vertexBuffer->GetGPUVirtualAddress();
+	geoDesc.Triangles.VertexBuffer.StrideInBytes = m_vertexBufferView.StrideInBytes;
+	geoDesc.Triangles.VertexCount = numVerts;
+	geoDesc.Triangles.VertexFormat = DXGI_FORMAT_R32G32B32_FLOAT;
+	geoDesc.Triangles.IndexBuffer = m_indexBuffer->GetGPUVirtualAddress();
+	geoDesc.Triangles.IndexFormat = m_indexBufferView.Format;
+	geoDesc.Triangles.IndexCount = numIndices;
 
-	D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAGS buildFlags = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_PREFER_FAST_TRACE;
+	// Compute size for bottom level acceleration structure buffers
+	D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_INPUTS asInputs{};
+	asInputs.Type = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL;
+	asInputs.DescsLayout = D3D12_ELEMENTS_LAYOUT_ARRAY;
+	asInputs.pGeometryDescs = &geoDesc;
+	asInputs.NumDescs = 1;
+	asInputs.Flags = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_PREFER_FAST_TRACE;
 
+	D3D12_RAYTRACING_ACCELERATION_STRUCTURE_PREBUILD_INFO asPrebuildInfo{};
+	device->GetRaytracingAccelerationStructurePrebuildInfo(&asInputs, &asPrebuildInfo);
 
+	const size_t alignedScratchSize = (asPrebuildInfo.ScratchDataSizeInBytes + D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BYTE_ALIGNMENT - 1) & ~D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BYTE_ALIGNMENT;
+	const size_t alignedBLASBufferSize = (asPrebuildInfo.ResultDataMaxSizeInBytes + D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BYTE_ALIGNMENT - 1) & ~D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BYTE_ALIGNMENT;
+
+	// Create scratch buffer
+	D3D12_RESOURCE_DESC scratchBufDesc = {};
+	scratchBufDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
+	scratchBufDesc.Alignment = std::max(D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BYTE_ALIGNMENT, D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT);
+	scratchBufDesc.Width = alignedScratchSize;
+	scratchBufDesc.Height = 1;
+	scratchBufDesc.DepthOrArraySize = 1;
+	scratchBufDesc.MipLevels = 1;
+	scratchBufDesc.Format = DXGI_FORMAT_UNKNOWN;
+	scratchBufDesc.SampleDesc.Count = 1;
+	scratchBufDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+	scratchBufDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
+
+	auto offsetInHeap = scratchHeap->GetAlloc(scratchBufDesc.Width);
+
+	ID3D12Resource* scratchBuffer;
+	CHECK(device->CreatePlacedResource(
+		scratchHeap->GetHeap(),
+		offsetInHeap,
+		&scratchBufDesc,
+		D3D12_RESOURCE_STATE_UNORDERED_ACCESS,
+		nullptr,
+		IID_PPV_ARGS(&scratchBuffer)
+	));
+
+	// Create BLAS buffer
+	D3D12_RESOURCE_DESC blasBufDesc = {};
+	blasBufDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
+	blasBufDesc.Alignment = std::max(D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BYTE_ALIGNMENT, D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT);
+	blasBufDesc.Width = alignedBLASBufferSize;
+	blasBufDesc.Height = 1;
+	blasBufDesc.DepthOrArraySize = 1;
+	blasBufDesc.MipLevels = 1;
+	blasBufDesc.Format = DXGI_FORMAT_UNKNOWN;
+	blasBufDesc.SampleDesc.Count = 1;
+	blasBufDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+	blasBufDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
+
+	offsetInHeap = resourceHeap->GetAlloc(blasBufDesc.Width);
+
+	CHECK(device->CreatePlacedResource(
+		resourceHeap->GetHeap(),
+		offsetInHeap,
+		&blasBufDesc,
+		D3D12_RESOURCE_STATE_RAYTRACING_ACCELERATION_STRUCTURE,
+		nullptr,
+		IID_PPV_ARGS(m_blasBuffer.GetAddressOf())
+	));
+
+	// Now, build the bottom level acceleration structure
+	D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_DESC buildDesc{};
+	buildDesc.Inputs = asInputs;
+	buildDesc.ScratchAccelerationStructureData = scratchBuffer->GetGPUVirtualAddress();
+	buildDesc.DestAccelerationStructureData = m_blasBuffer->GetGPUVirtualAddress();
+
+	cmdList->BuildRaytracingAccelerationStructure(&buildDesc, 0, nullptr);
+
+	// Insert UAV barrier 
+	D3D12_RESOURCE_BARRIER uavBarrier{};
+	uavBarrier.Type = D3D12_RESOURCE_BARRIER_TYPE_UAV;
+	uavBarrier.UAV.pResource = m_blasBuffer.Get();
+
+	cmdList->ResourceBarrier(1, &uavBarrier);
+	
 }
 
-void StaticMesh::Render(ID3D12GraphicsCommandList* cmdList)
+void StaticMesh::Render(ID3D12GraphicsCommandList4* cmdList)
 {
 	cmdList->IASetVertexBuffers(0, 1, &m_vertexBufferView);
 	cmdList->IASetIndexBuffer(&m_indexBufferView);
@@ -184,11 +261,17 @@ const DirectX::BoundingBox& StaticMesh::GetBounds() const
 	return m_bounds;
 }
 
-StaticMeshEntity::StaticMeshEntity(std::string&& name, const uint64_t meshIndex, const DirectX::XMFLOAT4X4& localToWorld) :
+StaticMeshEntity::StaticMeshEntity(ID3D12Device5* device, ID3D12GraphicsCommandList4* cmdList, ResourceHeap* scratchHeap, ResourceHeap* resourceHeap, Scene* scene, std::string&& name, const uint64_t meshIndex, const DirectX::XMFLOAT4X4& localToWorld) :
 	m_name(name),
 	m_meshIndex(meshIndex), 
 	m_localToWorld(localToWorld)
 {
+	CreateTLAS(device, cmdList, scratchHeap, resourceHeap, meshIndex, localToWorld);
+}
+
+void CreateTLAS(ID3D12Device5* device, ID3D12GraphicsCommandList4* cmdList, ResourceHeap* scratchHeap, ResourceHeap* resourceHeap, const DirectX::XMFLOAT4X4& localToWorld)
+{
+
 }
 
 void StaticMeshEntity::FillConstants(ObjectConstants* objConst) const

@@ -170,18 +170,22 @@ void App::InitUploadBuffer()
 
 void App::InitResourceHeaps()
 {
-	m_vertexAndIndexDataHeap.Init(m_d3dDevice.Get(), k_vertexAndIndexDataSize);
+	m_geometryDataHeap.Init(m_d3dDevice.Get(), k_geometryDataSize);
 	m_materialConstantsHeap.Init(m_d3dDevice.Get(), k_materialConstantsSize);
 }
 
 void App::InitScene()
 {
+	ResourceHeap scratchHeap;
+	scratchHeap.Init(m_d3dDevice.Get(), k_scratchDataSize);
+
 	m_scene.InitResources(
 		m_d3dDevice.Get(), 
 		m_cmdQueue.Get(), 
 		m_gfxCmdList.Get(), 
 		&m_uploadBuffer,
-		&m_vertexAndIndexDataHeap,
+		&scratchHeap,
+		&m_geometryDataHeap,
 		&m_materialConstantsHeap,
 		m_cbvSrvUavHeap.Get(),
 		SRV::MaterialTexturesBegin,

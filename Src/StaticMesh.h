@@ -16,21 +16,22 @@ public:
 	using IndexType = uint32_t;
 
 	StaticMesh() = default;
-	void Init(ID3D12Device5* device, ID3D12GraphicsCommandList* cmdList, UploadBuffer* uploadBuffer, ResourceHeap* resourceHeap, std::vector<VertexType> vertexData, std::vector<IndexType> indexData, uint32_t matIndex);
-	void Render(ID3D12GraphicsCommandList* cmdList);
+	void Init(ID3D12Device5* device, ID3D12GraphicsCommandList4* cmdList, UploadBuffer* uploadBuffer, ResourceHeap* scratchHeap, ResourceHeap* resourceHeap, std::vector<VertexType> vertexData, std::vector<IndexType> indexData, uint32_t matIndex);
+	void Render(ID3D12GraphicsCommandList4* cmdList);
 
 	uint32_t GetMaterialIndex() const;
 	VertexFormat::Type GetVertexFormat() const;
 	const DirectX::BoundingBox& GetBounds() const;
 
 private:
-	void CreateVertexBuffer(ID3D12Device5* device, ID3D12GraphicsCommandList* cmdList, UploadBuffer* uploadBuffer, ResourceHeap* resourceHeap, const std::vector<VertexType>& vertexData);
-	void CreateIndexBuffer(ID3D12Device5* device, ID3D12GraphicsCommandList* cmdList, UploadBuffer* uploadBuffer, ResourceHeap* resourceHeap, const std::vector<IndexType>& indexData);
-	void CreateBLAS(ID3D12Device5* device, ID3D12GraphicsCommandList* cmdList, UploadBuffer* uploadBuffer, ResourceHeap* resourceHeap, const std::vector<VertexType>& vertexData);
+	void CreateVertexBuffer(ID3D12Device5* device, ID3D12GraphicsCommandList4* cmdList, UploadBuffer* uploadBuffer, ResourceHeap* resourceHeap, const std::vector<VertexType>& vertexData);
+	void CreateIndexBuffer(ID3D12Device5* device, ID3D12GraphicsCommandList4* cmdList, UploadBuffer* uploadBuffer, ResourceHeap* resourceHeap, const std::vector<IndexType>& indexData);
+	void CreateBLAS(ID3D12Device5* device, ID3D12GraphicsCommandList4* cmdList, ResourceHeap* scratchHeap, ResourceHeap* resourceHeap, const size_t numVerts, const size_t numIndices);
 
 private:
 	Microsoft::WRL::ComPtr<ID3D12Resource> m_vertexBuffer;
 	Microsoft::WRL::ComPtr<ID3D12Resource> m_indexBuffer;
+	Microsoft::WRL::ComPtr<ID3D12Resource> m_blasBuffer;
 	D3D12_VERTEX_BUFFER_VIEW m_vertexBufferView;
 	D3D12_INDEX_BUFFER_VIEW m_indexBufferView;
 	uint32_t m_materialIndex;
@@ -52,4 +53,5 @@ private:
 	std::string m_name;
 	uint64_t m_meshIndex;
 	DirectX::XMFLOAT4X4 m_localToWorld;
+	Microsoft::WRL::ComPtr<ID3D12Resource> m_tlasBuffer;
 };

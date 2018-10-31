@@ -12,19 +12,19 @@ class Scene
 {
 public:
 	~Scene();
-	void InitResources(ID3D12Device5* device, ID3D12CommandQueue* cmdQueue, ID3D12GraphicsCommandList* cmdList, UploadBuffer* uploadBuffer, ResourceHeap* meshDataHeap, ResourceHeap* mtlConstantsHeap, ID3D12DescriptorHeap* srvHeap, size_t srvStartOffset, size_t srvDescriptorSize);
+	void InitResources(ID3D12Device5* device, ID3D12CommandQueue* cmdQueue, ID3D12GraphicsCommandList4* cmdList, UploadBuffer* uploadBuffer, ResourceHeap* scratchHeap, ResourceHeap* meshDataHeap, ResourceHeap* mtlConstantsHeap, ID3D12DescriptorHeap* srvHeap, size_t srvStartOffset, size_t srvDescriptorSize);
 	void Update(float dt);
 	void UpdateRenderResources(uint32_t bufferIndex);
-	void Render(RenderPass::Id pass, ID3D12Device5* device, ID3D12GraphicsCommandList* cmdList, uint32_t bufferIndex, const View& view, D3D12_GPU_DESCRIPTOR_HANDLE renderSurfaceSrvBegin);
-	void RenderDebugMeshes(RenderPass::Id pass, ID3D12Device5* device, ID3D12GraphicsCommandList* cmdList, uint32_t bufferIndex, const View& view);
+	void Render(RenderPass::Id pass, ID3D12Device5* device, ID3D12GraphicsCommandList4* cmdList, uint32_t bufferIndex, const View& view, D3D12_GPU_DESCRIPTOR_HANDLE renderSurfaceSrvBegin);
+	void RenderDebugMeshes(RenderPass::Id pass, ID3D12Device5* device, ID3D12GraphicsCommandList4* cmdList, uint32_t bufferIndex, const View& view);
 
 private:
-	void LoadMeshes(const aiScene* loader, ID3D12Device5* device, ID3D12GraphicsCommandList* cmdList, UploadBuffer* uploadBuffer, ResourceHeap* resourceHeap);
-	void LoadMaterials(const aiScene* loader, ID3D12Device5* device, ID3D12GraphicsCommandList* cmdList, ID3D12CommandQueue* cmdQueue, UploadBuffer* uploadBuffer, ResourceHeap* mtlConstantsHeap, ID3D12DescriptorHeap* srvHeap, const size_t srvStartOffset, const size_t srvDescriptorSize);
+	void LoadMeshes(const aiScene* loader, ID3D12Device5* device, ID3D12GraphicsCommandList4* cmdList, UploadBuffer* uploadBuffer, ResourceHeap* scratchHeap, ResourceHeap* resourceHeap);
+	void LoadMaterials(const aiScene* loader, ID3D12Device5* device, ID3D12GraphicsCommandList4* cmdList, ID3D12CommandQueue* cmdQueue, UploadBuffer* uploadBuffer, ResourceHeap* mtlConstantsHeap, ID3D12DescriptorHeap* srvHeap, const size_t srvStartOffset, const size_t srvDescriptorSize);
 	void LoadEntities(const aiNode* node);
 
 	void InitLights(ID3D12Device5* device);
-	void InitBounds(ID3D12Device5* device, ID3D12GraphicsCommandList* cmdList);
+	void InitBounds(ID3D12Device5* device, ID3D12GraphicsCommandList4* cmdList);
 
 	D3D12_GPU_DESCRIPTOR_HANDLE LoadTexture(const std::string& textureName, ID3D12Device5* device, ID3D12DescriptorHeap* srvHeap, const size_t srvOffset, const size_t srvDescriptorSize, DirectX::ResourceUploadBatch& resourceUpload);
 

@@ -202,7 +202,7 @@ MaterialPipeline::MaterialPipeline(ID3D12Device5* device, RenderPass::Id renderP
 	));
 }
 
-void MaterialPipeline::Bind(ID3D12GraphicsCommandList* cmdList) const
+void MaterialPipeline::Bind(ID3D12GraphicsCommandList4* cmdList) const
 {
 	cmdList->SetGraphicsRootSignature(m_rootSignature.Get());
 	cmdList->SetPipelineState(m_pso.Get());
@@ -237,7 +237,7 @@ DefaultOpaqueMaterial::DefaultOpaqueMaterial(std::string& name, const D3D12_GPU_
 		(std::hash<std::string>{}(k_depthonly_rootSig) << 2);
 }
 
-void DefaultOpaqueMaterial::BindPipeline(ID3D12Device5* device, ID3D12GraphicsCommandList* cmdList, RenderPass::Id pass, VertexFormat::Type vertexFormat)
+void DefaultOpaqueMaterial::BindPipeline(ID3D12Device5* device, ID3D12GraphicsCommandList4* cmdList, RenderPass::Id pass, VertexFormat::Type vertexFormat)
 {
 	auto& pipeline = m_pipelines[pass][static_cast<int>(vertexFormat)];
 
@@ -261,7 +261,7 @@ void DefaultOpaqueMaterial::BindPipeline(ID3D12Device5* device, ID3D12GraphicsCo
 	pipeline->Bind(cmdList);
 }
 
-void DefaultOpaqueMaterial::BindConstants(RenderPass::Id pass, ID3D12GraphicsCommandList* cmdList, D3D12_GPU_VIRTUAL_ADDRESS objConstants, D3D12_GPU_VIRTUAL_ADDRESS viewConstants, D3D12_GPU_VIRTUAL_ADDRESS lightConstants, D3D12_GPU_VIRTUAL_ADDRESS shadowConstants, D3D12_GPU_DESCRIPTOR_HANDLE renderSurfaceSrvBegin) const
+void DefaultOpaqueMaterial::BindConstants(RenderPass::Id pass, ID3D12GraphicsCommandList4* cmdList, D3D12_GPU_VIRTUAL_ADDRESS objConstants, D3D12_GPU_VIRTUAL_ADDRESS viewConstants, D3D12_GPU_VIRTUAL_ADDRESS lightConstants, D3D12_GPU_VIRTUAL_ADDRESS shadowConstants, D3D12_GPU_DESCRIPTOR_HANDLE renderSurfaceSrvBegin) const
 {
 	if (pass == RenderPass::Geometry)
 	{
@@ -307,7 +307,7 @@ DefaultMaskedMaterial::DefaultMaskedMaterial(std::string& name, const D3D12_GPU_
 		(std::hash<std::string>{}(k_depthonly_rootSig) << 2);
 }
 
-void DefaultMaskedMaterial::BindPipeline(ID3D12Device5* device, ID3D12GraphicsCommandList* cmdList, RenderPass::Id pass, VertexFormat::Type vertexFormat)
+void DefaultMaskedMaterial::BindPipeline(ID3D12Device5* device, ID3D12GraphicsCommandList4* cmdList, RenderPass::Id pass, VertexFormat::Type vertexFormat)
 {
 	auto& pipeline = m_pipelines[pass][static_cast<int>(vertexFormat)];
 
@@ -331,7 +331,7 @@ void DefaultMaskedMaterial::BindPipeline(ID3D12Device5* device, ID3D12GraphicsCo
 	pipeline->Bind(cmdList);
 }
 
-void DefaultMaskedMaterial::BindConstants(RenderPass::Id pass, ID3D12GraphicsCommandList* cmdList, D3D12_GPU_VIRTUAL_ADDRESS objConstants, D3D12_GPU_VIRTUAL_ADDRESS viewConstants, D3D12_GPU_VIRTUAL_ADDRESS lightConstants, D3D12_GPU_VIRTUAL_ADDRESS shadowConstants, D3D12_GPU_DESCRIPTOR_HANDLE renderSurfaceSrvBegin) const
+void DefaultMaskedMaterial::BindConstants(RenderPass::Id pass, ID3D12GraphicsCommandList4* cmdList, D3D12_GPU_VIRTUAL_ADDRESS objConstants, D3D12_GPU_VIRTUAL_ADDRESS viewConstants, D3D12_GPU_VIRTUAL_ADDRESS lightConstants, D3D12_GPU_VIRTUAL_ADDRESS shadowConstants, D3D12_GPU_DESCRIPTOR_HANDLE renderSurfaceSrvBegin) const
 {
 	if (pass == RenderPass::Geometry)
 	{
@@ -366,7 +366,7 @@ DebugMaterial::DebugMaterial() :
 {
 }
 
-void DebugMaterial::BindPipeline(ID3D12Device5* device, ID3D12GraphicsCommandList* cmdList, RenderPass::Id renderPass, VertexFormat::Type vertexFormat)
+void DebugMaterial::BindPipeline(ID3D12Device5* device, ID3D12GraphicsCommandList4* cmdList, RenderPass::Id renderPass, VertexFormat::Type vertexFormat)
 {
 	auto& pipeline = m_pipelines[renderPass][static_cast<int>(vertexFormat)];
 
@@ -396,7 +396,7 @@ UntexturedMaterial::UntexturedMaterial(std::string& name, Microsoft::WRL::ComPtr
 		(std::hash<std::string>{}(k_depthonly_rootSig) << 2);
 }
 
-void UntexturedMaterial::BindPipeline(ID3D12Device5* device, ID3D12GraphicsCommandList* cmdList, RenderPass::Id pass, VertexFormat::Type vertexFormat)
+void UntexturedMaterial::BindPipeline(ID3D12Device5* device, ID3D12GraphicsCommandList4* cmdList, RenderPass::Id pass, VertexFormat::Type vertexFormat)
 {
 	auto& pipeline = m_pipelines[pass][static_cast<int>(vertexFormat)];
 
@@ -420,7 +420,7 @@ void UntexturedMaterial::BindPipeline(ID3D12Device5* device, ID3D12GraphicsComma
 	pipeline->Bind(cmdList);
 }
 
-void UntexturedMaterial::BindConstants(RenderPass::Id pass, ID3D12GraphicsCommandList* cmdList, D3D12_GPU_VIRTUAL_ADDRESS objConstants, D3D12_GPU_VIRTUAL_ADDRESS viewConstants, D3D12_GPU_VIRTUAL_ADDRESS lightConstants, D3D12_GPU_VIRTUAL_ADDRESS shadowConstants, D3D12_GPU_DESCRIPTOR_HANDLE renderSurfaceSrvBegin) const
+void UntexturedMaterial::BindConstants(RenderPass::Id pass, ID3D12GraphicsCommandList4* cmdList, D3D12_GPU_VIRTUAL_ADDRESS objConstants, D3D12_GPU_VIRTUAL_ADDRESS viewConstants, D3D12_GPU_VIRTUAL_ADDRESS lightConstants, D3D12_GPU_VIRTUAL_ADDRESS shadowConstants, D3D12_GPU_DESCRIPTOR_HANDLE renderSurfaceSrvBegin) const
 {
 	if (pass == RenderPass::Geometry)
 	{

@@ -10,8 +10,8 @@ public:
 
 	DebugLineMesh() = default;
 	~DebugLineMesh();
-	void Init(ID3D12Device5* device, ID3D12GraphicsCommandList* cmdList);
-	void Render(ID3D12GraphicsCommandList* cmdList, const uint32_t bufferIndex);
+	void Init(ID3D12Device5* device, ID3D12GraphicsCommandList4* cmdList);
+	void Render(ID3D12GraphicsCommandList4* cmdList, const uint32_t bufferIndex);
 	void UpdateRenderResources(uint32_t bufferIndex);
 
 	void AddBox(const DirectX::BoundingBox& box, const DirectX::XMFLOAT3 color);

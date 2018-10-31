@@ -21,7 +21,7 @@ DebugLineMesh::~DebugLineMesh()
 	m_indexBuffer->Unmap(0, nullptr);
 }
 
-void DebugLineMesh::Init(ID3D12Device5* device, ID3D12GraphicsCommandList* cmdList)
+void DebugLineMesh::Init(ID3D12Device5* device, ID3D12GraphicsCommandList4* cmdList)
 {
 	// CPU accessible
 	D3D12_HEAP_PROPERTIES heapProp = {};
@@ -168,7 +168,7 @@ void DebugLineMesh::AddAxes(const DirectX::XMMATRIX& transform, float scale)
 	m_numIndices += 6;
 }
 
-void DebugLineMesh::Render(ID3D12GraphicsCommandList* cmdList, const uint32_t bufferIndex)
+void DebugLineMesh::Render(ID3D12GraphicsCommandList4* cmdList, const uint32_t bufferIndex)
 {
 	// VB descriptor
 	D3D12_VERTEX_BUFFER_VIEW vertexBufferView;

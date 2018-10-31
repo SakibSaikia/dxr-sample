@@ -49,7 +49,7 @@ private:
 	// Command objects
 	Microsoft::WRL::ComPtr<ID3D12CommandQueue> m_cmdQueue;
 	std::array<Microsoft::WRL::ComPtr<ID3D12CommandAllocator>, k_gfxBufferCount> m_gfxCmdAllocators;
-	Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList> m_gfxCmdList;
+	Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList4> m_gfxCmdList;
 	uint32_t m_gfxBufferIndex = 0;
 	Microsoft::WRL::ComPtr<ID3D12Fence> m_gfxFence;
 	std::array<uint64_t, k_gfxBufferCount> m_gfxFenceValues = {};
@@ -64,7 +64,7 @@ private:
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_cbvSrvUavHeap;
 
 	// Resource heaps
-	ResourceHeap m_vertexAndIndexDataHeap;
+	ResourceHeap m_geometryDataHeap;
 	ResourceHeap m_materialConstantsHeap;
 
 	// Descriptor size
