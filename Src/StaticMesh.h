@@ -22,6 +22,7 @@ public:
 	uint32_t GetMaterialIndex() const;
 	VertexFormat::Type GetVertexFormat() const;
 	const DirectX::BoundingBox& GetBounds() const;
+	const D3D12_GPU_VIRTUAL_ADDRESS GetBLASAddress() const;
 
 private:
 	void CreateVertexBuffer(ID3D12Device5* device, ID3D12GraphicsCommandList4* cmdList, UploadBuffer* uploadBuffer, ResourceHeap* resourceHeap, const std::vector<VertexType>& vertexData);
@@ -42,12 +43,15 @@ class StaticMeshEntity
 {
 public:
 	StaticMeshEntity() = delete;
-	StaticMeshEntity(std::string&& name, const uint64_t meshIndex, const DirectX::XMFLOAT4X4& localToWorld);
+	StaticMeshEntity(ID3D12Device5* device, ID3D12GraphicsCommandList4* cmdList, UploadBuffer* uploadBuffer, ResourceHeap* scratchHeap, ResourceHeap* resourceHeap, const D3D12_GPU_VIRTUAL_ADDRESS blasGpuAddr, std::string&& name, const uint64_t meshIndex, const DirectX::XMFLOAT4X4& localToWorld);
 
 	void FillConstants(ObjectConstants* objConst) const;
 	DirectX::XMFLOAT4X4 GetLocalToWorldMatrix() const;
 	uint64_t GetMeshIndex() const;
 	std::string GetName() const;
+
+private:
+	void CreateTLAS(ID3D12Device5* device, ID3D12GraphicsCommandList4* cmdList, UploadBuffer* uploadBuffer, ResourceHeap* scratchHeap, ResourceHeap* resourceHeap, const D3D12_GPU_VIRTUAL_ADDRESS blasGpuAddr, const DirectX::XMFLOAT4X4& localToWorld);
 
 private:
 	std::string m_name;

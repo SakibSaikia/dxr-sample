@@ -21,7 +21,7 @@ public:
 private:
 	void LoadMeshes(const aiScene* loader, ID3D12Device5* device, ID3D12GraphicsCommandList4* cmdList, UploadBuffer* uploadBuffer, ResourceHeap* scratchHeap, ResourceHeap* resourceHeap);
 	void LoadMaterials(const aiScene* loader, ID3D12Device5* device, ID3D12GraphicsCommandList4* cmdList, ID3D12CommandQueue* cmdQueue, UploadBuffer* uploadBuffer, ResourceHeap* mtlConstantsHeap, ID3D12DescriptorHeap* srvHeap, const size_t srvStartOffset, const size_t srvDescriptorSize);
-	void LoadEntities(const aiNode* node);
+	void LoadEntities(const aiNode* node, ID3D12Device5* device, ID3D12GraphicsCommandList4* cmdList, UploadBuffer* uploadBuffer, ResourceHeap* scratchHeap, ResourceHeap* resourceHeap);
 
 	void InitLights(ID3D12Device5* device);
 	void InitBounds(ID3D12Device5* device, ID3D12GraphicsCommandList4* cmdList);

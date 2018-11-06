@@ -220,7 +220,7 @@ void Scene::LoadMaterials(
 	uploadResourcesFinished.wait();
 }
 
-void Scene::LoadEntities(const aiNode* node, ID3D12Device5* device, ID3D12GraphicsCommandList4* cmdList, ResourceHeap* scratchHeap, ResourceHeap* resourceHeap)
+void Scene::LoadEntities(const aiNode* node, ID3D12Device5* device, ID3D12GraphicsCommandList4* cmdList, UploadBuffer* uploadBuffer, ResourceHeap* scratchHeap, ResourceHeap* resourceHeap)
 {
 	const aiMatrix4x4& parentTransform = node->mTransformation;
 
@@ -236,19 +236,23 @@ void Scene::LoadEntities(const aiNode* node, ID3D12Device5* device, ID3D12Graphi
 
 			for (auto meshIdx = 0u; meshIdx < childNode->mNumMeshes; meshIdx++)
 			{
+				const uint64_t sceneMeshIndex = childNode->mMeshes[meshIdx];
+
 				m_meshEntities.push_back(std::make_unique<StaticMeshEntity>(
 					device,
 					cmdList,
+					uploadBuffer,
 					scratchHeap,
 					resourceHeap,
+					m_meshes[sceneMeshIndex]->GetBLASAddress(),
 					std::string(childNode->mName.C_Str()), 
-					childNode->mMeshes[meshIdx], 
+					sceneMeshIndex,
 					localToWorld));
 			}
 		}
 		else
 		{
-			LoadEntities(childNode, device, cmdList, scratchHeap, resourceHeap);
+			LoadEntities(childNode, device, cmdList, uploadBuffer, scratchHeap, resourceHeap);
 		}
 	}
 
@@ -324,7 +328,7 @@ void Scene::InitResources(
 
 		LoadMeshes(scene, device, cmdList, uploadBuffer, scratchHeap, meshDataHeap);
 		LoadMaterials(scene, device, cmdList, cmdQueue, uploadBuffer, mtlConstantsHeap, srvHeap, srvStartOffset, srvDescriptorSize);
-		LoadEntities(scene->mRootNode, device, cmdList, scratchHeap, meshDataHeap);
+		LoadEntities(scene->mRootNode, device, cmdList, uploadBuffer, scratchHeap, meshDataHeap);
 		InitLights(device);
 		InitBounds(device, cmdList);
 		m_debugDraw.Init(device, cmdList);
