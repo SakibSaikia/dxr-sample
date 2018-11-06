@@ -46,7 +46,7 @@ namespace SrvUav
 	{
 		// UAVs
 		UAVBegin,
-		OutputUav = UAVBegin,
+		DxrOutputUAV = UAVBegin,
 		
 
 		// Material SRVs

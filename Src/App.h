@@ -60,7 +60,7 @@ private:
 	std::array<Microsoft::WRL::ComPtr<ID3D12Resource>, k_gfxBufferCount> m_swapChainBuffers;
 
 	// Output UAV
-	Microsoft::WRL::ComPtr<ID3D12Resource> m_outputUAV;
+	Microsoft::WRL::ComPtr<ID3D12Resource> m_dxrOutput;
 
 
 	// Descriptor heaps
