@@ -29,11 +29,11 @@ private:
 	void InitResourceHeaps();
 	void InitView();
 	void InitScene();
-	void InitRenderSurfaces();
+	void InitRenderTargetsAndUAVs();
 
 	D3D12_CPU_DESCRIPTOR_HANDLE GetRenderTargetViewCPU(RTV::Id rtvId) const;
-	D3D12_CPU_DESCRIPTOR_HANDLE GetShaderResourceViewCPU(SRV::Id srvId) const;
-	D3D12_GPU_DESCRIPTOR_HANDLE GetShaderResourceViewGPU(SRV::Id srvId) const;
+	D3D12_CPU_DESCRIPTOR_HANDLE GetSrvUavDescriptorCPU(SrvUav::Id srvId) const;
+	D3D12_GPU_DESCRIPTOR_HANDLE GetSrvUavDescriptorGPU(SrvUav::Id srvId) const;
 
 	void AdvanceGfxFrame();
 
@@ -58,6 +58,10 @@ private:
 	// Swap chain
 	Microsoft::WRL::ComPtr<IDXGISwapChain1> m_swapChain;
 	std::array<Microsoft::WRL::ComPtr<ID3D12Resource>, k_gfxBufferCount> m_swapChainBuffers;
+
+	// Output UAV
+	Microsoft::WRL::ComPtr<ID3D12Resource> m_outputUAV;
+
 
 	// Descriptor heaps
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_rtvHeap;

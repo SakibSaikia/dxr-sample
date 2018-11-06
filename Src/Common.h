@@ -40,13 +40,14 @@ namespace RTV
 	};
 }
 
-namespace SRV
+namespace SrvUav
 {
 	enum Id
 	{
-		// RenderSurface SRVs
-		RenderSurfaceBegin,
-		Shadowmap = RenderSurfaceBegin,
+		// UAVs
+		UAVBegin,
+		OutputUav = UAVBegin,
+		
 
 		// Material SRVs
 		MaterialTexturesBegin,

@@ -128,7 +128,7 @@ void App::InitSwapChain(HWND windowHandle)
 	));
 }
 
-void App::InitRenderSurfaces()
+void App::InitRenderTargetsAndUAVs()
 {
 	D3D12_HEAP_PROPERTIES heapDesc = {};
 	heapDesc.Type = D3D12_HEAP_TYPE_DEFAULT;
@@ -145,6 +145,44 @@ void App::InitRenderSurfaces()
 			rtvHeapHandle.ptr += m_rtvDescriptorSize;
 		}
 	}
+
+	// UAVs
+	{
+		D3D12_HEAP_PROPERTIES heapDesc = {};
+		heapDesc.Type = D3D12_HEAP_TYPE_DEFAULT;
+		heapDesc.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
+
+		D3D12_RESOURCE_DESC dxrOutResourceDesc{};
+		dxrOutResourceDesc.DepthOrArraySize = 1;
+		dxrOutResourceDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
+		dxrOutResourceDesc.Format = DXGI_FORMAT_R10G10B10A2_UNORM;
+		dxrOutResourceDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
+		dxrOutResourceDesc.Width = k_screenWidth;
+		dxrOutResourceDesc.Height = k_screenHeight;
+		dxrOutResourceDesc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
+		dxrOutResourceDesc.MipLevels = 1;
+		dxrOutResourceDesc.SampleDesc.Count = 1;
+
+		CHECK(m_d3dDevice->CreateCommittedResource(
+			&heapDesc,
+			D3D12_HEAP_FLAG_NONE,
+			&dxrOutResourceDesc,
+			D3D12_RESOURCE_STATE_UNORDERED_ACCESS,
+			nullptr,
+			IID_PPV_ARGS(m_dxrOutput.GetAddressOf()
+		));
+
+
+		D3D12_UNORDERED_ACCESS_VIEW_DESC dxrOutUavDesc = {};
+		dxrOutUavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
+
+		m_d3dDevice->CreateUnorderedAccessView(
+			m_dxrOutput.Get(),
+			nullptr, 
+			&dxrOutUavDesc,
+			GetSrvUavDescriptorCPU(SrvUav::DxrOutputUAV)
+		);
+	}
 }
 
 void App::InitDescriptorHeaps()
@@ -157,7 +195,7 @@ void App::InitDescriptorHeaps()
 
 	// srv heap
 	D3D12_DESCRIPTOR_HEAP_DESC cbvSrvUavHeapDesc = {};
-	cbvSrvUavHeapDesc.NumDescriptors = SRV::Count;
+	cbvSrvUavHeapDesc.NumDescriptors = SrvUav::Count;
 	cbvSrvUavHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
 	cbvSrvUavHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
 	CHECK(m_d3dDevice->CreateDescriptorHeap(&cbvSrvUavHeapDesc, IID_PPV_ARGS(m_cbvSrvUavHeap.GetAddressOf())));
@@ -188,7 +226,7 @@ void App::InitScene()
 		&m_geometryDataHeap,
 		&m_materialConstantsHeap,
 		m_cbvSrvUavHeap.Get(),
-		SRV::MaterialTexturesBegin,
+		SrvUav::MaterialTexturesBegin,
 		m_cbvSrvUavDescriptorSize
 	);
 
@@ -207,7 +245,7 @@ void App::Init(HWND windowHandle)
 	InitCommandObjects();
 	InitSwapChain(windowHandle);
 	InitDescriptorHeaps();
-	InitRenderSurfaces();
+	InitRenderTargetsAndUAVs();
 	InitUploadBuffer();
 	InitResourceHeaps();
 	InitScene();
@@ -263,7 +301,7 @@ void App::Render()
 			// rt & dsv
 			m_gfxCmdList->OMSetRenderTargets(0, nullptr, FALSE, &dsvHandle);
 
-			m_scene.Render(RenderPass::DepthOnly, m_d3dDevice.Get(), m_gfxCmdList.Get(), m_gfxBufferIndex, m_view, GetShaderResourceViewGPU(SRV::RenderSurfaceBegin));
+			m_scene.Render(RenderPass::DepthOnly, m_d3dDevice.Get(), m_gfxCmdList.Get(), m_gfxBufferIndex, m_view, GetSrvUavDescriptorGPU(SrvUav::RenderSurfaceBegin));
 		}
 
 		{
@@ -290,7 +328,7 @@ void App::Render()
 			// dsv
 			m_gfxCmdList->OMSetRenderTargets(0, nullptr, FALSE, &dsvHandle);
 
-			m_scene.Render(RenderPass::Shadowmap, m_d3dDevice.Get(), m_gfxCmdList.Get(), m_gfxBufferIndex, m_view, GetShaderResourceViewGPU(SRV::RenderSurfaceBegin));
+			m_scene.Render(RenderPass::Shadowmap, m_d3dDevice.Get(), m_gfxCmdList.Get(), m_gfxBufferIndex, m_view, GetSrvUavDescriptorGPU(SrvUav::RenderSurfaceBegin));
 
 			// Transition to SRV
 			barrierDesc.Transition.StateBefore = D3D12_RESOURCE_STATE_DEPTH_WRITE;
@@ -325,7 +363,7 @@ void App::Render()
 			// rt & dsv
 			m_gfxCmdList->OMSetRenderTargets(1, &rtvHandle, FALSE, &dsvHandle);
 
-			m_scene.Render(RenderPass::Geometry, m_d3dDevice.Get(), m_gfxCmdList.Get(), m_gfxBufferIndex, m_view, GetShaderResourceViewGPU(SRV::RenderSurfaceBegin));
+			m_scene.Render(RenderPass::Geometry, m_d3dDevice.Get(), m_gfxCmdList.Get(), m_gfxBufferIndex, m_view, GetSrvUavDescriptorGPU(SrvUav::RenderSurfaceBegin));
 		}
 
 		{
@@ -366,14 +404,14 @@ D3D12_CPU_DESCRIPTOR_HANDLE App::GetRenderTargetViewCPU(RTV::Id rtvId) const
 	return hnd;
 }
 
-D3D12_CPU_DESCRIPTOR_HANDLE App::GetShaderResourceViewCPU(SRV::Id srvId) const
+D3D12_CPU_DESCRIPTOR_HANDLE App::GetSrvUavDescriptorCPU(SrvUav::Id srvId) const
 {
 	D3D12_CPU_DESCRIPTOR_HANDLE hnd;
 	hnd.ptr = m_cbvSrvUavHeap->GetCPUDescriptorHandleForHeapStart().ptr + srvId * m_cbvSrvUavDescriptorSize;
 	return hnd;
 }
 
-D3D12_GPU_DESCRIPTOR_HANDLE App::GetShaderResourceViewGPU(SRV::Id srvId) const
+D3D12_GPU_DESCRIPTOR_HANDLE App::GetSrvUavDescriptorGPU(SrvUav::Id srvId) const
 {
 	D3D12_GPU_DESCRIPTOR_HANDLE hnd;
 	hnd.ptr = m_cbvSrvUavHeap->GetGPUDescriptorHandleForHeapStart().ptr + srvId * m_cbvSrvUavDescriptorSize;
