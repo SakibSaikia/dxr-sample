@@ -366,12 +366,6 @@ void App::Render()
 			m_scene.Render(RenderPass::Geometry, m_d3dDevice.Get(), m_gfxCmdList.Get(), m_gfxBufferIndex, m_view, GetSrvUavDescriptorGPU(SrvUav::RenderSurfaceBegin));
 		}
 
-		{
-			PIXScopedEvent(m_gfxCmdList.Get(), 0, L"debug_draws");
-			m_gfxCmdList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_LINELIST);
-			m_scene.RenderDebugMeshes(RenderPass::DebugDraw, m_d3dDevice.Get(), m_gfxCmdList.Get(), m_gfxBufferIndex, m_view);
-		}
-
 		// Transition back buffer from render target to present
 		barrierDesc = {};
 		barrierDesc.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;

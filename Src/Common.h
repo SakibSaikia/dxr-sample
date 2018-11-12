@@ -23,10 +23,7 @@ namespace RenderPass
 {
 	enum Id
 	{
-		DepthOnly,
-		Geometry,
-		Shadowmap,
-		DebugDraw,
+		Raytrace,
 		Count
 	};
 }

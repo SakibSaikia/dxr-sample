@@ -16,7 +16,6 @@ public:
 	void Update(float dt);
 	void UpdateRenderResources(uint32_t bufferIndex);
 	void Render(RenderPass::Id pass, ID3D12Device5* device, ID3D12GraphicsCommandList4* cmdList, uint32_t bufferIndex, const View& view, D3D12_GPU_DESCRIPTOR_HANDLE renderSurfaceSrvBegin);
-	void RenderDebugMeshes(RenderPass::Id pass, ID3D12Device5* device, ID3D12GraphicsCommandList4* cmdList, uint32_t bufferIndex, const View& view);
 
 private:
 	void LoadMeshes(const aiScene* loader, ID3D12Device5* device, ID3D12GraphicsCommandList4* cmdList, UploadBuffer* uploadBuffer, ResourceHeap* scratchHeap, ResourceHeap* resourceHeap);
@@ -35,9 +34,6 @@ private:
 	std::vector<std::unique_ptr<Material>> m_materials;
 	std::vector<std::unique_ptr<Texture>> m_textures;
 	std::unique_ptr<Light> m_light;
-
-	DebugMaterial m_debugMaterial;
-	DebugLineMesh m_debugDraw;
 
 	Microsoft::WRL::ComPtr<ID3D12Resource> m_objectConstantBuffer;
 	ObjectConstants* m_objectConstantBufferPtr;

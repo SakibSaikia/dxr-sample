@@ -150,7 +150,6 @@
   <ItemGroup>
     <ClCompile Include="App.cpp" />
     <ClCompile Include="Camera.cpp" />
-    <ClCompile Include="DebugDraw.cpp" />
     <ClCompile Include="Launch.cpp" />
     <ClCompile Include="Light.cpp" />
     <ClCompile Include="Material.cpp" />
@@ -169,7 +168,6 @@
     <ClInclude Include="App.h" />
     <ClInclude Include="Camera.h" />
     <ClInclude Include="Common.h" />
-    <ClInclude Include="DebugDraw.h" />
     <ClInclude Include="Light.h" />
     <ClInclude Include="Material.h" />
     <ClInclude Include="ResourceHeap.h" />
@@ -189,11 +187,6 @@
       <FileType>Document</FileType>
     </None>
     <None Include="Material.hlsl">
-      <FileType>Document</FileType>
-    </None>
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="DebugMaterial.hlsl">
       <FileType>Document</FileType>
     </None>
   </ItemGroup>

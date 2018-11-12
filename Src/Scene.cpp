@@ -507,13 +507,3 @@ void Scene::Render(RenderPass::Id pass, ID3D12Device5* device, ID3D12GraphicsCom
 		++entityId;
 	}
 }
-
-void Scene::RenderDebugMeshes(RenderPass::Id pass, ID3D12Device5* device, ID3D12GraphicsCommandList4* cmdList, uint32_t bufferIndex, const View& view)
-{
-	m_debugMaterial.BindPipeline(device, cmdList, pass, VertexFormat::Type::P3C3);
-
-	D3D12_GPU_VIRTUAL_ADDRESS viewConstants = view.GetConstantBuffer()->GetGPUVirtualAddress() + bufferIndex * sizeof(ViewConstants);
-	cmdList->SetGraphicsRootConstantBufferView(0, viewConstants);
-
-	m_debugDraw.Render(cmdList, bufferIndex);
-}

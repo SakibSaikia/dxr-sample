@@ -22,184 +22,148 @@ Microsoft::WRL::ComPtr<ID3DBlob> LoadBlob(const std::string& filename)
 	return blob;
 }
 
-MaterialPipeline::MaterialPipeline(ID3D12Device5* device, RenderPass::Id renderPass, VertexFormat::Type vertexFormat, const std::string vs, const std::string ps, const std::string rootSig)
+MaterialPipeline::MaterialPipeline(ID3D12Device5* device, RenderPass::Id renderPass, cconst std::string rgs, onst std::string chs, const std::string ms, const ID3D12RootSignature* rootSig)
 {
-	D3D12_GRAPHICS_PIPELINE_STATE_DESC desc{};
+	std::vector<D3D12_STATE_SUBOBJECT> rtSubObjects;
+	rtSubObjects.reserve(10);
 
-	switch (vertexFormat)
-	{
-	case VertexFormat::Type::P3N3T3B3U2:
-		desc.InputLayout.pInputElementDescs = VertexFormat::P3N3T3B3U2::inputLayout.data();
-		desc.InputLayout.NumElements = VertexFormat::P3N3T3B3U2::inputLayout.size();
-		break;
-	case VertexFormat::Type::P3C3:
-		desc.InputLayout.pInputElementDescs = VertexFormat::P3C3::inputLayout.data();
-		desc.InputLayout.NumElements = VertexFormat::P3C3::inputLayout.size();
-		break;
-	default:
-		assert(false);
-	}
+	// -------------------- Ray Generation Shader -------------------------------
+	Microsoft::WRL::ComPtr<ID3DBlob> rgsByteCode = LoadBlob(k_rgs);
 
-	// rasterizer state
-	switch (renderPass)
-	{
-	case RenderPass::DepthOnly:
-	case RenderPass::Geometry:
-	case RenderPass::DebugDraw:
-		desc.RasterizerState.FillMode = D3D12_FILL_MODE_SOLID;
-		desc.RasterizerState.CullMode = D3D12_CULL_MODE_BACK;
-		desc.RasterizerState.FrontCounterClockwise = FALSE;
-		desc.RasterizerState.DepthBias = D3D12_DEFAULT_DEPTH_BIAS;
-		desc.RasterizerState.DepthBiasClamp = D3D12_DEFAULT_DEPTH_BIAS_CLAMP;
-		desc.RasterizerState.SlopeScaledDepthBias = D3D12_DEFAULT_SLOPE_SCALED_DEPTH_BIAS;
-		desc.RasterizerState.DepthClipEnable = TRUE;
-		desc.RasterizerState.MultisampleEnable = FALSE;
-		desc.RasterizerState.AntialiasedLineEnable = FALSE;
-		desc.RasterizerState.ForcedSampleCount = 0;
-		desc.RasterizerState.ConservativeRaster = D3D12_CONSERVATIVE_RASTERIZATION_MODE_OFF;
-		break;
-	case RenderPass::Shadowmap:
-		desc.RasterizerState.FillMode = D3D12_FILL_MODE_SOLID;
-		desc.RasterizerState.CullMode = D3D12_CULL_MODE_BACK;
-		desc.RasterizerState.FrontCounterClockwise = FALSE;
-		desc.RasterizerState.DepthBias = 100000;
-		desc.RasterizerState.DepthBiasClamp = D3D12_DEFAULT_DEPTH_BIAS_CLAMP;
-		desc.RasterizerState.SlopeScaledDepthBias = 1.f;
-		desc.RasterizerState.DepthClipEnable = TRUE;
-		desc.RasterizerState.MultisampleEnable = FALSE;
-		desc.RasterizerState.AntialiasedLineEnable = FALSE;
-		desc.RasterizerState.ForcedSampleCount = 0;
-		desc.RasterizerState.ConservativeRaster = D3D12_CONSERVATIVE_RASTERIZATION_MODE_OFF;
-		break;
-	default:
-		assert(false);
-	}
+	D3D12_EXPORT_DESC rgsExportDesc{};
+	rgsExportDesc.Name = L"RayGen";
+	std::wstring rgsName(rgs.begin(), rgs.end());
+	std::wstring rgsExportName = std::wstring(L"RayGen_") + rgsName;
 
-	// blend state
-	switch (renderPass)
-	{
-	case RenderPass::DepthOnly:
-		desc.BlendState.AlphaToCoverageEnable = FALSE;
-		desc.BlendState.IndependentBlendEnable = FALSE;
-		for (auto& rt : desc.BlendState.RenderTarget)
-		{
-			rt.BlendEnable = FALSE;
-			rt.LogicOpEnable = FALSE;
-			rt.RenderTargetWriteMask = 0;
-		}
-		break;
-	case RenderPass::Geometry:
-	case RenderPass::Shadowmap:
-	case RenderPass::DebugDraw:
-		desc.BlendState.AlphaToCoverageEnable = FALSE;
-		desc.BlendState.IndependentBlendEnable = FALSE;
-		for (auto& rt : desc.BlendState.RenderTarget)
-		{
-			rt.BlendEnable = FALSE;
-			rt.LogicOpEnable = FALSE;
-			rt.RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL;
-		}
-		break;
-	default:
-		assert(false);
-	}
+	D3D12_DXIL_LIBRARY_DESC rgsLibDesc{};
+	rgsLibDesc.DXILLibrary.pShaderBytecode = rgsByteCode.Get()->GetBufferPointer();
+	rgsLibDesc.DXILLibrary.BytecodeLength = rgsByteCode.Get()->GetBufferSize();
+	rgsLibDesc.NumExports = 1;
+	rgsLibDesc.pExports = &rgsExportDesc;
 
-	// depth stencil state
-	switch (renderPass)
-	{
-	case RenderPass::Geometry:
-		desc.DepthStencilState.DepthEnable = TRUE;
-		desc.DepthStencilState.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ZERO;
-		desc.DepthStencilState.DepthFunc = D3D12_COMPARISON_FUNC_EQUAL;
-		desc.DepthStencilState.StencilEnable = FALSE;
-		break;
-	case RenderPass::DepthOnly:
-	case RenderPass::Shadowmap:
-	case RenderPass::DebugDraw:
-		desc.DepthStencilState.DepthEnable = TRUE;
-		desc.DepthStencilState.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ALL;
-		desc.DepthStencilState.DepthFunc = D3D12_COMPARISON_FUNC_LESS;
-		desc.DepthStencilState.StencilEnable = FALSE;
-		break;
-	default:
-		assert(false);
-	}
+	D3D12_STATE_SUBOBJECT rgsSubObject{};
+	rgsSubObject.Type = D3D12_STATE_SUBOBJECT_TYPE_DXIL_LIBRARY;
+	rgsSubObject.pDesc = &rgsLibDesc;
+	rtSubObjects.push_back(rgsSubObject);
 
-	// RTV
-	switch (renderPass)
-	{
-	case RenderPass::Geometry:
-	case RenderPass::DebugDraw:
-		desc.NumRenderTargets = 1;
-		desc.RTVFormats[0] = k_backBufferRTVFormat;
-		desc.DSVFormat = k_depthStencilFormatDsv;
-		break;
-	case RenderPass::DepthOnly:
-	case RenderPass::Shadowmap:
-		// turn off color writes
-		desc.NumRenderTargets = 0;
-		desc.RTVFormats[0] = DXGI_FORMAT_UNKNOWN;
-		desc.DSVFormat = k_depthStencilFormatDsv;
-		break;
-	default:
-		assert(false);
-	}
+	// -------------------- Closest Hit Shader -----------------------------------
+	Microsoft::WRL::ComPtr<ID3DBlob> chsByteCode = LoadBlob(chs);
+	std::wstring chsName(chs.begin(), chs.end());
+	std::wstring chsExportName = std::wstring(L"ClosestHit_") + chsName;
 
-	// misc
-	switch (renderPass)
-	{
-	case RenderPass::DepthOnly:
-	case RenderPass::Geometry:
-	case RenderPass::Shadowmap:
-	case RenderPass::DebugDraw:
-		desc.SampleMask = UINT_MAX;
-		desc.SampleDesc.Count = 1;
-		break;
-	default:
-		assert(false);
-	}
+	D3D12_EXPORT_DESC chsExportDesc{};
+	chsExportDesc.Name = L"ClosestHit";
+	chsExportDesc.ExportToRename = chsExportName.c_str();
 
-	// Topology
-	switch (renderPass)
-	{
-	case RenderPass::DepthOnly:
-	case RenderPass::Geometry:
-	case RenderPass::Shadowmap:
-		desc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
-		break;
-	case RenderPass::DebugDraw:
-		desc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_LINE;
-		break;
-	default:
-		assert(false);
-	}
+	D3D12_DXIL_LIBRARY_DESC chsLibDesc{};
+	chsLibDesc.DXILLibrary.pShaderBytecode = chsByteCode.Get()->GetBufferPointer();
+	chsLibDesc.DXILLibrary.BytecodeLength = chsByteCode.Get()->GetBufferSize();
+	chsLibDesc.NumExports = 1;
+	chsLibDesc.pExports = &chsExportDesc;
 
-	// Shaders
-	Microsoft::WRL::ComPtr<ID3DBlob> vsByteCode = LoadBlob(vs);
-	Microsoft::WRL::ComPtr<ID3DBlob> psByteCode = LoadBlob(ps);
+	D3D12_STATE_SUBOBJECT chsSubObject{};
+	chsSubObject.Type = D3D12_STATE_SUBOBJECT_TYPE_DXIL_LIBRARY;
+	chsSubObject.pDesc = &chsLibDesc;
+	rtSubObjects.push_back(chsSubObject);
 
-	// Root signature
-	Microsoft::WRL::ComPtr<ID3DBlob> rsBytecode = LoadBlob(rootSig);
-	CHECK(device->CreateRootSignature(
-		0,
-		rsBytecode->GetBufferPointer(),
-		rsBytecode->GetBufferSize(),
-		IID_PPV_ARGS(m_rootSignature.GetAddressOf())
-	));
+	// --------------------- Miss Shader ----------------------------------------
+	Microsoft::WRL::ComPtr<ID3DBlob> msByteCode = LoadBlob(ms);
+	std::wstring msName(ms.begin(), ms.end());
+	std::wstring msExportName = std::wstring(L"Miss_") + msName;
 
-	// root sig specified in shader
-	desc.pRootSignature = nullptr;
+	D3D12_EXPORT_DESC msExportDesc{};
+	msExportDesc.Name = L"Miss";
+	msExportDesc.ExportToRename = msExportName.c_str();
 
-	// shaders
-	desc.VS.pShaderBytecode = vsByteCode.Get()->GetBufferPointer();
-	desc.VS.BytecodeLength = vsByteCode.Get()->GetBufferSize();
-	desc.PS.pShaderBytecode = psByteCode.Get()->GetBufferPointer();
-	desc.PS.BytecodeLength = psByteCode.Get()->GetBufferSize();
+	D3D12_DXIL_LIBRARY_DESC msLibDesc{};
+	msLibDesc.DXILLibrary.pShaderBytecode = msByteCode.Get()->GetBufferPointer();
+	msLibDesc.DXILLibrary.BytecodeLength = msByteCode.Get()->GetBufferSize();
+	msLibDesc.NumExports = 1;
+	msLibDesc.pExports = &msExportDesc;
 
-	CHECK(device->CreateGraphicsPipelineState(
-		&desc,
+	D3D12_STATE_SUBOBJECT msSubObject{};
+	msSubObject.Type = D3D12_STATE_SUBOBJECT_TYPE_DXIL_LIBRARY;
+	msSubObject.pDesc = &msLibDesc;
+	rtSubObjects.push_back(msSubObject);
+
+	// --------------------- Hit Group ------------------------------------------
+	D3D12_HIT_GROUP_DESC hitGroupDesc{};
+	hitGroupDesc.ClosestHitShaderImport = L"ClosestHit";
+	hitGroupDesc.HitGroupExport = L"HitGroup";
+
+	D3D12_STATE_SUBOBJECT hitGroupSubObject{};
+	hitGroupSubObject.Type = D3D12_STATE_SUBOBJECT_TYPE_HIT_GROUP;
+	hitGroupSubObject.pDesc = &hitGroupDesc;
+	rtSubObjects.push_back(hitGroupSubObject);
+
+	// ---------------------- Shader Config -------------------------------------
+	D3D12_RAYTRACING_SHADER_CONFIG shaderConfigDesc{};
+	shaderConfigDesc.MaxPayloadSizeInBytes = sizeof(XMFLOAT4);
+	shaderConfigDesc.MaxAttributeSizeInBytes = D3D12_RAYTRACING_MAX_ATTRIBUTE_SIZE_IN_BYTES;
+
+	D3D12_STATE_SUBOBJECT shaderConfigSubObject{};
+	shaderConfigSubObject.Type = D3D12_STATE_SUBOBJECT_TYPE_RAYTRACING_SHADER_CONFIG;
+	shaderConfigSubObject.pDesc = &shaderConfigDesc;
+	rtSubObjects.push_back(shaderConfigSubObject);
+
+	// ---------------- Shader Config Association ------------------------------
+	cost wchar_t* shaderExports[] = {
+		rgsExportDesc.Name,
+		msExportDesc.Name,
+		hitGroupDesc.HitGroupExport
+	};
+
+	D3D12_SUBOBJECT_TO_EXPORTS_ASSOCIATION shaderConfigAssociationDesc{};
+	shaderConfigAssociationDesc.pExports = shaderExports;
+	shaderConfigAssociationDesc.NumExports = std::extent<decltype(shaderExports)>::value;
+	shaderConfigAssociationDesc.pSubobjectToAssociate = &rtSubObjects.back();
+
+	D3D12_STATE_SUBOBJECT shaderConfigAssociationSubObject{};
+	shaderConfigAssociationSubObject.Type = D3D12_STATE_SUBOBJECT_TYPE_SUBOBJECT_TO_EXPORTS_ASSOCIATION;
+	shaderConfigAssociationSubObject.pDesc = &shaderConfigAssociationDesc;
+	rtSubObjects.push_back(shaderConfigAssociationSubObject);
+
+	// --------------- Shared Root Signature ------------------------------------
+	D3D12_STATE_SUBOBJECT sharedRootSigSubObject{};
+	sharedRootSigSubObject.Type = D3D12_STATE_SUBOBJECT_TYPE_LOCAL_ROOT_SIGNATURE;
+	sharedRootSigSubObject.pDesc = &rootSig;
+	rtSubObjects.push_back(sharedRootSigSubObject);
+
+	// --------------- Shared Root Signature Association ------------------------
+	D3D12_SUBOBJECT_TO_EXPORTS_ASSOCIATION sharedRootSignatureAssociationDesc{};
+	sharedRootSignatureAssociationDesc.pExports = shaderExports;
+	sharedRootSignatureAssociationDesc.NumExports = std::extent<decltype(shaderExports)>::value;
+	sharedRootSignatureAssociationDesc.pSubobjectToAssociate = &rtSubObjects.back();
+
+	D3D12_STATE_SUBOBJECT sharedRootSignatureAssociationSubObject{};
+	sharedRootSignatureAssociationSubObject.Type = D3D12_STATE_SUBOBJECT_TYPE_SUBOBJECT_TO_EXPORTS_ASSOCIATION;
+	sharedRootSignatureAssociationSubObject.pDesc = &sharedRootSignatureAssociationDesc;
+	rtSubObjects.push_back(sharedRootSignatureAssociationSubObject);
+
+	// ---------------- Raytracing Pipeline Config ------------------------------
+	D3D12_RAYTRACING_PIPELINE_CONFIG pipelineConfigDesc{};
+	pipelineConfigDesc.MaxTraceRecursionDepth = 1;
+
+	D3D12_STATE_SUBOBJECT pipelineConfigSubObject{};
+	pipelineConfigSubObject.Type = D3D12_STATE_SUBOBJECT_TYPE_RAYTRACING_PIPELINE_CONFIG;
+	pipelineConfigSubObject.pDesc = &pipelineConfigDesc;
+
+	// --------------------------------------------------------------------------
+
+
+	// Finally, create the pipeline state!
+	D3D12_STATE_OBJECT_DESC psoDesc;
+	psoDesc.Type = D3D12_STATE_OBJECT_TYPE_RAYTRACING_PIPELINE;
+	psoDesc.NumSubobjects = rtSubObjects.size();
+	psoDesc.pSubobjects = rtSubObjects.data();
+
+	CHECK(device->CreateStateObject(
+		&psoDesc,
 		IID_PPV_ARGS(m_pso.GetAddressOf())
 	));
+
+	// Get the PSO properties
+	CHECK(m_pso->QueryInterface(IID_PPV_ARGS(m_psoProperties.GetAddressOf())));
 }
 
 void MaterialPipeline::Bind(ID3D12GraphicsCommandList4* cmdList) const
@@ -224,37 +188,23 @@ DefaultOpaqueMaterial::DefaultOpaqueMaterial(std::string& name, const D3D12_GPU_
 	Material{ name },
 	m_srvBegin{ srvHandle }
 {
-	m_hash[RenderPass::DepthOnly] = std::hash<std::string>{}(k_depthonly_vs) ^
-		(std::hash<std::string>{}(k_depthonly_ps) << 1) ^
-		(std::hash<std::string>{}(k_depthonly_rootSig) << 2);
-
-	m_hash[RenderPass::Geometry] = std::hash<std::string>{}(k_vs) ^ 
-		(std::hash<std::string>{}(k_ps) << 1) ^ 
-		(std::hash<std::string>{}(k_rootSig) << 2);
-
-	m_hash[RenderPass::Shadowmap] = std::hash<std::string>{}(k_depthonly_vs) ^
-		(std::hash<std::string>{}(k_depthonly_ps) << 1) ^
-		(std::hash<std::string>{}(k_depthonly_rootSig) << 2);
+	m_hash[RenderPass::Raytrace] =
+		(std::hash<std::string>{}(k_rgs)) ^
+		(std::hash<std::string>{}(k_chs) << 1) ^
+		(std::hash<std::string>{}(k_ms) << 2);
 }
 
-void DefaultOpaqueMaterial::BindPipeline(ID3D12Device5* device, ID3D12GraphicsCommandList4* cmdList, RenderPass::Id pass, VertexFormat::Type vertexFormat)
+void DefaultOpaqueMaterial::BindPipeline(ID3D12Device5* device, ID3D12GraphicsCommandList4* cmdList, RenderPass::Id pass)
 {
-	auto& pipeline = m_pipelines[pass][static_cast<int>(vertexFormat)];
+	auto& pipeline = m_pipelines[pass];
 
 	// Create a new pipeline and cache it if it has not been created
 	if (!pipeline)
 	{
-		if (pass == RenderPass::Geometry)
+		if (pass == RenderPass::Raytrace)
 		{
-			pipeline = std::make_unique<MaterialPipeline>(device, pass, vertexFormat, k_vs, k_ps, k_rootSig);
-		}
-		else if (pass == RenderPass::DepthOnly)
-		{
-			pipeline = std::make_unique<MaterialPipeline>(device, pass, vertexFormat, k_depthonly_vs, k_depthonly_ps, k_depthonly_rootSig);
-		}
-		else if (pass == RenderPass::Shadowmap)
-		{
-			pipeline = std::make_unique<MaterialPipeline>(device, pass, vertexFormat, k_depthonly_vs, k_depthonly_ps, k_depthonly_rootSig);
+			rootSig = CreateSharedRootSignature();
+			pipeline = std::make_unique<MaterialPipeline>(device, pass, k_rgs, k_chs, k_ms, rootSig);
 		}
 	}
 
@@ -294,37 +244,23 @@ DefaultMaskedMaterial::DefaultMaskedMaterial(std::string& name, const D3D12_GPU_
 	m_srvBegin{ srvHandle },
 	m_opacityMaskSrv{opacityMaskSrvHandle}
 {
-	m_hash[RenderPass::DepthOnly] = std::hash<std::string>{}(k_depthonly_vs) ^
-		(std::hash<std::string>{}(k_depthonly_ps) << 1) ^
-		(std::hash<std::string>{}(k_depthonly_rootSig) << 2);
-
-	m_hash[RenderPass::Geometry] = std::hash<std::string>{}(k_vs) ^
-		(std::hash<std::string>{}(k_ps) << 1) ^ 
-		(std::hash<std::string>{}(k_rootSig) << 2);
-
-	m_hash[RenderPass::Shadowmap] = std::hash<std::string>{}(k_depthonly_vs) ^
-		(std::hash<std::string>{}(k_depthonly_ps) << 1) ^
-		(std::hash<std::string>{}(k_depthonly_rootSig) << 2);
+	m_hash[RenderPass::Raytrace] = 
+		(std::hash<std::string>{}(k_rgs)) ^
+		(std::hash<std::string>{}(k_chs) << 1) ^
+		(std::hash<std::string>{}(k_ms) << 2);
 }
 
-void DefaultMaskedMaterial::BindPipeline(ID3D12Device5* device, ID3D12GraphicsCommandList4* cmdList, RenderPass::Id pass, VertexFormat::Type vertexFormat)
+void DefaultMaskedMaterial::BindPipeline(ID3D12Device5* device, ID3D12GraphicsCommandList4* cmdList, RenderPass::Id pass)
 {
-	auto& pipeline = m_pipelines[pass][static_cast<int>(vertexFormat)];
+	auto& pipeline = m_pipelines[pass];
 
 	// Create a new pipeline and cache it if it has not been created
 	if (!pipeline)
 	{
-		if (pass == RenderPass::Geometry)
+		if (pass == RenderPass::Raytrace)
 		{
-			pipeline = std::make_unique<MaterialPipeline>(device, pass, vertexFormat, k_vs, k_ps, k_rootSig);
-		}
-		else if (pass == RenderPass::DepthOnly)
-		{
-			pipeline = std::make_unique<MaterialPipeline>(device, pass, vertexFormat, k_depthonly_vs, k_depthonly_ps, k_depthonly_rootSig);
-		}
-		else if (pass == RenderPass::Shadowmap)
-		{
-			pipeline = std::make_unique<MaterialPipeline>(device, pass, vertexFormat, k_depthonly_vs, k_depthonly_ps, k_depthonly_rootSig);
+			rootSig = CreateSharedRootSignature();
+			pipeline = std::make_unique<MaterialPipeline>(device, pass, k_rgs, k_chs, k_ms, rootSig);
 		}
 	}
 
@@ -361,59 +297,27 @@ size_t DefaultMaskedMaterial::GetHash(RenderPass::Id renderPass, VertexFormat::T
 	return	m_hash[renderPass] ^ (renderPass << 3) ^ (static_cast<int>(vertexFormat) << 4);
 }
 
-DebugMaterial::DebugMaterial() :
-	Material{ "debug_mtl" }
-{
-}
-
-void DebugMaterial::BindPipeline(ID3D12Device5* device, ID3D12GraphicsCommandList4* cmdList, RenderPass::Id renderPass, VertexFormat::Type vertexFormat)
-{
-	auto& pipeline = m_pipelines[renderPass][static_cast<int>(vertexFormat)];
-
-	// Create a new pipeline and cache it if it has not been created
-	if (!pipeline)
-	{
-		pipeline = std::make_unique<MaterialPipeline>(device, renderPass, vertexFormat, k_vs, k_ps, k_rootSig);
-	}
-
-	pipeline->Bind(cmdList);
-}
-
 UntexturedMaterial::UntexturedMaterial(std::string& name, Microsoft::WRL::ComPtr<ID3D12Resource> constantBuffer) :
 	Material{ name },
 	m_constantBuffer{ constantBuffer }
 {
-	m_hash[RenderPass::DepthOnly] = std::hash<std::string>{}(k_depthonly_vs) ^
-		(std::hash<std::string>{}(k_depthonly_ps) << 1) ^
-		(std::hash<std::string>{}(k_depthonly_rootSig) << 2);
-
-	m_hash[RenderPass::Geometry] = std::hash<std::string>{}(k_vs) ^
-		(std::hash<std::string>{}(k_ps) << 1) ^
-		(std::hash<std::string>{}(k_rootSig) << 2);
-
-	m_hash[RenderPass::Shadowmap] = std::hash<std::string>{}(k_depthonly_vs) ^
-		(std::hash<std::string>{}(k_depthonly_ps) << 1) ^
-		(std::hash<std::string>{}(k_depthonly_rootSig) << 2);
+	m_hash[RenderPass::Raytrace] =
+		(std::hash<std::string>{}(k_rgs)) ^
+		(std::hash<std::string>{}(k_chs) << 1) ^
+		(std::hash<std::string>{}(k_ms) << 2);
 }
 
-void UntexturedMaterial::BindPipeline(ID3D12Device5* device, ID3D12GraphicsCommandList4* cmdList, RenderPass::Id pass, VertexFormat::Type vertexFormat)
+void UntexturedMaterial::BindPipeline(ID3D12Device5* device, ID3D12GraphicsCommandList4* cmdList, RenderPass::Id pass)
 {
-	auto& pipeline = m_pipelines[pass][static_cast<int>(vertexFormat)];
+	auto& pipeline = m_pipelines[pass];
 
 	// Create a new pipeline and cache it if it has not been created
 	if (!pipeline)
 	{
-		if (pass == RenderPass::Geometry)
+		if (pass == RenderPass::Raytrace)
 		{
-			pipeline = std::make_unique<MaterialPipeline>(device, pass, vertexFormat, k_vs, k_ps, k_rootSig);
-		}
-		else if (pass == RenderPass::DepthOnly)
-		{
-			pipeline = std::make_unique<MaterialPipeline>(device, pass, vertexFormat, k_depthonly_vs, k_depthonly_ps, k_depthonly_rootSig);
-		}
-		else if (pass == RenderPass::Shadowmap)
-		{
-			pipeline = std::make_unique<MaterialPipeline>(device, pass, vertexFormat, k_depthonly_vs, k_depthonly_ps, k_depthonly_rootSig);
+			rootSig = CreateSharedRootSignature();
+			pipeline = std::make_unique<MaterialPipeline>(device, pass, k_rgs, k_chs, k_ms, rootSig);
 		}
 	}
 
