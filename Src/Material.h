@@ -5,9 +5,14 @@
 class MaterialPipeline
 {
 public:
-	MaterialPipeline() = delete;
-	MaterialPipeline(ID3D12Device5* device, RenderPass::Id renderPass, cconst std::string rgs, onst std::string chs, const std::string ms, const ID3D12RootSignature* rootSig);
-	void Bind(ID3D12GraphicsCommandList4* cmdList) const;
+	virtual void Bind(ID3D12GraphicsCommandList4* cmdList) const = 0;
+};
+
+class RaytraceMaterialPipeline : public MaterialPipeline
+{
+public:
+	RaytraceMaterialPipeline(ID3D12Device5* device, RenderPass::Id renderPass, cconst std::string rgs, onst std::string chs, const std::string ms, const ID3D12RootSignature* rootSig);
+	void Bind(ID3D12GraphicsCommandList4* cmdList) const override;
 
 private:
 	Microsoft::WRL::ComPtr<ID3D12StateObject> m_pso;
@@ -33,8 +38,8 @@ protected:
 class UntexturedMaterial : public Material
 {
 	static inline std::string k_rgs = "mtl_untextured.rgs.cso";
-	static inline std::string k_chs = "mtl_untextured.chit.cso";
-	static inline std::string k_ms = "mtl_untextured.miss.cso";
+	static inline std::string k_chs = "mtl_untextured.chs.cso";
+	static inline std::string k_ms = "mtl_untextured.ms.cso";
 
 public:
 	__declspec(align(256))
@@ -51,8 +56,12 @@ public:
 	size_t GetHash(RenderPass::Id renderPass, VertexFormat::Type vertexFormat) const override;
 
 private:
-	static inline std::unique_ptr<MaterialPipeline> m_pipelines[RenderPass::Count];
-	Microsoft::WRL::ComPtr<ID3D12RootSignature> m_rootSignature;
+	void CreateRaytraceRootSignature(ID3D12Device5* device, RenderPass::Id pass);
+
+private:
+	static inline std::unique_ptr<RaytraceMaterialPipeline> m_raytracePipelines[RenderPass::Count];
+	Microsoft::WRL::ComPtr<ID3D12RootSignature> m_raytraceRootSignatures[RenderPass::Count];
+	size_t m_raytraceRootSignatureSizes[RenderPass::Count];
 	Microsoft::WRL::ComPtr<ID3D12Resource> m_constantBuffer;
 	size_t m_hash[RenderPass::Count];
 };
@@ -60,8 +69,8 @@ private:
 class DefaultOpaqueMaterial : public Material
 {
 	static inline std::string k_rgs = "mtl_default.rgs.cso";
-	static inline std::string k_chs = "mtl_default.chit.cso";
-	static inline std::string k_ms = "mtl_default.miss.cso";
+	static inline std::string k_chs = "mtl_default.chs.cso";
+	static inline std::string k_ms = "mtl_default.ms.cso";
 
 public:
 	DefaultOpaqueMaterial(std::string& name, const D3D12_GPU_DESCRIPTOR_HANDLE srvHandle);
@@ -70,8 +79,12 @@ public:
 	size_t GetHash(RenderPass::Id renderPass, VertexFormat::Type vertexFormat) const override;
 
 private:
-	static inline std::unique_ptr<MaterialPipeline> m_pipelines[RenderPass::Count];
-	Microsoft::WRL::ComPtr<ID3D12RootSignature> m_rootSignature;
+	void CreateRaytraceRootSignature(ID3D12Device5* device, RenderPass::Id pass);
+
+private:
+	static inline std::unique_ptr<RaytraceMaterialPipeline> m_raytracePipelines[RenderPass::Count];
+	Microsoft::WRL::ComPtr<ID3D12RootSignature> m_raytraceRootSignatures[RenderPass::Count];
+	size_t m_raytraceRootSignatureSizes[RenderPass::Count];
 	D3D12_GPU_DESCRIPTOR_HANDLE m_srvBegin;
 	size_t m_hash[RenderPass::Count];
 };
@@ -89,8 +102,12 @@ public:
 	size_t GetHash(RenderPass::Id renderPass, VertexFormat::Type vertexFormat) const override;
 
 private:
-	static inline std::unique_ptr<MaterialPipeline> m_pipelines[RenderPass::Count];
-	Microsoft::WRL::ComPtr<ID3D12RootSignature> m_rootSignature;
+	void CreateRaytraceRootSignature(ID3D12Device5* device, RenderPass::Id pass);
+
+private:
+	static inline std::unique_ptr<RaytraceMaterialPipeline> m_raytracePipelines[RenderPass::Count];
+	Microsoft::WRL::ComPtr<ID3D12RootSignature> m_raytraceRootSignatures[RenderPass::Count];
+	size_t m_raytraceRootSignatureSizes[RenderPass::Count];
 	D3D12_GPU_DESCRIPTOR_HANDLE m_srvBegin;
 	D3D12_GPU_DESCRIPTOR_HANDLE m_opacityMaskSrv;
 	size_t m_hash[RenderPass::Count];
