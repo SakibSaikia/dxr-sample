@@ -416,6 +416,19 @@ void StaticMeshEntity::CreateTLAS(
 	uavBarrier.UAV.pResource = m_tlasBuffer.Get();
 
 	cmdList->ResourceBarrier(1, &uavBarrier);
+
+	// TLAS SRV
+	D3D12_SHADER_RESOURCE_VIEW_DESC tlasSrvDesc{};
+	tlasSrvDesc.Format = DXGI_FORMAT_UNKNOWN;
+	tlasSrvDesc.ViewDimention = D3D12_SRV_DIMENSION_RAYTRACING_ACCELERATION_STRUCTURE;
+	tlasSrvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+	tlasSrvDesc.RaytracingAccelerationStruction.Location = m_tlasBuffer->GetGPUVirtualAddress();
+
+	D3D12_CPU_DESCRIPTOR_HANDLE cpuHnd;
+	cpuHnd.ptr = srvHeap->GetCPUDescriptorHandleForHeapStart().ptr + offsetInHeap * descriptorSize;
+	m_tlasSrv.ptr = srvHeap->GetGPUDescriptorHandleForHeapStart().ptr + offsetInHeap * descriptorSize;
+
+	device->CreateShaderResourceView(nullptr, &tlasSrvDesc, cpuHnd);
 }
 
 void StaticMeshEntity::FillConstants(ObjectConstants* objConst) const
