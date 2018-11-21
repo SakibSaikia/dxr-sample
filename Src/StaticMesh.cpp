@@ -10,17 +10,28 @@ void StaticMesh::Init(
 	ResourceHeap* resourceHeap,
 	std::vector<VertexType> vertexData, 
 	std::vector<IndexType> indexData, 
-	const uint32_t matIndex)
+	const uint32_t matIndex, 
+	ID3D12DescriptorHeap* srvHeap, 
+	const size_t offsetInHeap, 
+	const size_t srvDescriptorSize)
 {
 	m_numIndices = indexData.size();
 	m_materialIndex = matIndex;
 
-	CreateVertexBuffer(device, cmdList, uploadBuffer, resourceHeap, vertexData);
-	CreateIndexBuffer(device, cmdList, uploadBuffer, resourceHeap, indexData);
+	CreateVertexBuffer(device, cmdList, uploadBuffer, resourceHeap, vertexData, srvHeap, offsetInHeap, srvDescriptorSize);
+	CreateIndexBuffer(device, cmdList, uploadBuffer, resourceHeap, indexData, srvHeap, offsetInHeap + 1, srvDescriptorSize);
 	CreateBLAS(device, cmdList, scratchHeap, resourceHeap, vertexData.size(), indexData.size());
 }
 
-void StaticMesh::CreateVertexBuffer(ID3D12Device5* device, ID3D12GraphicsCommandList4* cmdList, UploadBuffer* uploadBuffer, ResourceHeap* resourceHeap, const std::vector<VertexType>& vertexData)
+void StaticMesh::CreateVertexBuffer(
+	ID3D12Device5* device, 
+	ID3D12GraphicsCommandList4* cmdList, 
+	UploadBuffer* uploadBuffer, 
+	ResourceHeap* resourceHeap,
+	const std::vector<VertexType>& vertexData,
+	ID3D12DescriptorHeap* srvHeap,
+	const size_t offsetInHeap,
+	const size_t srvDescriptorSize)
 {
 	// vertex buffer
 	D3D12_RESOURCE_DESC vbDesc = {};
@@ -77,13 +88,37 @@ void StaticMesh::CreateVertexBuffer(ID3D12Device5* device, ID3D12GraphicsCommand
 		&vbBarrierDesc
 	);
 
-	// VB descriptor
+	// VB descriptor (not required for DXR)
 	m_vertexBufferView.BufferLocation = m_vertexBuffer->GetGPUVirtualAddress();
 	m_vertexBufferView.StrideInBytes = sizeof(VertexType);
 	m_vertexBufferView.SizeInBytes = vertexData.size() * sizeof(VertexType);
+
+	// VB SRV
+	D3D12_SHADER_RESOURCE_VIEW_DESC vbSrvDesc{};
+	vbSrvDesc.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
+	vbSrvDesc.Format = DXGI_FORMAT_R32_TYPELESS;
+	vbSrvDesc.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_RAW;
+	vbSrvDesc.Buffer.StructureByteStride = 0;
+	vbSrvDesc.Buffer.FirstElement = 0;
+	vbSrvDesc.Buffer.NumElements = vertexData.size() * sizeof(VertexType) / sizeof(float);
+	vbSrvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+
+	D3D12_CPU_DESCRIPTOR_HANDLE cpuHnd;
+	cpuHnd.ptr = srvHeap->GetCPUDescriptorHandleForHeapStart().ptr + offsetInHeap * descriptorSize;
+	m_vertexBufferSrv.ptr = srvHeap->GetGPUDescriptorHandleForHeapStart().ptr + offsetInHeap * descriptorSize;
+
+	device->CreateShaderResourceView(m_vertexBuffer.Get(), &vbSrvDesc, cpuHnd);
 }
 
-void StaticMesh::CreateIndexBuffer(ID3D12Device5* device, ID3D12GraphicsCommandList4* cmdList, UploadBuffer* uploadBuffer, ResourceHeap* resourceHeap, const std::vector<IndexType>& indexData)
+void StaticMesh::CreateIndexBuffer(
+	ID3D12Device5* device, 
+	ID3D12GraphicsCommandList4* cmdList, 
+	UploadBuffer* uploadBuffer, 
+	ResourceHeap* resourceHeap, 
+	const std::vector<IndexType>& indexData, 
+	ID3D12DescriptorHeap* srvHeap,
+	const size_t offsetInHeap,
+	const size_t srvDescriptorSize)
 {
 	// index buffer
 	D3D12_RESOURCE_DESC ibDesc = {};
@@ -140,10 +175,26 @@ void StaticMesh::CreateIndexBuffer(ID3D12Device5* device, ID3D12GraphicsCommandL
 		&ibBarrierDesc
 	);
 
-	// IB descriptor
+	// IB descriptor (not required for DXR)
 	m_indexBufferView.BufferLocation = m_indexBuffer->GetGPUVirtualAddress();
 	m_indexBufferView.Format = DXGI_FORMAT_R32_UINT;
 	m_indexBufferView.SizeInBytes = indexData.size() * sizeof(IndexType);
+
+	// IB SRV
+	D3D12_SHADER_RESOURCE_VIEW_DESC ibSrvDesc{};
+	ibSrvDesc.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
+	ibSrvDesc.Format = DXGI_FORMAT_R32_TYPELESS;
+	ibSrvDesc.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_RAW;
+	ibSrvDesc.Buffer.StructureByteStride = 0;
+	ibSrvDesc.Buffer.FirstElement = 0;
+	ibSrvDesc.Buffer.NumElements = indexData.size() * sizeof(UINT) / sizeof(float);
+	ibSrvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+
+	D3D12_CPU_DESCRIPTOR_HANDLE cpuHnd;
+	cpuHnd.ptr = srvHeap->GetCPUDescriptorHandleForHeapStart().ptr + offsetInHeap * descriptorSize;
+	m_indexBufferSrv.ptr = srvHeap->GetGPUDescriptorHandleForHeapStart().ptr + offsetInHeap * descriptorSize;
+
+	device->CreateShaderResourceView(m_indexBuffer.Get(), &ibSrvDesc, cpuHnd);
 }
 
 void StaticMesh::CreateBLAS(ID3D12Device5* device, ID3D12GraphicsCommandList4* cmdList, ResourceHeap* scratchHeap, ResourceHeap* resourceHeap, const size_t numVerts, const size_t numIndices)
@@ -266,15 +317,38 @@ const D3D12_GPU_VIRTUAL_ADDRESS StaticMesh::GetBLASAddress() const
 	return m_blasBuffer->GetGPUVirtualAddress();
 }
 
-StaticMeshEntity::StaticMeshEntity(ID3D12Device5* device, ID3D12GraphicsCommandList4* cmdList, UploadBuffer* uploadBuffer, ResourceHeap* scratchHeap, ResourceHeap* resourceHeap, const D3D12_GPU_VIRTUAL_ADDRESS blasGpuAddr, std::string&& name, const uint64_t meshIndex, const DirectX::XMFLOAT4X4& localToWorld) :
+StaticMeshEntity::StaticMeshEntity(
+	ID3D12Device5* device, 
+	ID3D12GraphicsCommandList4* cmdList, 
+	UploadBuffer* uploadBuffer, 
+	ResourceHeap* scratchHeap, 
+	ResourceHeap* resourceHeap, 
+	ID3D12DescriptorHeap* srvHeap, 
+	const size_t offsetInHeap, 
+	const size_t srvDescriptorSize, 
+	const D3D12_GPU_VIRTUAL_ADDRESS blasGpuAddr, 
+	std::string&& name, 
+	const uint64_t meshIndex, 
+	const DirectX::XMFLOAT4X4& localToWorld) 
+	:
 	m_name(name),
 	m_meshIndex(meshIndex), 
 	m_localToWorld(localToWorld)
 {
-	CreateTLAS(device, cmdList, uploadBuffer, scratchHeap, resourceHeap, localToWorld, blasGpuAddr);
+	CreateTLAS(device, cmdList, uploadBuffer, scratchHeap, resourceHeap, srvHeap, offsetInHeap, srvDescriptorSize, blasGpuAddr, localToWorld);
 }
 
-void StaticMeshEntity::CreateTLAS(ID3D12Device5* device, ID3D12GraphicsCommandList4* cmdList, UploadBuffer* uploadBuffer, ResourceHeap* scratchHeap, ResourceHeap* resourceHeap, const D3D12_GPU_VIRTUAL_ADDRESS blasGpuAddr, const DirectX::XMFLOAT4X4& localToWorld)
+void StaticMeshEntity::CreateTLAS(
+	ID3D12Device5* device, 
+	ID3D12GraphicsCommandList4* cmdList, 
+	UploadBuffer* uploadBuffer, 
+	ResourceHeap* scratchHeap, 
+	ResourceHeap* resourceHeap, 
+	ID3D12DescriptorHeap* srvHeap, 
+	const size_t offsetInHeap, 
+	const size_t srvDescriptorSize, 
+	const D3D12_GPU_VIRTUAL_ADDRESS blasGpuAddr, 
+	const DirectX::XMFLOAT4X4& localToWorld)
 {
 	// Instance description for top level acceleration structure
 	D3D12_RAYTRACING_INSTANCE_DESC instanceDesc{};
@@ -328,7 +402,7 @@ void StaticMeshEntity::CreateTLAS(ID3D12Device5* device, ID3D12GraphicsCommandLi
 		IID_PPV_ARGS(&scratchBuffer)
 	));
 
-	// Now, build the bottom level acceleration structure
+	// Now, build the top level acceleration structure
 	D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_DESC buildDesc{};
 	buildDesc.Inputs = asInputs;
 	buildDesc.ScratchAccelerationStructureData = scratchBuffer->GetGPUVirtualAddress();

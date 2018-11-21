@@ -226,7 +226,6 @@ void App::InitScene()
 		&m_geometryDataHeap,
 		&m_materialConstantsHeap,
 		m_cbvSrvUavHeap.Get(),
-		SrvUav::MaterialTexturesBegin,
 		m_cbvSrvUavDescriptorSize
 	);
 

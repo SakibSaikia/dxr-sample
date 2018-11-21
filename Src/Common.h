@@ -7,6 +7,7 @@ constexpr size_t k_screenWidth = 1280;
 constexpr size_t k_screenHeight = 720;
 constexpr size_t k_shadowmapSize = 2048;
 constexpr size_t k_materialTextureCount = 128;
+constexpr size_t k_objectCount = 256;
 constexpr size_t k_uploadBufferSize = 40 * 1024 * 1024; // 40 MB
 constexpr size_t k_scratchDataSize = 40 * 1024 * 1024; // 40 MB
 constexpr size_t k_geometryDataSize = 60 * 1024 * 1024; // 60 MB
@@ -44,7 +45,14 @@ namespace SrvUav
 		// UAVs
 		UAVBegin,
 		DxrOutputUAV = UAVBegin,
-		
+
+		// Mesh SRVs (VB + IB)
+		MeshdataBegin,
+		MeshdataEnd = MeshdataBegin + k_objectCount * 2,
+
+		// TLAS SRVs
+		TLASBegin,
+		TLASEnd = TLASBegin + k_objectCount,
 
 		// Material SRVs
 		MaterialTexturesBegin,

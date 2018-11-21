@@ -19,7 +19,7 @@ void Texture::Init(ID3D12Device5* device, DirectX::ResourceUploadBatch& resource
 	));
 }
 
-D3D12_GPU_DESCRIPTOR_HANDLE Texture::CreateDescriptor(ID3D12Device5* device, ID3D12DescriptorHeap* srvHeap, const size_t offsetInHeap, const size_t descriptorSize) const
+D3D12_GPU_DESCRIPTOR_HANDLE Texture::CreateShaderResourceView(ID3D12Device5* device, ID3D12DescriptorHeap* srvHeap, const size_t offsetInHeap, const size_t descriptorSize) const
 {
 	D3D12_CPU_DESCRIPTOR_HANDLE cpuHnd;
 	cpuHnd.ptr = srvHeap->GetCPUDescriptorHandleForHeapStart().ptr + offsetInHeap * descriptorSize;

@@ -247,12 +247,12 @@ void DefaultOpaqueMaterial::BindPipeline(ID3D12Device5* device, ID3D12GraphicsCo
 	pipeline->Bind(cmdList);
 }
 
-void DefaultOpaqueMaterial::CreateRaytraceRootSignature(RenderPass::Id pass)
+void DefaultOpaqueMaterial::CreateRaytraceRootSignature(ID3D12Device5* device, RenderPass::Id pass)
 {
 	if (pass == RenderPass::Raytrace)
 	{
 		std::vector<D3D12_ROOT_PARAMETER> rootParams;
-		rootParams.reserve(3);
+		rootParams.reserve(7);
 
 		// Constant buffers
 		D3D12_ROOT_PARAMETER viewCBV{};
@@ -280,20 +280,28 @@ void DefaultOpaqueMaterial::CreateRaytraceRootSignature(RenderPass::Id pass)
 		outputUAV.Descriptor.ShaderRegister = 0;
 		rootParams.push_back(outputUAV);
 
-		// Geometry SRVs
-		D3D12_DESCRIPTOR_RANGE geometrySRVRange{};
-		geometrySRVRange.BaseShaderRegister = 0;
-		geometrySRVRange.NumDescriptors = 3; // TLAS, VB, IB
-		geometrySRVRange.RegisterSpace = 0;
-		geometrySRVRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
-		geometrySRVRange.OffsetInDescriptorsFromTableStart = 0;
+		// TLAS SRV
+		D3D12_ROOT_PARAMETER tlasSRV{};
+		tlasSRV.ParameterType = D3D12_ROOT_PARAMETER_TYPE_SRV;
+		tlasSRV.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+		tlasSRV.Descriptor.RegisterSpace = 0;
+		tlasSRV.Descriptor.ShaderRegister = 0;
+		rootParams.push_back(tlasSRV);
 
-		D3D12_ROOT_PARAMETER geometrySRVs{};
-		geometrySRVs.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
-		geometrySRVs.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
-		geometrySRVs.DescriptorTable.NumDescriptorRanges = 1;
-		geometrySRVs.DescriptorTable.pDescriptorRanges = &geometrySRVRange;
-		rootParams.push_back(geometrySRVs);
+		// Meshdata SRVs
+		D3D12_DESCRIPTOR_RANGE meshSRVRange{};
+		meshSRVRange.BaseShaderRegister = 1;
+		meshSRVRange.NumDescriptors = 2; // VB, IB
+		meshSRVRange.RegisterSpace = 0;
+		meshSRVRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
+		meshSRVRange.OffsetInDescriptorsFromTableStart = 0;
+
+		D3D12_ROOT_PARAMETER meshSRVs{};
+		meshSRVs.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+		meshSRVs.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+		meshSRVs.DescriptorTable.NumDescriptorRanges = 1;
+		meshSRVs.DescriptorTable.pDescriptorRanges = &meshSRVRange;
+		rootParams.push_back(meshSRVs);
 
 		// Material SRVs
 		D3D12_DESCRIPTOR_RANGE materialSRVRange{};
@@ -373,12 +381,12 @@ void DefaultMaskedMaterial::BindPipeline(ID3D12Device5* device, ID3D12GraphicsCo
 	pipeline->Bind(cmdList);
 }
 
-void DefaultMaskedMaterial::CreateRaytraceRootSignature(RenderPass::Id pass)
+void DefaultMaskedMaterial::CreateRaytraceRootSignature(ID3D12Device5* device, RenderPass::Id pass)
 {
 	if (pass == RenderPass::Raytrace)
 	{
 		std::vector<D3D12_ROOT_PARAMETER> rootParams;
-		rootParams.reserve(3);
+		rootParams.reserve(7);
 
 		// Constant buffers
 		D3D12_ROOT_PARAMETER viewCBV{};
@@ -406,20 +414,28 @@ void DefaultMaskedMaterial::CreateRaytraceRootSignature(RenderPass::Id pass)
 		outputUAV.Descriptor.ShaderRegister = 0;
 		rootParams.push_back(outputUAV);
 
-		// Geometry SRVs
-		D3D12_DESCRIPTOR_RANGE geometrySRVRange{};
-		geometrySRVRange.BaseShaderRegister = 0;
-		geometrySRVRange.NumDescriptors = 3; // TLAS, VB, IB
-		geometrySRVRange.RegisterSpace = 0;
-		geometrySRVRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
-		geometrySRVRange.OffsetInDescriptorsFromTableStart = 0;
+		// TLAS SRV
+		D3D12_ROOT_PARAMETER tlasSRV{};
+		tlasSRV.ParameterType = D3D12_ROOT_PARAMETER_TYPE_SRV;
+		tlasSRV.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+		tlasSRV.Descriptor.RegisterSpace = 0;
+		tlasSRV.Descriptor.ShaderRegister = 0;
+		rootParams.push_back(tlasSRV);
 
-		D3D12_ROOT_PARAMETER geometrySRVs{};
-		geometrySRVs.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
-		geometrySRVs.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
-		geometrySRVs.DescriptorTable.NumDescriptorRanges = 1;
-		geometrySRVs.DescriptorTable.pDescriptorRanges = &geometrySRVRange;
-		rootParams.push_back(geometrySRVs);
+		// Mesh SRVs
+		D3D12_DESCRIPTOR_RANGE meshSRVRange{};
+		meshSRVRange.BaseShaderRegister = 1;
+		meshSRVRange.NumDescriptors = 2; // VB, IB
+		meshSRVRange.RegisterSpace = 0;
+		meshSRVRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
+		meshSRVRange.OffsetInDescriptorsFromTableStart = 0;
+
+		D3D12_ROOT_PARAMETER meshSRVs{};
+		meshSRVs.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+		meshSRVs.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+		meshSRVs.DescriptorTable.NumDescriptorRanges = 1;
+		meshSRVs.DescriptorTable.pDescriptorRanges = &meshSRVRange;
+		rootParams.push_back(meshSRVs);
 
 		// Material SRVs
 		D3D12_DESCRIPTOR_RANGE materialSRVRange{};
@@ -500,12 +516,12 @@ void UntexturedMaterial::BindPipeline(ID3D12Device5* device, ID3D12GraphicsComma
 	pipeline->Bind(cmdList);
 }
 
-void UntexturedMaterial::CreateRaytraceRootSignature(RenderPass::Id pass)
+void UntexturedMaterial::CreateRaytraceRootSignature(ID3D12Device5* device, RenderPass::Id pass)
 {
 	if (pass == RenderPass::Raytrace)
 	{
 		std::vector<D3D12_ROOT_PARAMETER> rootParams;
-		rootParams.reserve(3);
+		rootParams.reserve(7);
 
 		// Constant buffers
 		D3D12_ROOT_PARAMETER viewCBV{};
@@ -533,20 +549,28 @@ void UntexturedMaterial::CreateRaytraceRootSignature(RenderPass::Id pass)
 		outputUAV.Descriptor.ShaderRegister = 0;
 		rootParams.push_back(outputUAV);
 
-		// Geometry SRVs
-		D3D12_DESCRIPTOR_RANGE geometrySRVRange{};
-		geometrySRVRange.BaseShaderRegister = 0;
-		geometrySRVRange.NumDescriptors = 3; // TLAS, VB, IB
-		geometrySRVRange.RegisterSpace = 0;
-		geometrySRVRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
-		geometrySRVRange.OffsetInDescriptorsFromTableStart = 0;
+		// TLAS SRV
+		D3D12_ROOT_PARAMETER tlasSRV{};
+		tlasSRV.ParameterType = D3D12_ROOT_PARAMETER_TYPE_SRV;
+		tlasSRV.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+		tlasSRV.Descriptor.RegisterSpace = 0;
+		tlasSRV.Descriptor.ShaderRegister = 0;
+		rootParams.push_back(tlasSRV);
 
-		D3D12_ROOT_PARAMETER geometrySRVs{};
-		geometrySRVs.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
-		geometrySRVs.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
-		geometrySRVs.DescriptorTable.NumDescriptorRanges = 1;
-		geometrySRVs.DescriptorTable.pDescriptorRanges = &geometrySRVRange;
-		rootParams.push_back(geometrySRVs);
+		// Mesh SRVs
+		D3D12_DESCRIPTOR_RANGE meshSRVRange{};
+		meshSRVRange.BaseShaderRegister = 1;
+		meshSRVRange.NumDescriptors = 2; // VB, IB
+		meshSRVRange.RegisterSpace = 0;
+		meshSRVRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
+		meshSRVRange.OffsetInDescriptorsFromTableStart = 0;
+
+		D3D12_ROOT_PARAMETER meshSRVs{};
+		meshSRVs.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+		meshSRVs.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+		meshSRVs.DescriptorTable.NumDescriptorRanges = 1;
+		meshSRVs.DescriptorTable.pDescriptorRanges = &meshSRVRange;
+		rootParams.push_back(meshSRVs);
 
 		D3D12_ROOT_SIGNATURE_DESC rootDesc{};
 		rootDesc.Flags = rootParameters.size();

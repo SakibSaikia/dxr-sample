@@ -15,7 +15,10 @@ void Scene::LoadMeshes(
 	ID3D12GraphicsCommandList4* cmdList, 
 	UploadBuffer* uploadBuffer,
 	ResourceHeap* scratchHeap,
-	ResourceHeap* resourceHeap)
+	ResourceHeap* resourceHeap, 
+	ID3D12DescriptorHeap* srvHeap, 
+	const size_t srvStartOffset, 
+	const size_t srvDescriptorSize)
 {
 	for (auto meshIdx = 0u; meshIdx < loader->mNumMeshes; meshIdx++)
 	{
@@ -52,7 +55,7 @@ void Scene::LoadMeshes(
 		}
 
 		auto mesh = std::make_unique<StaticMesh>();
-		mesh->Init(device, cmdList, uploadBuffer, scratchHeap, resourceHeap, std::move(vertexData), std::move(indexData), srcMesh->mMaterialIndex);
+		mesh->Init(device, cmdList, uploadBuffer, scratchHeap, resourceHeap, std::move(vertexData), std::move(indexData), srcMesh->mMaterialIndex, srvHeap, srvStartOffset + 2 * meshIdx, srvDescriptorSize);
 		m_meshes.push_back(std::move(mesh));
 	}
 }
@@ -75,7 +78,7 @@ D3D12_GPU_DESCRIPTOR_HANDLE Scene::LoadTexture(const std::string& textureName, I
 		tex = texIter->get();
 	}
 
-	const auto gpuDescriptorHandle = tex->CreateDescriptor(device, srvHeap, srvOffset, srvDescriptorSize);
+	const auto gpuDescriptorHandle = tex->CreateShaderResourceView(device, srvHeap, srvOffset, srvDescriptorSize);
 
 	return gpuDescriptorHandle;
 }
@@ -220,7 +223,16 @@ void Scene::LoadMaterials(
 	uploadResourcesFinished.wait();
 }
 
-void Scene::LoadEntities(const aiNode* node, ID3D12Device5* device, ID3D12GraphicsCommandList4* cmdList, UploadBuffer* uploadBuffer, ResourceHeap* scratchHeap, ResourceHeap* resourceHeap)
+void Scene::LoadEntities(
+	const aiNode* node, 
+	ID3D12Device5* device, 
+	ID3D12GraphicsCommandList4* cmdList, 
+	UploadBuffer* uploadBuffer, 
+	ResourceHeap* scratchHeap, 
+	ResourceHeap* resourceHeap, 
+	ID3D12DescriptorHeap* srvHeap, 
+	const size_t offsetInHeap, 
+	const size_t srvDescriptorSize)
 {
 	const aiMatrix4x4& parentTransform = node->mTransformation;
 
@@ -244,6 +256,9 @@ void Scene::LoadEntities(const aiNode* node, ID3D12Device5* device, ID3D12Graphi
 					uploadBuffer,
 					scratchHeap,
 					resourceHeap,
+					srvHeap,
+					offsetInHeap,
+					srvDescriptorSize,
 					m_meshes[sceneMeshIndex]->GetBLASAddress(),
 					std::string(childNode->mName.C_Str()), 
 					sceneMeshIndex,
@@ -308,7 +323,6 @@ void Scene::InitResources(
 	ResourceHeap* meshDataHeap,
 	ResourceHeap* mtlConstantsHeap,
 	ID3D12DescriptorHeap* srvHeap, 
-	const size_t srvStartOffset,
 	const size_t srvDescriptorSize)
 {
 	// Load scene
@@ -325,10 +339,11 @@ void Scene::InitResources(
 		);
 
 		assert(scene != nullptr && L"Failed to load scene");
+		assert(scene->mNumMeshes < k_objectCount && L"Increase k_objectCount");
 
-		LoadMeshes(scene, device, cmdList, uploadBuffer, scratchHeap, meshDataHeap);
-		LoadMaterials(scene, device, cmdList, cmdQueue, uploadBuffer, mtlConstantsHeap, srvHeap, srvStartOffset, srvDescriptorSize);
-		LoadEntities(scene->mRootNode, device, cmdList, uploadBuffer, scratchHeap, meshDataHeap);
+		LoadMeshes(scene, device, cmdList, uploadBuffer, scratchHeap, meshDataHeap, srvHeap, SrvUav::MeshdataBegin, srvDescriptorSize);
+		LoadMaterials(scene, device, cmdList, cmdQueue, uploadBuffer, mtlConstantsHeap, srvHeap, SrvUav::MaterialTexturesBegin, srvDescriptorSize);
+		LoadEntities(scene->mRootNode, device, cmdList, uploadBuffer, scratchHeap, meshDataHeap, srvHeap, SrvUav::TLASBegin, srvDescriptorSize);
 		InitLights(device);
 		InitBounds(device, cmdList);
 		m_debugDraw.Init(device, cmdList);
