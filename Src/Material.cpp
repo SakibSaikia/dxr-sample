@@ -240,14 +240,17 @@ void DefaultOpaqueMaterial::BindPipeline(ID3D12Device5* device, ID3D12GraphicsCo
 	// Create a new pipeline and cache it if it has not been created
 	if (!pipeline)
 	{
-		rootSig = CreateRaytraceRootSignature(device, pass);
+		auto rootSig = CreateRaytraceRootSignature(device, pass);
+		assert(rootSig != nullptr);
+
+		CreateShaderBindingTable();
 		pipeline = std::make_unique<RaytraceMaterialPipeline>(device, pass, k_rgs, k_chs, k_ms, rootSig);
 	}
 
 	pipeline->Bind(cmdList);
 }
 
-void DefaultOpaqueMaterial::CreateRaytraceRootSignature(ID3D12Device5* device, RenderPass::Id pass)
+ID3D12RootSignature* DefaultOpaqueMaterial::CreateRaytraceRootSignature(ID3D12Device5* device, RenderPass::Id pass)
 {
 	if (pass == RenderPass::Raytrace)
 	{
@@ -325,10 +328,54 @@ void DefaultOpaqueMaterial::CreateRaytraceRootSignature(ID3D12Device5* device, R
 
 		m_raytraceRootSignatures[pass] = CreateRootSignature(device, rootDesc);
 		m_raytraceRootSignatureSizes[pass] = GetRootSignatureSizeInBytes(rootDesc);
+
+		return m_raytraceRootSignatures[pass];
 	}
+
+	return nullptr;
 }
 
-void DefaultOpaqueMaterial::BindConstants(RenderPass::Id pass, ID3D12GraphicsCommandList4* cmdList, D3D12_GPU_VIRTUAL_ADDRESS objConstants, D3D12_GPU_VIRTUAL_ADDRESS viewConstants, D3D12_GPU_VIRTUAL_ADDRESS lightConstants, D3D12_GPU_VIRTUAL_ADDRESS shadowConstants, D3D12_GPU_DESCRIPTOR_HANDLE renderSurfaceSrvBegin) const
+size_t DefaultOpaqueMaterial::GetSBTEntrySize() const
+{
+	const size_t programIdSize = 32;
+	size_t sbtEntrySize = programIdSize + m_raytraceRootSignatureSizes[pass];
+	sbtEntrySize = (sbtEntrySize + D3D12_RAYTRACING_SHADER_RECORD_BYTE_ALIGNMENT - 1) & ~D3D12_RAYTRACING_SHADER_RECORD_BYTE_ALIGNMENT;
+
+	return sbtEntrySize;
+}
+
+void DefaultOpaqueMaterial::CreateShaderBindingTable(ID3D12Device5* device, RenderPass::Id pass)
+{
+	const size_t sbtSize = GetSBTEntrySize() * 3; // For RGS, CHS and MS
+
+	D3D12_RESOURCE_DESC resDesc = {};
+	resDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER; 
+	resDesc.Width = sbtSize * k_gfxBufferCount; // n copies where n = buffer count
+	resDesc.Height = 1;
+	resDesc.DepthOrArraySize = 1;
+	resDesc.MipLevels = 1;
+	resDesc.Format = DXGI_FORMAT_UNKNOWN;
+	resDesc.SampleDesc.Count = 1;
+	resDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+
+	D3D12_HEAP_PROPERTIES heapDesc = {};
+	heapDesc.Type = D3D12_HEAP_TYPE_UPLOAD;
+	heapDesc.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
+
+	CHECK(device->CreateCommittedResource(
+		&heapDesc,
+		D3D12_HEAP_FLAG_NONE,
+		&resDesc,
+		D3D12_RESOURCE_STATE_GENERIC_READ,
+		nullptr,
+		IID_PPV_ARGS(m_shaderBindingTable[pass].GetAddressOf())
+	));
+
+	D3D12_RANGE readRange = { 0 };
+	CHECK(shaderBindingTable[pass]->Map(0, &readRange, reinterpret_cast<void**)&sbtPtr);
+}
+
+void DefaultOpaqueMaterial::BindConstants(uint32_t bufferIndex, RenderPass::Id pass, ID3D12GraphicsCommandList4* cmdList, D3D12_GPU_VIRTUAL_ADDRESS objConstants, D3D12_GPU_VIRTUAL_ADDRESS viewConstants, D3D12_GPU_VIRTUAL_ADDRESS lightConstants, D3D12_GPU_VIRTUAL_ADDRESS shadowConstants, D3D12_GPU_DESCRIPTOR_HANDLE renderSurfaceSrvBegin) const
 {
 	if (pass == RenderPass::Geometry)
 	{
@@ -374,14 +421,17 @@ void DefaultMaskedMaterial::BindPipeline(ID3D12Device5* device, ID3D12GraphicsCo
 	// Create a new pipeline and cache it if it has not been created
 	if (!pipeline)
 	{
-		rootSig = CreateRaytraceRootSignature(device, pass);
+		auto rootSig = CreateRaytraceRootSignature(device, pass);
+		assert(rootSig != nullptr);
+
+		CreateShaderBindingTable();
 		pipeline = std::make_unique<RaytraceMaterialPipeline>(device, pass, k_rgs, k_chs, k_ms, rootSig);
 	}
 
 	pipeline->Bind(cmdList);
 }
 
-void DefaultMaskedMaterial::CreateRaytraceRootSignature(ID3D12Device5* device, RenderPass::Id pass)
+ID3D12RootSignature* DefaultMaskedMaterial::CreateRaytraceRootSignature(ID3D12Device5* device, RenderPass::Id pass)
 {
 	if (pass == RenderPass::Raytrace)
 	{
@@ -459,10 +509,54 @@ void DefaultMaskedMaterial::CreateRaytraceRootSignature(ID3D12Device5* device, R
 
 		m_raytraceRootSignatures[pass] = CreateRootSignature(device, rootDesc);
 		m_raytraceRootSignatureSizes[pass] = GetRootSignatureSizeInBytes(rootDesc);
+
+		return m_raytraceRootSignatures[pass];
 	}
+
+	retunr nullptr;
 }
 
-void DefaultMaskedMaterial::BindConstants(RenderPass::Id pass, ID3D12GraphicsCommandList4* cmdList, D3D12_GPU_VIRTUAL_ADDRESS objConstants, D3D12_GPU_VIRTUAL_ADDRESS viewConstants, D3D12_GPU_VIRTUAL_ADDRESS lightConstants, D3D12_GPU_VIRTUAL_ADDRESS shadowConstants, D3D12_GPU_DESCRIPTOR_HANDLE renderSurfaceSrvBegin) const
+size_t DefaultMaskedMaterial::GetSBTEntrySize() const
+{
+	const size_t programIdSize = 32;
+	size_t sbtEntrySize = programIdSize + m_raytraceRootSignatureSizes[pass];
+	sbtEntrySize = (sbtEntrySize + D3D12_RAYTRACING_SHADER_RECORD_BYTE_ALIGNMENT - 1) & ~D3D12_RAYTRACING_SHADER_RECORD_BYTE_ALIGNMENT;
+
+	return sbtEntrySize;
+}
+
+void DefaultMaskedMaterial::CreateShaderBindingTable(ID3D12Device5* device, RenderPass::Id pass)
+{
+	const size_t sbtSize = GetSBTEntrySize() * 3; // For RGS, CHS and MS
+
+	D3D12_RESOURCE_DESC resDesc = {};
+	resDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
+	resDesc.Width = sbtSize * k_gfxBufferCount; // n copies where n = buffer count
+	resDesc.Height = 1;
+	resDesc.DepthOrArraySize = 1;
+	resDesc.MipLevels = 1;
+	resDesc.Format = DXGI_FORMAT_UNKNOWN;
+	resDesc.SampleDesc.Count = 1;
+	resDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+
+	D3D12_HEAP_PROPERTIES heapDesc = {};
+	heapDesc.Type = D3D12_HEAP_TYPE_UPLOAD;
+	heapDesc.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
+
+	CHECK(device->CreateCommittedResource(
+		&heapDesc,
+		D3D12_HEAP_FLAG_NONE,
+		&resDesc,
+		D3D12_RESOURCE_STATE_GENERIC_READ,
+		nullptr,
+		IID_PPV_ARGS(m_shaderBindingTable[pass].GetAddressOf())
+	));
+
+	D3D12_RANGE readRange = { 0 };
+	CHECK(shaderBindingTable[pass]->Map(0, &readRange, reinterpret_cast<void**)&sbtPtr);
+}
+
+void DefaultMaskedMaterial::BindConstants(uint32_t bufferIndex, RenderPass::Id pass, ID3D12GraphicsCommandList4* cmdList, D3D12_GPU_VIRTUAL_ADDRESS objConstants, D3D12_GPU_VIRTUAL_ADDRESS viewConstants, D3D12_GPU_VIRTUAL_ADDRESS lightConstants, D3D12_GPU_VIRTUAL_ADDRESS shadowConstants, D3D12_GPU_DESCRIPTOR_HANDLE renderSurfaceSrvBegin) const
 {
 	if (pass == RenderPass::Geometry)
 	{
@@ -509,14 +603,17 @@ void UntexturedMaterial::BindPipeline(ID3D12Device5* device, ID3D12GraphicsComma
 	// Create a new pipeline and cache it if it has not been created
 	if (!pipeline)
 	{
-		rootSig = CreateRaytraceRootSignature(device, pass);
+		auto rootSig = CreateRaytraceRootSignature(device, pass);
+		assert(rootSig != nullptr);
+
+		CreateShaderBindingTable();
 		pipeline = std::make_unique<RaytraceMaterialPipeline>(device, pass, k_rgs, k_chs, k_ms, rootSig);
 	}
 
 	pipeline->Bind(cmdList);
 }
 
-void UntexturedMaterial::CreateRaytraceRootSignature(ID3D12Device5* device, RenderPass::Id pass)
+ID3D12RootSignature* UntexturedMaterial::CreateRaytraceRootSignature(ID3D12Device5* device, RenderPass::Id pass)
 {
 	if (pass == RenderPass::Raytrace)
 	{
@@ -579,29 +676,68 @@ void UntexturedMaterial::CreateRaytraceRootSignature(ID3D12Device5* device, Rend
 
 		m_raytraceRootSignatures[pass] = CreateRootSignature(device, rootDesc);
 		m_raytraceRootSignatureSizes[pass] = GetRootSignatureSizeInBytes(rootDesc);
+
+		return m_raytraceRootSignatures[pass];
 	}
+
+	return nullptr;
 }
 
-void UntexturedMaterial::BindConstants(RenderPass::Id pass, ID3D12GraphicsCommandList4* cmdList, D3D12_GPU_VIRTUAL_ADDRESS objConstants, D3D12_GPU_VIRTUAL_ADDRESS viewConstants, D3D12_GPU_VIRTUAL_ADDRESS lightConstants, D3D12_GPU_VIRTUAL_ADDRESS shadowConstants, D3D12_GPU_DESCRIPTOR_HANDLE renderSurfaceSrvBegin) const
+size_t UntexturedMaterial::GetSBTEntrySize() const
 {
-	if (pass == RenderPass::Geometry)
+	const size_t programIdSize = 32;
+	size_t sbtEntrySize = programIdSize + m_raytraceRootSignatureSizes[pass];
+	sbtEntrySize = (sbtEntrySize + D3D12_RAYTRACING_SHADER_RECORD_BYTE_ALIGNMENT - 1) & ~D3D12_RAYTRACING_SHADER_RECORD_BYTE_ALIGNMENT;
+
+	return sbtEntrySize;
+}
+
+void UntexturedMaterial::CreateShaderBindingTable(ID3D12Device5* device, RenderPass::Id pass)
+{
+	const size_t sbtSize = GetSBTEntrySize() * 3; // For RGS, CHS and MS
+
+	D3D12_RESOURCE_DESC resDesc = {};
+	resDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
+	resDesc.Width = sbtSize * k_gfxBufferCount; // n copies where n = buffer count
+	resDesc.Height = 1;
+	resDesc.DepthOrArraySize = 1;
+	resDesc.MipLevels = 1;
+	resDesc.Format = DXGI_FORMAT_UNKNOWN;
+	resDesc.SampleDesc.Count = 1;
+	resDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+
+	D3D12_HEAP_PROPERTIES heapDesc = {};
+	heapDesc.Type = D3D12_HEAP_TYPE_UPLOAD;
+	heapDesc.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
+
+	CHECK(device->CreateCommittedResource(
+		&heapDesc,
+		D3D12_HEAP_FLAG_NONE,
+		&resDesc,
+		D3D12_RESOURCE_STATE_GENERIC_READ,
+		nullptr,
+		IID_PPV_ARGS(m_shaderBindingTable[pass].GetAddressOf())
+	));
+
+	D3D12_RANGE readRange = { 0 };
+	CHECK(shaderBindingTable[pass]->Map(0, &readRange, reinterpret_cast<void**)&sbtPtr);
+}
+
+void UntexturedMaterial::BindConstants(uint32_t bufferIndex, RenderPass::Id pass, ID3D12GraphicsCommandList4* cmdList, D3D12_GPU_VIRTUAL_ADDRESS objConstants, D3D12_GPU_VIRTUAL_ADDRESS viewConstants, D3D12_GPU_VIRTUAL_ADDRESS lightConstants, D3D12_GPU_VIRTUAL_ADDRESS shadowConstants, D3D12_GPU_DESCRIPTOR_HANDLE renderSurfaceSrvBegin) const
+{
+	if (pass == RenderPass::Raytrace)
 	{
+		uint8_t* pData = m_sbtPtr[pass];
+
+		// Entry 0 - Raygen program and root argument data
+		memcpy(pData, m_raytracePipelines[])
+
 		cmdList->SetGraphicsRootConstantBufferView(0, viewConstants);
 		cmdList->SetGraphicsRootConstantBufferView(1, objConstants);
 		cmdList->SetGraphicsRootConstantBufferView(2, lightConstants);
 		cmdList->SetGraphicsRootConstantBufferView(3, shadowConstants);
 		cmdList->SetGraphicsRootConstantBufferView(4, m_constantBuffer->GetGPUVirtualAddress());
 		cmdList->SetGraphicsRootDescriptorTable(5, renderSurfaceSrvBegin);
-	}
-	else if (pass == RenderPass::DepthOnly)
-	{
-		cmdList->SetGraphicsRootConstantBufferView(0, viewConstants);
-		cmdList->SetGraphicsRootConstantBufferView(1, objConstants);
-	}
-	else if (pass == RenderPass::Shadowmap)
-	{
-		cmdList->SetGraphicsRootConstantBufferView(0, shadowConstants);
-		cmdList->SetGraphicsRootConstantBufferView(1, objConstants);
 	}
 }
 

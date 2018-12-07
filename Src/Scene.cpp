@@ -515,7 +515,7 @@ void Scene::Render(RenderPass::Id pass, ID3D12Device5* device, ID3D12GraphicsCom
 
 			static_assert(sizeof(ShadowConstants) == sizeof(ViewConstants) && L"Size must match so that we can switch out view constants in the shadow map pass!");
 
-			mat->BindConstants(pass, cmdList, ObjConstants, viewConstants, lightConstants, shadowConstants, renderSurfaceSrvBegin);
+			mat->BindConstants(bufferIndex, pass, cmdList, ObjConstants, viewConstants, lightConstants, shadowConstants, renderSurfaceSrvBegin);
 			sm->Render(cmdList);
 		}
 
