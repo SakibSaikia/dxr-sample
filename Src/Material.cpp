@@ -59,8 +59,18 @@ size_t GetRootSignatureSizeInBytes(const D3D12_ROOT_SIGNATURE_DESC& desc)
 	return size;
 }
 
-RaytraceMaterialPipeline::RaytraceMaterialPipeline(ID3D12Device5* device, RenderPass::Id renderPass, cconst std::string rgs, onst std::string chs, const std::string ms, const ID3D12RootSignature* rootSig)
+RaytraceMaterialPipeline::RaytraceMaterialPipeline(ID3D12Device5* device, RenderPass::Id renderPass, cconst std::string rgs, onst std::string chs, const std::string ms, const D3D12_ROOT_SIGNATURE_DESC& rootSigDesc)
 {
+	// -----------------------------------------------------------------------------
+	// Root Signature
+	// -----------------------------------------------------------------------------
+	m_raytraceRootSignatures[renderPass] = CreateRootSignature(device, rootSigDesc);
+	m_raytraceRootSignatureSizes[renderPass] = GetRootSignatureSizeInBytes(device, rootSigDesc);
+
+
+	// -----------------------------------------------------------------------------
+	// PSO
+	// -----------------------------------------------------------------------------
 	std::vector<D3D12_STATE_SUBOBJECT> rtSubObjects;
 	rtSubObjects.reserve(10);
 
@@ -211,6 +221,11 @@ void RaytraceMaterialPipeline::Bind(ID3D12GraphicsCommandList4* cmdList) const
 	cmdList->SetPipelineState(m_pso.Get());
 }
 
+size_t RaytraceMaterialPipeline::GetRootSignatureSize(RenderPass::Id pass) const
+{
+	return m_raytraceRootSignatureSizes[pass];
+}
+
 Material::Material(const std::string& name) :
 	m_valid{ true },
 	m_name { std::move(name) },
@@ -240,18 +255,17 @@ void DefaultOpaqueMaterial::BindPipeline(ID3D12Device5* device, ID3D12GraphicsCo
 	// Create a new pipeline and cache it if it has not been created
 	if (!pipeline)
 	{
-		auto rootSig = CreateRaytraceRootSignature(device, pass);
-		assert(rootSig != nullptr);
-
-		CreateShaderBindingTable();
-		pipeline = std::make_unique<RaytraceMaterialPipeline>(device, pass, k_rgs, k_chs, k_ms, rootSig);
+		auto rootSigDesc = BuildRaytraceRootSignature(device, pass);
+		pipeline = std::make_unique<RaytraceMaterialPipeline>(device, pass, k_rgs, k_chs, k_ms, rootSigDesc);
 	}
 
 	pipeline->Bind(cmdList);
 }
 
-ID3D12RootSignature* DefaultOpaqueMaterial::CreateRaytraceRootSignature(ID3D12Device5* device, RenderPass::Id pass)
+D3D12_ROOT_SIGNATURE_DESC DefaultOpaqueMaterial::BuildRaytraceRootSignature(ID3D12Device5* device, RenderPass::Id pass)
 {
+	D3D12_ROOT_SIGNATURE_DESC rootDesc = {};
+
 	if (pass == RenderPass::Raytrace)
 	{
 		std::vector<D3D12_ROOT_PARAMETER> rootParams;
@@ -321,24 +335,18 @@ ID3D12RootSignature* DefaultOpaqueMaterial::CreateRaytraceRootSignature(ID3D12De
 		materialSRVs.DescriptorTable.pDescriptorRanges = &materialSRVRange;
 		rootParams.push_back(materialSRVs);
 
-		D3D12_ROOT_SIGNATURE_DESC rootDesc{};
+		// Full Root Signature
 		rootDesc.Flags = rootParameters.size();
 		rootDesc.pParameters = rootParameters.data();
 		rootDesc.Flags = D3D12_ROOT_SIGNATURE_FLAG_LOCAL_ROOT_SIGNATURE;
-
-		m_raytraceRootSignatures[pass] = CreateRootSignature(device, rootDesc);
-		m_raytraceRootSignatureSizes[pass] = GetRootSignatureSizeInBytes(rootDesc);
-
-		return m_raytraceRootSignatures[pass];
 	}
 
-	return nullptr;
+	return rootDesc;
 }
 
-size_t DefaultOpaqueMaterial::GetSBTEntrySize() const
+size_t DefaultOpaqueMaterial::GetSBTEntrySize(RenderPass::Id pass) const
 {
-	const size_t programIdSize = 32;
-	size_t sbtEntrySize = programIdSize + m_raytraceRootSignatureSizes[pass];
+	size_t sbtEntrySize = D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES + m_raytracePipelines[pass]->GetRootSignatureSize();
 	sbtEntrySize = (sbtEntrySize + D3D12_RAYTRACING_SHADER_RECORD_BYTE_ALIGNMENT - 1) & ~D3D12_RAYTRACING_SHADER_RECORD_BYTE_ALIGNMENT;
 
 	return sbtEntrySize;
@@ -346,7 +354,7 @@ size_t DefaultOpaqueMaterial::GetSBTEntrySize() const
 
 void DefaultOpaqueMaterial::CreateShaderBindingTable(ID3D12Device5* device, RenderPass::Id pass)
 {
-	const size_t sbtSize = GetSBTEntrySize() * 3; // For RGS, CHS and MS
+	const size_t sbtSize = GetSBTEntrySize(pass) * 3; // For RGS, CHS and MS
 
 	D3D12_RESOURCE_DESC resDesc = {};
 	resDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER; 
@@ -421,18 +429,17 @@ void DefaultMaskedMaterial::BindPipeline(ID3D12Device5* device, ID3D12GraphicsCo
 	// Create a new pipeline and cache it if it has not been created
 	if (!pipeline)
 	{
-		auto rootSig = CreateRaytraceRootSignature(device, pass);
-		assert(rootSig != nullptr);
-
-		CreateShaderBindingTable();
-		pipeline = std::make_unique<RaytraceMaterialPipeline>(device, pass, k_rgs, k_chs, k_ms, rootSig);
+		auto rootSigDesc = BuildRaytraceRootSignature(device, pass);
+		pipeline = std::make_unique<RaytraceMaterialPipeline>(device, pass, k_rgs, k_chs, k_ms, rootSigDesc);
 	}
 
 	pipeline->Bind(cmdList);
 }
 
-ID3D12RootSignature* DefaultMaskedMaterial::CreateRaytraceRootSignature(ID3D12Device5* device, RenderPass::Id pass)
+D3D12_ROOT_SIGNATURE_DESC DefaultMaskedMaterial::BuildRaytraceRootSignature(ID3D12Device5* device, RenderPass::Id pass)
 {
+	D3D12_ROOT_SIGNATURE_DESC rootDesc = {};
+
 	if (pass == RenderPass::Raytrace)
 	{
 		std::vector<D3D12_ROOT_PARAMETER> rootParams;
@@ -502,24 +509,18 @@ ID3D12RootSignature* DefaultMaskedMaterial::CreateRaytraceRootSignature(ID3D12De
 		materialSRVs.DescriptorTable.pDescriptorRanges = &materialSRVRange;
 		rootParams.push_back(materialSRVs);
 
-		D3D12_ROOT_SIGNATURE_DESC rootDesc{};
+		// Full Root Signature
 		rootDesc.Flags = rootParameters.size();
 		rootDesc.pParameters = rootParameters.data();
 		rootDesc.Flags = D3D12_ROOT_SIGNATURE_FLAG_LOCAL_ROOT_SIGNATURE;
-
-		m_raytraceRootSignatures[pass] = CreateRootSignature(device, rootDesc);
-		m_raytraceRootSignatureSizes[pass] = GetRootSignatureSizeInBytes(rootDesc);
-
-		return m_raytraceRootSignatures[pass];
 	}
 
-	retunr nullptr;
+	retunr rootDesc;
 }
 
-size_t DefaultMaskedMaterial::GetSBTEntrySize() const
+size_t DefaultMaskedMaterial::GetSBTEntrySize(RenderPass::Id pass) const
 {
-	const size_t programIdSize = 32;
-	size_t sbtEntrySize = programIdSize + m_raytraceRootSignatureSizes[pass];
+	size_t sbtEntrySize = D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES + m_raytracePipelines[pass]->GetRootSignatureSize();
 	sbtEntrySize = (sbtEntrySize + D3D12_RAYTRACING_SHADER_RECORD_BYTE_ALIGNMENT - 1) & ~D3D12_RAYTRACING_SHADER_RECORD_BYTE_ALIGNMENT;
 
 	return sbtEntrySize;
@@ -527,7 +528,7 @@ size_t DefaultMaskedMaterial::GetSBTEntrySize() const
 
 void DefaultMaskedMaterial::CreateShaderBindingTable(ID3D12Device5* device, RenderPass::Id pass)
 {
-	const size_t sbtSize = GetSBTEntrySize() * 3; // For RGS, CHS and MS
+	const size_t sbtSize = GetSBTEntrySize(pass) * 3; // For RGS, CHS and MS
 
 	D3D12_RESOURCE_DESC resDesc = {};
 	resDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
@@ -558,6 +559,16 @@ void DefaultMaskedMaterial::CreateShaderBindingTable(ID3D12Device5* device, Rend
 
 void DefaultMaskedMaterial::BindConstants(uint32_t bufferIndex, RenderPass::Id pass, ID3D12GraphicsCommandList4* cmdList, D3D12_GPU_VIRTUAL_ADDRESS objConstants, D3D12_GPU_VIRTUAL_ADDRESS viewConstants, D3D12_GPU_VIRTUAL_ADDRESS lightConstants, D3D12_GPU_VIRTUAL_ADDRESS shadowConstants, D3D12_GPU_DESCRIPTOR_HANDLE renderSurfaceSrvBegin) const
 {
+	if (m_sbtPtr[pass] == nullptr)
+	{
+		CreateShaderBindingTable(device, pass);
+	}
+
+	const size_t sbtEntrySize = GetSBTEntrySize(pass);
+	const size_t sbtSize = sbtEntrySize * 3; // For RGS, CHS and MS
+
+	uint8_t* pData = m_sbtPtr[pass] + bufferIndex * sbtSize;
+
 	if (pass == RenderPass::Geometry)
 	{
 		cmdList->SetGraphicsRootConstantBufferView(0, viewConstants);
@@ -603,18 +614,17 @@ void UntexturedMaterial::BindPipeline(ID3D12Device5* device, ID3D12GraphicsComma
 	// Create a new pipeline and cache it if it has not been created
 	if (!pipeline)
 	{
-		auto rootSig = CreateRaytraceRootSignature(device, pass);
-		assert(rootSig != nullptr);
-
-		CreateShaderBindingTable();
-		pipeline = std::make_unique<RaytraceMaterialPipeline>(device, pass, k_rgs, k_chs, k_ms, rootSig);
+		auto rootSigDesc = BuildRaytraceRootSignature(device, pass);
+		pipeline = std::make_unique<RaytraceMaterialPipeline>(device, pass, k_rgs, k_chs, k_ms, rootSigDesc);
 	}
 
 	pipeline->Bind(cmdList);
 }
 
-ID3D12RootSignature* UntexturedMaterial::CreateRaytraceRootSignature(ID3D12Device5* device, RenderPass::Id pass)
+D3D12_ROOT_SIGNATURE_DESC UntexturedMaterial::BuildRaytraceRootSignature(ID3D12Device5* device, RenderPass::Id pass)
 {
+	D3D12_ROOT_SIGNATURE_DESC rootDesc = {};
+
 	if (pass == RenderPass::Raytrace)
 	{
 		std::vector<D3D12_ROOT_PARAMETER> rootParams;
@@ -669,24 +679,18 @@ ID3D12RootSignature* UntexturedMaterial::CreateRaytraceRootSignature(ID3D12Devic
 		meshSRVs.DescriptorTable.pDescriptorRanges = &meshSRVRange;
 		rootParams.push_back(meshSRVs);
 
-		D3D12_ROOT_SIGNATURE_DESC rootDesc{};
+		// Full root signature
 		rootDesc.Flags = rootParameters.size();
 		rootDesc.pParameters = rootParameters.data();
 		rootDesc.Flags = D3D12_ROOT_SIGNATURE_FLAG_LOCAL_ROOT_SIGNATURE;
-
-		m_raytraceRootSignatures[pass] = CreateRootSignature(device, rootDesc);
-		m_raytraceRootSignatureSizes[pass] = GetRootSignatureSizeInBytes(rootDesc);
-
-		return m_raytraceRootSignatures[pass];
 	}
 
-	return nullptr;
+	return rootDesc;
 }
 
-size_t UntexturedMaterial::GetSBTEntrySize() const
+size_t UntexturedMaterial::GetSBTEntrySize(RenderPass::Id pass) const
 {
-	const size_t programIdSize = 32;
-	size_t sbtEntrySize = programIdSize + m_raytraceRootSignatureSizes[pass];
+	size_t sbtEntrySize = D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES + m_raytracePipelines[pass]->GetRootSignatureSize();
 	sbtEntrySize = (sbtEntrySize + D3D12_RAYTRACING_SHADER_RECORD_BYTE_ALIGNMENT - 1) & ~D3D12_RAYTRACING_SHADER_RECORD_BYTE_ALIGNMENT;
 
 	return sbtEntrySize;
@@ -694,7 +698,7 @@ size_t UntexturedMaterial::GetSBTEntrySize() const
 
 void UntexturedMaterial::CreateShaderBindingTable(ID3D12Device5* device, RenderPass::Id pass)
 {
-	const size_t sbtSize = GetSBTEntrySize() * 3; // For RGS, CHS and MS
+	const size_t sbtSize = GetSBTEntrySize(pass) * 3; // For RGS, CHS and MS
 
 	D3D12_RESOURCE_DESC resDesc = {};
 	resDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;

@@ -11,12 +11,15 @@ public:
 class RaytraceMaterialPipeline : public MaterialPipeline
 {
 public:
-	RaytraceMaterialPipeline(ID3D12Device5* device, RenderPass::Id renderPass, cconst std::string rgs, onst std::string chs, const std::string ms, const ID3D12RootSignature* rootSig);
+	RaytraceMaterialPipeline(ID3D12Device5* device, RenderPass::Id renderPass, cconst std::string rgs, onst std::string chs, const std::string ms, const D3D12_ROOT_SIGNATURE_DESC& rootSigDesc);
 	void Bind(ID3D12GraphicsCommandList4* cmdList) const override;
+	size_t GetRootSignatureSize(RenderPass::Id renderPass) const;
 
 private:
 	Microsoft::WRL::ComPtr<ID3D12StateObject> m_pso;
 	Microsoft::WRL::ComPtr<ID3D12StateObjectProperties> m_psoProperties;
+	Microsoft::WRL::ComPtr<ID3D12RootSignature> m_raytraceRootSignatures[RenderPass::Count];
+	size_t m_raytraceRootSignatureSizes[RenderPass::Count];
 };
 
 class Material
@@ -51,20 +54,18 @@ public:
 	};
 
 	UntexturedMaterial(std::string& name, Microsoft::WRL::ComPtr<ID3D12Resource> constantBuffer);
-	void BindPipeline(ID3D12Device5* device, ID3D12GraphicsCommandList4* cmdList, RenderPass::Id renderPass) override;
+	static void BindPipeline(ID3D12Device5* device, ID3D12GraphicsCommandList4* cmdList, RenderPass::Id renderPass) override;
 	void BindConstants(uint32_t bufferIndex, RenderPass::Id pass, ID3D12GraphicsCommandList4* cmdList, D3D12_GPU_VIRTUAL_ADDRESS objConstants, D3D12_GPU_VIRTUAL_ADDRESS viewConstants, D3D12_GPU_VIRTUAL_ADDRESS lightConstants, D3D12_GPU_VIRTUAL_ADDRESS shadowConstants, D3D12_GPU_DESCRIPTOR_HANDLE renderSurfaceSrvBegin) const override;
 	size_t GetHash(RenderPass::Id renderPass, VertexFormat::Type vertexFormat) const override;
 
 private:
-	ID3D12RootSignature* CreateRaytraceRootSignature(ID3D12Device5* device, RenderPass::Id pass);
+	static D3D12_ROOT_SIGNATURE_DESC BuildRaytraceRootSignature(ID3D12Device5* device, RenderPass::Id pass);
 	void CreateShaderBindingTable(ID3D12Device5* device, RenderPass::Id pass);
 
 private:
 	static inline std::unique_ptr<RaytraceMaterialPipeline> m_raytracePipelines[RenderPass::Count];
-	Microsoft::WRL::ComPtr<ID3D12RootSignature> m_raytraceRootSignatures[RenderPass::Count];
-	size_t m_raytraceRootSignatureSizes[RenderPass::Count];
 	Microsoft::WRL::ComPtr<ID3D12Resource> m_shaderBindingTable[RenderPass::Count];
-	uint8_t* m_sbtPtr[RenderPass::Count];
+	uint8_t* m_sbtPtr[RenderPass::Count] = {};
 	Microsoft::WRL::ComPtr<ID3D12Resource> m_constantBuffer;
 	size_t m_hash[RenderPass::Count];
 };
@@ -77,20 +78,18 @@ class DefaultOpaqueMaterial : public Material
 
 public:
 	DefaultOpaqueMaterial(std::string& name, const D3D12_GPU_DESCRIPTOR_HANDLE srvHandle);
-	void BindPipeline(ID3D12Device5* device, ID3D12GraphicsCommandList4* cmdList, RenderPass::Id renderPass) override;
+	static void BindPipeline(ID3D12Device5* device, ID3D12GraphicsCommandList4* cmdList, RenderPass::Id renderPass) override;
 	void BindConstants(uint32_t bufferIndex, RenderPass::Id pass, ID3D12GraphicsCommandList4* cmdList, D3D12_GPU_VIRTUAL_ADDRESS objConstants, D3D12_GPU_VIRTUAL_ADDRESS viewConstants, D3D12_GPU_VIRTUAL_ADDRESS lightConstants, D3D12_GPU_VIRTUAL_ADDRESS shadowConstants, D3D12_GPU_DESCRIPTOR_HANDLE renderSurfaceSrvBegin) const override;
 	size_t GetHash(RenderPass::Id renderPass, VertexFormat::Type vertexFormat) const override;
 
 private:
-	ID3D12RootSignature* CreateRaytraceRootSignature(ID3D12Device5* device, RenderPass::Id pass);
+	static D3D12_ROOT_SIGNATURE_DESC BuildRaytraceRootSignature(ID3D12Device5* device, RenderPass::Id pass);
 	void CreateShaderBindingTable(ID3D12Device5* device, RenderPass::Id pass);
 
 private:
 	static inline std::unique_ptr<RaytraceMaterialPipeline> m_raytracePipelines[RenderPass::Count];
-	Microsoft::WRL::ComPtr<ID3D12RootSignature> m_raytraceRootSignatures[RenderPass::Count];
-	size_t m_raytraceRootSignatureSizes[RenderPass::Count];
 	Microsoft::WRL::ComPtr<ID3D12Resource> m_shaderBindingTable[RenderPass::Count];
-	uint8_t* m_sbtPtr[RenderPass::Count];
+	uint8_t* m_sbtPtr[RenderPass::Count] = {};
 	D3D12_GPU_DESCRIPTOR_HANDLE m_srvBegin;
 	size_t m_hash[RenderPass::Count];
 };
@@ -103,20 +102,18 @@ class DefaultMaskedMaterial : public Material
 
 public:
 	DefaultMaskedMaterial(std::string& name, const D3D12_GPU_DESCRIPTOR_HANDLE srvHandle, const D3D12_GPU_DESCRIPTOR_HANDLE opacityMaskSrvHandle);
-	void BindPipeline(ID3D12Device5* device, ID3D12GraphicsCommandList4* cmdList, RenderPass::Id renderPass) override;
+	static void BindPipeline(ID3D12Device5* device, ID3D12GraphicsCommandList4* cmdList, RenderPass::Id renderPass) override;
 	void BindConstants(uint32_t bufferIndex, RenderPass::Id pass, ID3D12GraphicsCommandList4* cmdList, D3D12_GPU_VIRTUAL_ADDRESS objConstants, D3D12_GPU_VIRTUAL_ADDRESS viewConstants, D3D12_GPU_VIRTUAL_ADDRESS lightConstants, D3D12_GPU_VIRTUAL_ADDRESS shadowConstants, D3D12_GPU_DESCRIPTOR_HANDLE renderSurfaceSrvBegin) const override;
 	size_t GetHash(RenderPass::Id renderPass, VertexFormat::Type vertexFormat) const override;
 
 private:
-	ID3D12RootSignature* CreateRaytraceRootSignature(ID3D12Device5* device, RenderPass::Id pass);
+	static D3D12_ROOT_SIGNATURE_DESC BuildRaytraceRootSignature(ID3D12Device5* device, RenderPass::Id pass);
 	void CreateShaderBindingTable(ID3D12Device5* device, RenderPass::Id pass);
 
 private:
 	static inline std::unique_ptr<RaytraceMaterialPipeline> m_raytracePipelines[RenderPass::Count];
-	Microsoft::WRL::ComPtr<ID3D12RootSignature> m_raytraceRootSignatures[RenderPass::Count];
-	size_t m_raytraceRootSignatureSizes[RenderPass::Count];
 	Microsoft::WRL::ComPtr<ID3D12Resource> m_shaderBindingTable[RenderPass::Count];
-	uint8_t* m_sbtPtr[RenderPass::Count];
+	uint8_t* m_sbtPtr[RenderPass::Count] = {};
 	D3D12_GPU_DESCRIPTOR_HANDLE m_srvBegin;
 	D3D12_GPU_DESCRIPTOR_HANDLE m_opacityMaskSrv;
 	size_t m_hash[RenderPass::Count];
