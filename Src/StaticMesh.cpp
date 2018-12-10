@@ -17,6 +17,7 @@ void StaticMesh::Init(
 {
 	m_numIndices = indexData.size();
 	m_materialIndex = matIndex;
+	m_meshSRVHandle.ptr = srvHeap->GetGPUDescriptorHandleForHeapStart().ptr + offsetInHeap * descriptorSize;
 
 	CreateVertexBuffer(device, cmdList, uploadBuffer, resourceHeap, vertexData, srvHeap, offsetInHeap, srvDescriptorSize);
 	CreateIndexBuffer(device, cmdList, uploadBuffer, resourceHeap, indexData, srvHeap, offsetInHeap + 1, srvDescriptorSize);
@@ -105,7 +106,6 @@ void StaticMesh::CreateVertexBuffer(
 
 	D3D12_CPU_DESCRIPTOR_HANDLE cpuHnd;
 	cpuHnd.ptr = srvHeap->GetCPUDescriptorHandleForHeapStart().ptr + offsetInHeap * descriptorSize;
-	m_vertexBufferSrv.ptr = srvHeap->GetGPUDescriptorHandleForHeapStart().ptr + offsetInHeap * descriptorSize;
 
 	device->CreateShaderResourceView(m_vertexBuffer.Get(), &vbSrvDesc, cpuHnd);
 }
@@ -192,7 +192,6 @@ void StaticMesh::CreateIndexBuffer(
 
 	D3D12_CPU_DESCRIPTOR_HANDLE cpuHnd;
 	cpuHnd.ptr = srvHeap->GetCPUDescriptorHandleForHeapStart().ptr + offsetInHeap * descriptorSize;
-	m_indexBufferSrv.ptr = srvHeap->GetGPUDescriptorHandleForHeapStart().ptr + offsetInHeap * descriptorSize;
 
 	device->CreateShaderResourceView(m_indexBuffer.Get(), &ibSrvDesc, cpuHnd);
 }
@@ -315,6 +314,11 @@ const DirectX::BoundingBox& StaticMesh::GetBounds() const
 const D3D12_GPU_VIRTUAL_ADDRESS StaticMesh::GetBLASAddress() const
 {
 	return m_blasBuffer->GetGPUVirtualAddress();
+}
+
+const D3D12_GPU_DESCRIPTOR_HANDLE StaticMesh::GetVertexAndIndexBufferSRVHandle() const
+{
+	return m_meshSRVHandle;
 }
 
 StaticMeshEntity::StaticMeshEntity(
@@ -449,4 +453,9 @@ DirectX::XMFLOAT4X4 StaticMeshEntity::GetLocalToWorldMatrix() const
 std::string StaticMeshEntity::GetName() const
 {
 	return m_name;
+}
+
+const D3D12_GPU_VIRTUAL_ADDRESS StaticMeshEntity::GetTLASAddress() const
+{
+	return m_tlasBuffer->GetGPUVirtualAddress();
 }

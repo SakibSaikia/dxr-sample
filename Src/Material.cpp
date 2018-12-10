@@ -3,7 +3,7 @@
 
 Microsoft::WRL::ComPtr<ID3DBlob> LoadBlob(const std::string& filename)
 {
-	std::string filepath = R"(CompiledShaders\)" + filename;
+	std::string filepath = R"(CompiledShaders\)" + filename + R"(.cso)";
 	std::ifstream fileHandle(filepath, std::ios::binary);
 	assert(fileHandle.good() && L"Error opening file");
 
@@ -45,13 +45,15 @@ size_t GetRootSignatureSizeInBytes(const D3D12_ROOT_SIGNATURE_DESC& desc)
 		switch (desc.pParameters[i].ParameterType)
 		{
 		case D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE:
+			size += sizeof(D3D12_GPU_DESCRIPTOR_HANDLE);
+			break;
 		case D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS:
-			size += 4;
+			size += sizeof(DWORD);
 			break;
 		case D3D12_ROOT_PARAMETER_TYPE_CBV:
 		case D3D12_ROOT_PARAMETER_TYPE_SRV:
 		case D3D12_ROOT_PARAMETER_TYPE_UAV:
-			size += 8;
+			size += sizeof(D3D12_GPU_VIRTUAL_ADDRESS);
 			break;
 		}
 	}
@@ -59,13 +61,13 @@ size_t GetRootSignatureSizeInBytes(const D3D12_ROOT_SIGNATURE_DESC& desc)
 	return size;
 }
 
-RaytraceMaterialPipeline::RaytraceMaterialPipeline(ID3D12Device5* device, RenderPass::Id renderPass, cconst std::string rgs, onst std::string chs, const std::string ms, const D3D12_ROOT_SIGNATURE_DESC& rootSigDesc)
+RaytraceMaterialPipeline::RaytraceMaterialPipeline(ID3D12Device5* device, RenderPass::Id renderPass, const std::string rgs, const std::string chs, const std::string ms, const D3D12_ROOT_SIGNATURE_DESC& rootSigDesc)
 {
 	// -----------------------------------------------------------------------------
 	// Root Signature
 	// -----------------------------------------------------------------------------
-	m_raytraceRootSignatures[renderPass] = CreateRootSignature(device, rootSigDesc);
-	m_raytraceRootSignatureSizes[renderPass] = GetRootSignatureSizeInBytes(device, rootSigDesc);
+	m_raytraceRootSignature = CreateRootSignature(device, rootSigDesc);
+	m_raytraceRootSignatureSize = GetRootSignatureSizeInBytes(device, rootSigDesc);
 
 
 	// -----------------------------------------------------------------------------
@@ -75,13 +77,12 @@ RaytraceMaterialPipeline::RaytraceMaterialPipeline(ID3D12Device5* device, Render
 	rtSubObjects.reserve(10);
 
 	// -------------------- Ray Generation Shader -------------------------------
-	Microsoft::WRL::ComPtr<ID3DBlob> rgsByteCode = LoadBlob(k_rgs);
-	std::wstring rgsName(rgs.begin(), rgs.end());
-	std::wstring rgsExportName = std::wstring(L"RayGen_") + rgsName;
+	Microsoft::WRL::ComPtr<ID3DBlob> rgsByteCode = LoadBlob(rgs);
+	std::wstring rgsExportName(rgs.begin(), rgs.end());
 
 	D3D12_EXPORT_DESC rgsExportDesc{};
-	rgsExportDesc.Name = L"RayGen";
-	rgsExportDesc.ExportToRename = rgsExportName.c_str();
+	rgsExportDesc.Name = rgsExportName.c_str();
+	rgsExportDesc.ExportToRename = L"RayGen";
 	
 
 	D3D12_DXIL_LIBRARY_DESC rgsLibDesc{};
@@ -97,12 +98,11 @@ RaytraceMaterialPipeline::RaytraceMaterialPipeline(ID3D12Device5* device, Render
 
 	// -------------------- Closest Hit Shader -----------------------------------
 	Microsoft::WRL::ComPtr<ID3DBlob> chsByteCode = LoadBlob(chs);
-	std::wstring chsName(chs.begin(), chs.end());
-	std::wstring chsExportName = std::wstring(L"ClosestHit_") + chsName;
+	std::wstring chsExportName(chs.begin(), chs.end());
 
 	D3D12_EXPORT_DESC chsExportDesc{};
-	chsExportDesc.Name = L"ClosestHit";
-	chsExportDesc.ExportToRename = chsExportName.c_str();
+	chsExportDesc.Name = chsExportName.c_str();
+	chsExportDesc.ExportToRename = L"ClosestHit";
 
 	D3D12_DXIL_LIBRARY_DESC chsLibDesc{};
 	chsLibDesc.DXILLibrary.pShaderBytecode = chsByteCode.Get()->GetBufferPointer();
@@ -117,12 +117,11 @@ RaytraceMaterialPipeline::RaytraceMaterialPipeline(ID3D12Device5* device, Render
 
 	// --------------------- Miss Shader ----------------------------------------
 	Microsoft::WRL::ComPtr<ID3DBlob> msByteCode = LoadBlob(ms);
-	std::wstring msName(ms.begin(), ms.end());
-	std::wstring msExportName = std::wstring(L"Miss_") + msName;
+	std::wstring msExportName(ms.begin(), ms.end());
 
 	D3D12_EXPORT_DESC msExportDesc{};
-	msExportDesc.Name = L"Miss";
-	msExportDesc.ExportToRename = msExportName.c_str();
+	msExportDesc.Name = msExportName.c_str();
+	msExportDesc.ExportToRename = L"Miss";
 
 	D3D12_DXIL_LIBRARY_DESC msLibDesc{};
 	msLibDesc.DXILLibrary.pShaderBytecode = msByteCode.Get()->GetBufferPointer();
@@ -137,7 +136,7 @@ RaytraceMaterialPipeline::RaytraceMaterialPipeline(ID3D12Device5* device, Render
 
 	// --------------------- Hit Group ------------------------------------------
 	D3D12_HIT_GROUP_DESC hitGroupDesc{};
-	hitGroupDesc.ClosestHitShaderImport = L"ClosestHit";
+	hitGroupDesc.ClosestHitShaderImport = chsExportName.c_str();
 	hitGroupDesc.HitGroupExport = L"HitGroup";
 
 	D3D12_STATE_SUBOBJECT hitGroupSubObject{};
@@ -221,9 +220,15 @@ void RaytraceMaterialPipeline::Bind(ID3D12GraphicsCommandList4* cmdList) const
 	cmdList->SetPipelineState(m_pso.Get());
 }
 
-size_t RaytraceMaterialPipeline::GetRootSignatureSize(RenderPass::Id pass) const
+size_t RaytraceMaterialPipeline::GetRootSignatureSize() const
 {
-	return m_raytraceRootSignatureSizes[pass];
+	return m_raytraceRootSignatureSize;
+}
+
+void* RaytraceMaterialPipeline::GetShaderIdentifier(const std::string& exportName) const
+{
+	std::wstring exportNameW(exportName.begin(), exportName.end());
+	return m_psoProperties->GetShaderIdentifier(exportNameW.c_str());
 }
 
 Material::Material(const std::string& name) :
@@ -383,7 +388,7 @@ void DefaultOpaqueMaterial::CreateShaderBindingTable(ID3D12Device5* device, Rend
 	CHECK(shaderBindingTable[pass]->Map(0, &readRange, reinterpret_cast<void**)&sbtPtr);
 }
 
-void DefaultOpaqueMaterial::BindConstants(uint32_t bufferIndex, RenderPass::Id pass, ID3D12GraphicsCommandList4* cmdList, D3D12_GPU_VIRTUAL_ADDRESS objConstants, D3D12_GPU_VIRTUAL_ADDRESS viewConstants, D3D12_GPU_VIRTUAL_ADDRESS lightConstants, D3D12_GPU_VIRTUAL_ADDRESS shadowConstants, D3D12_GPU_DESCRIPTOR_HANDLE renderSurfaceSrvBegin) const
+void DefaultOpaqueMaterial::BindConstants(uint32_t bufferIndex, RenderPass::Id pass, ID3D12GraphicsCommandList4* cmdList, D3D12_GPU_VIRTUAL_ADDRESS tlas, D3D12_GPU_DESCRIPTOR_HANDLE meshBuffer, D3D12_GPU_VIRTUAL_ADDRESS objConstants, D3D12_GPU_VIRTUAL_ADDRESS viewConstants, D3D12_GPU_VIRTUAL_ADDRESS lightConstants, D3D12_GPU_VIRTUAL_ADDRESS shadowConstants, D3D12_GPU_DESCRIPTOR_HANDLE outputUAV) const
 {
 	if (pass == RenderPass::Geometry)
 	{
@@ -443,7 +448,7 @@ D3D12_ROOT_SIGNATURE_DESC DefaultMaskedMaterial::BuildRaytraceRootSignature(ID3D
 	if (pass == RenderPass::Raytrace)
 	{
 		std::vector<D3D12_ROOT_PARAMETER> rootParams;
-		rootParams.reserve(7);
+		rootParams.reserve(6);
 
 		// Constant buffers
 		D3D12_ROOT_PARAMETER viewCBV{};
@@ -457,12 +462,6 @@ D3D12_ROOT_SIGNATURE_DESC DefaultMaskedMaterial::BuildRaytraceRootSignature(ID3D
 		lightCBV.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
 		lightCBV.Descriptor.ShaderRegister = 1;
 		rootParams.push_back(lightCBV);
-
-		D3D12_ROOT_PARAMETER materialCBV{};
-		materialCBV.ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
-		materialCBV.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
-		materialCBV.Descriptor.ShaderRegister = 2;
-		rootParams.push_back(materialCBV);
 
 		// UAV
 		D3D12_ROOT_PARAMETER outputUAV{};
@@ -557,38 +556,66 @@ void DefaultMaskedMaterial::CreateShaderBindingTable(ID3D12Device5* device, Rend
 	CHECK(shaderBindingTable[pass]->Map(0, &readRange, reinterpret_cast<void**)&sbtPtr);
 }
 
-void DefaultMaskedMaterial::BindConstants(uint32_t bufferIndex, RenderPass::Id pass, ID3D12GraphicsCommandList4* cmdList, D3D12_GPU_VIRTUAL_ADDRESS objConstants, D3D12_GPU_VIRTUAL_ADDRESS viewConstants, D3D12_GPU_VIRTUAL_ADDRESS lightConstants, D3D12_GPU_VIRTUAL_ADDRESS shadowConstants, D3D12_GPU_DESCRIPTOR_HANDLE renderSurfaceSrvBegin) const
+void DefaultMaskedMaterial::BindConstants(uint32_t bufferIndex, RenderPass::Id pass, ID3D12GraphicsCommandList4* cmdList, D3D12_GPU_VIRTUAL_ADDRESS tlas, D3D12_GPU_DESCRIPTOR_HANDLE meshBuffer, D3D12_GPU_VIRTUAL_ADDRESS objConstants, D3D12_GPU_VIRTUAL_ADDRESS viewConstants, D3D12_GPU_VIRTUAL_ADDRESS lightConstants, D3D12_GPU_VIRTUAL_ADDRESS shadowConstants, D3D12_GPU_DESCRIPTOR_HANDLE outputUAV) const
 {
-	if (m_sbtPtr[pass] == nullptr)
+	if (pass == RenderPass::Raytrace)
 	{
-		CreateShaderBindingTable(device, pass);
-	}
+		if (m_sbtPtr[pass] == nullptr)
+		{
+			CreateShaderBindingTable(device, pass);
+		}
 
-	const size_t sbtEntrySize = GetSBTEntrySize(pass);
-	const size_t sbtSize = sbtEntrySize * 3; // For RGS, CHS and MS
+		const size_t sbtEntrySize = GetSBTEntrySize(pass);
+		const size_t sbtSize = sbtEntrySize * 3; // For RGS, CHS and MS
 
-	uint8_t* pData = m_sbtPtr[pass] + bufferIndex * sbtSize;
+		uint8_t* pData = m_sbtPtr[pass] + bufferIndex * sbtSize;
 
-	if (pass == RenderPass::Geometry)
-	{
-		cmdList->SetGraphicsRootConstantBufferView(0, viewConstants);
-		cmdList->SetGraphicsRootConstantBufferView(1, objConstants);
-		cmdList->SetGraphicsRootConstantBufferView(2, lightConstants);
-		cmdList->SetGraphicsRootConstantBufferView(3, shadowConstants);
-		cmdList->SetGraphicsRootDescriptorTable(5, renderSurfaceSrvBegin);
-		cmdList->SetGraphicsRootDescriptorTable(6, m_srvBegin);
-	}
-	else if (pass == RenderPass::DepthOnly)
-	{
-		cmdList->SetGraphicsRootConstantBufferView(0, viewConstants);
-		cmdList->SetGraphicsRootConstantBufferView(1, objConstants);
-		cmdList->SetGraphicsRootDescriptorTable(2, m_opacityMaskSrv);
-	}
-	else if (pass == RenderPass::Shadowmap)
-	{
-		cmdList->SetGraphicsRootConstantBufferView(0, shadowConstants);
-		cmdList->SetGraphicsRootConstantBufferView(1, objConstants);
-		cmdList->SetGraphicsRootDescriptorTable(2, m_opacityMaskSrv);
+		// Entry 0 - Ray Generation Program
+		{
+			memcpy(pData, m_raytracePipelines[pass]->GetShaderIdentifier(k_rgs), D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
+
+			D3D12_GPU_VIRTUAL_ADDRESS* pRootDescriptors = *reinterpret_cast<D3D12_GPU_VIRTUAL_ADDRESS*>(pData + D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
+			*(pRootDescriptors++) = viewConstants;
+			*(pRootDescriptors++) = lightConstants;
+			*(pRootDescriptors++) = outputUAV;
+			*(pRootDescriptors++) = tlas;
+
+			D3D12_GPU_DESCRIPTOR_HANDLE* pDescriptorTables = *reinterpret_cast<D3D12_GPU_DESCRIPTOR_HANDLE>(pRootDescriptors);
+			(*pDescriptorTables++) = meshBuffer;
+			(*pDescriptorTables++) = m_srvBegin;
+		}
+
+		pData += sbtEntrySize;
+
+		// Entry 1 - Miss Program
+		{
+			memcpy(pData, m_raytracePipelines[pass]->GetShaderIdentifier(k_ms), D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
+			D3D12_GPU_VIRTUAL_ADDRESS* pRootDescriptors = *reinterpret_cast<D3D12_GPU_VIRTUAL_ADDRESS*>(pData + D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
+			*(pRootDescriptors++) = viewConstants;
+			*(pRootDescriptors++) = lightConstants;
+			*(pRootDescriptors++) = outputUAV;
+			*(pRootDescriptors++) = tlas;
+
+			D3D12_GPU_DESCRIPTOR_HANDLE* pDescriptorTables = *reinterpret_cast<D3D12_GPU_DESCRIPTOR_HANDLE>(pRootDescriptors);
+			(*pDescriptorTables++) = meshBuffer;
+			(*pDescriptorTables++) = m_srvBegin;
+		}
+
+		pData += sbtEntrySize;
+
+		// Entry 2 - Closest Hit Program / Hit Group
+		{
+			memcpy(pData, m_raytracePipelines[pass]->GetShaderIdentifier(L"HitGroup"), D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
+			D3D12_GPU_VIRTUAL_ADDRESS* pRootDescriptors = *reinterpret_cast<D3D12_GPU_VIRTUAL_ADDRESS*>(pData + D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
+			*(pRootDescriptors++) = viewConstants;
+			*(pRootDescriptors++) = lightConstants;
+			*(pRootDescriptors++) = outputUAV;
+			*(pRootDescriptors++) = tlas;
+
+			D3D12_GPU_DESCRIPTOR_HANDLE* pDescriptorTables = *reinterpret_cast<D3D12_GPU_DESCRIPTOR_HANDLE>(pRootDescriptors);
+			(*pDescriptorTables++) = meshBuffer;
+			(*pDescriptorTables++) = m_srvBegin;
+		}
 	}
 }
 
@@ -727,7 +754,7 @@ void UntexturedMaterial::CreateShaderBindingTable(ID3D12Device5* device, RenderP
 	CHECK(shaderBindingTable[pass]->Map(0, &readRange, reinterpret_cast<void**)&sbtPtr);
 }
 
-void UntexturedMaterial::BindConstants(uint32_t bufferIndex, RenderPass::Id pass, ID3D12GraphicsCommandList4* cmdList, D3D12_GPU_VIRTUAL_ADDRESS objConstants, D3D12_GPU_VIRTUAL_ADDRESS viewConstants, D3D12_GPU_VIRTUAL_ADDRESS lightConstants, D3D12_GPU_VIRTUAL_ADDRESS shadowConstants, D3D12_GPU_DESCRIPTOR_HANDLE renderSurfaceSrvBegin) const
+void UntexturedMaterial::BindConstants(uint32_t bufferIndex, RenderPass::Id pass, ID3D12GraphicsCommandList4* cmdList, D3D12_GPU_VIRTUAL_ADDRESS tlas, D3D12_GPU_DESCRIPTOR_HANDLE meshBuffer, D3D12_GPU_VIRTUAL_ADDRESS objConstants, D3D12_GPU_VIRTUAL_ADDRESS viewConstants, D3D12_GPU_VIRTUAL_ADDRESS lightConstants, D3D12_GPU_VIRTUAL_ADDRESS shadowConstants, D3D12_GPU_DESCRIPTOR_HANDLE outputUAV) const
 {
 	if (pass == RenderPass::Raytrace)
 	{

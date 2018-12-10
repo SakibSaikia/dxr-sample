@@ -23,6 +23,7 @@ public:
 	VertexFormat::Type GetVertexFormat() const;
 	const DirectX::BoundingBox& GetBounds() const;
 	const D3D12_GPU_VIRTUAL_ADDRESS GetBLASAddress() const;
+	const D3D12_GPU_DESCRIPTOR_HANDLE GetVertexAndIndexBufferSRVHandle() const;
 
 private:
 	void CreateVertexBuffer(ID3D12Device5* device, ID3D12GraphicsCommandList4* cmdList, UploadBuffer* uploadBuffer, ResourceHeap* resourceHeap, const std::vector<VertexType>& vertexData, ID3D12DescriptorHeap* srvHeap, const size_t offsetInHeap, const size_t srvDescriptorSize);
@@ -33,10 +34,9 @@ private:
 	Microsoft::WRL::ComPtr<ID3D12Resource> m_vertexBuffer;
 	Microsoft::WRL::ComPtr<ID3D12Resource> m_indexBuffer;
 	Microsoft::WRL::ComPtr<ID3D12Resource> m_blasBuffer;
+	D3D12_GPU_DESCRIPTOR_HANDLE m_meshSRVHandle;
 	D3D12_VERTEX_BUFFER_VIEW m_vertexBufferView;
 	D3D12_INDEX_BUFFER_VIEW m_indexBufferView;
-	D3D12_GPU_DESCRIPTOR_HANDLE m_vertexBufferSrv;
-	D3D12_GPU_DESCRIPTOR_HANDLE m_indexBufferSrv;
 	uint32_t m_materialIndex;
 	uint32_t m_numIndices;
 };
@@ -51,6 +51,7 @@ public:
 	DirectX::XMFLOAT4X4 GetLocalToWorldMatrix() const;
 	uint64_t GetMeshIndex() const;
 	std::string GetName() const;
+	const D3D12_GPU_VIRTUAL_ADDRESS GetTLASAddress() const;
 
 private:
 	void CreateTLAS(ID3D12Device5* device, ID3D12GraphicsCommandList4* cmdList, UploadBuffer* uploadBuffer, ResourceHeap* scratchHeap, ResourceHeap* resourceHeap, const D3D12_GPU_VIRTUAL_ADDRESS blasGpuAddr, const DirectX::XMFLOAT4X4& localToWorld);

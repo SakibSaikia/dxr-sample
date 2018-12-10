@@ -482,7 +482,7 @@ void Scene::UpdateRenderResources(uint32_t bufferIndex)
 	m_debugDraw.UpdateRenderResources(bufferIndex);
 }
 
-void Scene::Render(RenderPass::Id pass, ID3D12Device5* device, ID3D12GraphicsCommandList4* cmdList, uint32_t bufferIndex, const View& view, D3D12_GPU_DESCRIPTOR_HANDLE renderSurfaceSrvBegin)
+void Scene::Render(RenderPass::Id pass, ID3D12Device5* device, ID3D12GraphicsCommandList4* cmdList, uint32_t bufferIndex, const View& view, D3D12_GPU_DESCRIPTOR_HANDLE outputUAV)
 {
 	cmdList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
@@ -515,7 +515,7 @@ void Scene::Render(RenderPass::Id pass, ID3D12Device5* device, ID3D12GraphicsCom
 
 			static_assert(sizeof(ShadowConstants) == sizeof(ViewConstants) && L"Size must match so that we can switch out view constants in the shadow map pass!");
 
-			mat->BindConstants(bufferIndex, pass, cmdList, ObjConstants, viewConstants, lightConstants, shadowConstants, renderSurfaceSrvBegin);
+			mat->BindConstants(bufferIndex, pass, cmdList, meshEntity->GetTLASAddress(), sm->GetVertexAndIndexBufferSRVHandle(), ObjConstants, viewConstants, lightConstants, shadowConstants, outputUAV);
 			sm->Render(cmdList);
 		}
 
