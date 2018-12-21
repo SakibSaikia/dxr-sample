@@ -322,15 +322,6 @@ const D3D12_GPU_DESCRIPTOR_HANDLE StaticMesh::GetVertexAndIndexBufferSRVHandle()
 }
 
 StaticMeshEntity::StaticMeshEntity(
-	ID3D12Device5* device, 
-	ID3D12GraphicsCommandList4* cmdList, 
-	UploadBuffer* uploadBuffer, 
-	ResourceHeap* scratchHeap, 
-	ResourceHeap* resourceHeap, 
-	ID3D12DescriptorHeap* srvHeap, 
-	const size_t offsetInHeap, 
-	const size_t srvDescriptorSize, 
-	const D3D12_GPU_VIRTUAL_ADDRESS blasGpuAddr, 
 	std::string&& name, 
 	const uint64_t meshIndex, 
 	const DirectX::XMFLOAT4X4& localToWorld) 
@@ -339,100 +330,6 @@ StaticMeshEntity::StaticMeshEntity(
 	m_meshIndex(meshIndex), 
 	m_localToWorld(localToWorld)
 {
-	CreateTLAS(device, cmdList, uploadBuffer, scratchHeap, resourceHeap, srvHeap, offsetInHeap, srvDescriptorSize, blasGpuAddr, localToWorld);
-}
-
-void StaticMeshEntity::CreateTLAS(
-	ID3D12Device5* device, 
-	ID3D12GraphicsCommandList4* cmdList, 
-	UploadBuffer* uploadBuffer, 
-	ResourceHeap* scratchHeap, 
-	ResourceHeap* resourceHeap, 
-	ID3D12DescriptorHeap* srvHeap, 
-	const size_t offsetInHeap, 
-	const size_t srvDescriptorSize, 
-	const D3D12_GPU_VIRTUAL_ADDRESS blasGpuAddr, 
-	const DirectX::XMFLOAT4X4& localToWorld)
-{
-	// Instance description for top level acceleration structure
-	D3D12_RAYTRACING_INSTANCE_DESC instanceDesc{};
-	instanceDesc.InstanceID = 0;
-	instanceDesc.InstanceContributionToHitGroupIndex = 0;
-	instanceDesc.InstanceMask = 1;
-	instanceDesc.Flags = D3D12_RAYTRACING_INSTANCE_FLAG_NONE;
-	instanceDesc.AccelerationStructure = blasGpuAddr;
-	memcpy(&instanceDesc.Transform[0][0], localToWorld, sizeof(instanceDesc.Transform));
-
-	// Copy instance desc to GPU-side buffer
-	auto[destPtr, offset] = uploadBuffer->GetAlloc(sizeof(instanceDesc));
-	memcpy(destPtr, &instanceDesc, sizeof(instanceDesc));
-
-	// Compute size for top level acceleration structure buffers
-	D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_INPUTS asInputs{};
-	asInputs.Type = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL;
-	asInputs.DescsLayout = D3D12_ELEMENTS_LAYOUT_ARRAY;
-	asInputs.InstanceDescs = uploadBuffer->GetResource()->GetGPUVirtualAddress() + offset;
-	asInputs.NumDescs = 1;
-	asInputs.Flags = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_PREFER_FAST_TRACE;
-
-	D3D12_RAYTRACING_ACCELERATION_STRUCTURE_PREBUILD_INFO asPrebuildInfo{};
-	device->GetRayTracingAccelerationStructurePrebuildInfo(*asInputs, &asPrebuildInfo);
-
-	const size_t alignedScratchSize = (asPrebuildInfo.ScratchDataSizeInBytes + D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BYTE_ALIGNMENT - 1) & ~D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BYTE_ALIGNMENT;
-	const size_t alignedBLASBufferSize = (asPrebuildInfo.ResultDataMaxSizeInBytes + D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BYTE_ALIGNMENT - 1) & ~D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BYTE_ALIGNMENT;
-
-	// Create scratch buffer
-	D3D12_RESOURCE_DESC scratchBufDesc = {};
-	scratchBufDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
-	scratchBufDesc.Alignment = std::max(D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BYTE_ALIGNMENT, D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT);
-	scratchBufDesc.Width = alignedScratchSize;
-	scratchBufDesc.Height = 1;
-	scratchBufDesc.DepthOrArraySize = 1;
-	scratchBufDesc.MipLevels = 1;
-	scratchBufDesc.Format = DXGI_FORMAT_UNKNOWN;
-	scratchBufDesc.SampleDesc.Count = 1;
-	scratchBufDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
-	scratchBufDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
-
-	auto offsetInHeap = scratchHeap->GetAlloc(scratchBufDesc.Width);
-
-	ID3D12Resource* scratchBuffer;
-	CHECK(device->CreatePlacedResource(
-		scratchHeap->GetHeap(),
-		offsetInHeap,
-		&scratchBufDesc,
-		D3D12_RESOURCE_STATE_UNORDERED_ACCESS,
-		nullptr,
-		IID_PPV_ARGS(&scratchBuffer)
-	));
-
-	// Now, build the top level acceleration structure
-	D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_DESC buildDesc{};
-	buildDesc.Inputs = asInputs;
-	buildDesc.ScratchAccelerationStructureData = scratchBuffer->GetGPUVirtualAddress();
-	buildDesc.DestAccelerationStructureData = m_tlasBuffer->GetGPUVirtualAddress();
-
-	cmdList->BuildRaytracingAccelerationStructure(&buildDesc, 0, nullptr);
-
-	// Insert UAV barrier 
-	D3D12_RESOURCE_BARRIER uavBarrier{};
-	uavBarrier.Type = D3D12_RESOURCE_BARRIER_TYPE_UAV;
-	uavBarrier.UAV.pResource = m_tlasBuffer.Get();
-
-	cmdList->ResourceBarrier(1, &uavBarrier);
-
-	// TLAS SRV
-	D3D12_SHADER_RESOURCE_VIEW_DESC tlasSrvDesc{};
-	tlasSrvDesc.Format = DXGI_FORMAT_UNKNOWN;
-	tlasSrvDesc.ViewDimention = D3D12_SRV_DIMENSION_RAYTRACING_ACCELERATION_STRUCTURE;
-	tlasSrvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-	tlasSrvDesc.RaytracingAccelerationStruction.Location = m_tlasBuffer->GetGPUVirtualAddress();
-
-	D3D12_CPU_DESCRIPTOR_HANDLE cpuHnd;
-	cpuHnd.ptr = srvHeap->GetCPUDescriptorHandleForHeapStart().ptr + offsetInHeap * descriptorSize;
-	m_tlasSrv.ptr = srvHeap->GetGPUDescriptorHandleForHeapStart().ptr + offsetInHeap * descriptorSize;
-
-	device->CreateShaderResourceView(nullptr, &tlasSrvDesc, cpuHnd);
 }
 
 void StaticMeshEntity::FillConstants(ObjectConstants* objConst) const

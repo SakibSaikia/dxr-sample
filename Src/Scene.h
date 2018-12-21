@@ -20,7 +20,9 @@ public:
 private:
 	void LoadMeshes(const aiScene* loader, ID3D12Device5* device, ID3D12GraphicsCommandList4* cmdList, UploadBuffer* uploadBuffer, ResourceHeap* scratchHeap, ResourceHeap* resourceHeap, ID3D12DescriptorHeap* srvHeap, const size_t srvStartOffset, const size_t srvDescriptorSize);
 	void LoadMaterials(const aiScene* loader, ID3D12Device5* device, ID3D12GraphicsCommandList4* cmdList, ID3D12CommandQueue* cmdQueue, UploadBuffer* uploadBuffer, ResourceHeap* mtlConstantsHeap, ID3D12DescriptorHeap* srvHeap, const size_t srvStartOffset, const size_t srvDescriptorSize);
-	void LoadEntities(const aiNode* node, ID3D12Device5* device, ID3D12GraphicsCommandList4* cmdList, UploadBuffer* uploadBuffer, ResourceHeap* scratchHeap, ResourceHeap* resourceHeap, ID3D12DescriptorHeap* srvHeap, const size_t srvStartOffset, const size_t srvDescriptorSize);
+	void LoadEntities(const aiNode* node);
+
+	void CreateTLAS(ID3D12Device5* device, ID3D12GraphicsCommandList4* cmdList, UploadBuffer* uploadBuffer, ResourceHeap* scratchHeap, ResourceHeap* resourceHeap, const size_t srvStartOffset, const size_t srvDescriptorSize);
 
 	void InitLights(ID3D12Device5* device);
 	void InitBounds(ID3D12Device5* device, ID3D12GraphicsCommandList4* cmdList);
@@ -34,6 +36,9 @@ private:
 	std::vector<std::unique_ptr<Material>> m_materials;
 	std::vector<std::unique_ptr<Texture>> m_textures;
 	std::unique_ptr<Light> m_light;
+
+	Microsoft::WRL::ComPtr<ID3D12Resource> m_tlasBuffer;
+	D3D12_GPU_DESCRIPTOR_HANDLE m_tlasSrv;
 
 	Microsoft::WRL::ComPtr<ID3D12Resource> m_objectConstantBuffer;
 	ObjectConstants* m_objectConstantBufferPtr;

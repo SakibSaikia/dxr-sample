@@ -45,7 +45,7 @@ class StaticMeshEntity
 {
 public:
 	StaticMeshEntity() = delete;
-	StaticMeshEntity(ID3D12Device5* device, ID3D12GraphicsCommandList4* cmdList, UploadBuffer* uploadBuffer, ResourceHeap* scratchHeap, ResourceHeap* resourceHeap, , ID3D12DescriptorHeap* srvHeap, const size_t offsetInHeap, const size_t srvDescriptorSize, const D3D12_GPU_VIRTUAL_ADDRESS blasGpuAddr, std::string&& name, const uint64_t meshIndex, const DirectX::XMFLOAT4X4& localToWorld);
+	StaticMeshEntity(std::string&& name, const uint64_t meshIndex, const DirectX::XMFLOAT4X4& localToWorld);
 
 	void FillConstants(ObjectConstants* objConst) const;
 	DirectX::XMFLOAT4X4 GetLocalToWorldMatrix() const;
@@ -54,12 +54,7 @@ public:
 	const D3D12_GPU_VIRTUAL_ADDRESS GetTLASAddress() const;
 
 private:
-	void CreateTLAS(ID3D12Device5* device, ID3D12GraphicsCommandList4* cmdList, UploadBuffer* uploadBuffer, ResourceHeap* scratchHeap, ResourceHeap* resourceHeap, const D3D12_GPU_VIRTUAL_ADDRESS blasGpuAddr, const DirectX::XMFLOAT4X4& localToWorld);
-
-private:
 	std::string m_name;
 	uint64_t m_meshIndex;
 	DirectX::XMFLOAT4X4 m_localToWorld;
-	Microsoft::WRL::ComPtr<ID3D12Resource> m_tlasBuffer;
-	D3D12_GPU_DESCRIPTOR_HANDLE m_tlasSrv;
 };
