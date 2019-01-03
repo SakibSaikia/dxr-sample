@@ -395,6 +395,42 @@ void Scene::CreateTLAS(
 	device->CreateShaderResourceView(nullptr, &tlasSrvDesc, cpuHnd);
 }
 
+void Scene::CreateShaderBindingTable(ID3D12Device5* device)
+{
+	const size_t numMaterials = m_materials.size();
+	const size_t sbtSize = k_sbtEntrySize * (1 + 2 * numMaterials); // 1 for RGS. CHS and MS params are unique per material
+
+	D3D12_RESOURCE_DESC resDesc = {};
+	resDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
+	resDesc.Width = sbtSize * k_gfxBufferCount; // n copies where n = buffer count
+	resDesc.Height = 1;
+	resDesc.DepthOrArraySize = 1;
+	resDesc.MipLevels = 1;
+	resDesc.Format = DXGI_FORMAT_UNKNOWN;
+	resDesc.SampleDesc.Count = 1;
+	resDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+
+	D3D12_HEAP_PROPERTIES heapDesc = {};
+	heapDesc.Type = D3D12_HEAP_TYPE_UPLOAD;
+	heapDesc.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
+
+	// Create a shader binding table for each pass
+	for (int pass = 0; pass < RenderPass::Count; pass++)
+	{
+		CHECK(device->CreateCommittedResource(
+			&heapDesc,
+			D3D12_HEAP_FLAG_NONE,
+			&resDesc,
+			D3D12_RESOURCE_STATE_GENERIC_READ,
+			nullptr,
+			IID_PPV_ARGS(m_shaderBindingTable[pass].GetAddressOf())
+		));
+
+		D3D12_RANGE readRange = { 0 };
+		CHECK(m_shaderBindingTable[pass]->Map(0, &readRange, reinterpret_cast<void**)&m_sbtPtr[pass]);
+	}
+}
+
 void Scene::InitLights(ID3D12Device5* device)
 {
 	m_light = std::make_unique<Light>(DirectX::XMFLOAT3{ 0.57735f, 1.57735f, 0.57735f }, DirectX::XMFLOAT3{ 1.f, 1.f, 1.f }, 10000.f);
@@ -454,6 +490,7 @@ void Scene::InitResources(
 		LoadMaterials(scene, device, cmdList, cmdQueue, uploadBuffer, mtlConstantsHeap, srvHeap, SrvUav::MaterialTexturesBegin, srvDescriptorSize);
 		LoadEntities(scene->mRootNode);
 		CreateTLAS(device, cmdList, uploadBuffer, scratchHeap, meshDataHeap, SrvUav::TLASBegin, srvDescriptorSize);
+		CreateShaderBindingTable(device);
 		InitLights(device);
 		InitBounds(device, cmdList);
 		m_debugDraw.Init(device, cmdList);
@@ -594,14 +631,18 @@ void Scene::UpdateRenderResources(uint32_t bufferIndex)
 
 void Scene::Render(RenderPass::Id pass, ID3D12Device5* device, ID3D12GraphicsCommandList4* cmdList, uint32_t bufferIndex, const View& view, D3D12_GPU_DESCRIPTOR_HANDLE outputUAV)
 {
-	cmdList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+	const size_t sbtSize = k_sbtEntrySize * ( 1 + 2 * m_materials.size());
+	uint8_t* pData = m_sbtPtr[pass] + bufferIndex * sbtSize;
+
+	// TODO - write RGS and data to pData and update pData
 
 	int entityId = 0;
 	size_t currentMaterialHash = 0;
 	for (const auto& meshEntity : m_meshEntities)
 	{
 		StaticMesh* sm = m_meshes.at(meshEntity->GetMeshIndex()).get();
-		Material* mat = m_materials.at(sm->GetMaterialIndex()).get();
+		uint32_t materialIndex = sm->GetMaterialIndex();
+		Material* mat = m_materials.at(materialIndex).get();
 		auto hash = mat->GetHash(pass, sm->GetVertexFormat());
 
 		if (hash != currentMaterialHash)
@@ -625,7 +666,8 @@ void Scene::Render(RenderPass::Id pass, ID3D12Device5* device, ID3D12GraphicsCom
 
 			static_assert(sizeof(ShadowConstants) == sizeof(ViewConstants) && L"Size must match so that we can switch out view constants in the shadow map pass!");
 
-			mat->BindConstants(bufferIndex, pass, cmdList, meshEntity->GetTLASAddress(), sm->GetVertexAndIndexBufferSRVHandle(), ObjConstants, viewConstants, lightConstants, shadowConstants, outputUAV);
+			uint8_t* materialData = pData + materialIndex * k_sbtEntrySize;
+			mat->BindConstants(materialData, pass, cmdList, meshEntity->GetTLASAddress(), sm->GetVertexAndIndexBufferSRVHandle(), ObjConstants, viewConstants, lightConstants, shadowConstants, outputUAV);
 			sm->Render(cmdList);
 		}
 

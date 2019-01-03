@@ -1,6 +1,12 @@
 #include "stdafx.h"
 #include "Material.h"
 
+namespace
+{
+	std::string k_rgs = "mtl_untextured.rgs";
+	std::unique_ptr<RaytraceMaterialPipeline> s_raytracePipelines[RenderPass::Count];
+}
+
 Microsoft::WRL::ComPtr<ID3DBlob> LoadBlob(const std::string& filename)
 {
 	std::string filepath = R"(CompiledShaders\)" + filename + R"(.cso)";
@@ -351,51 +357,10 @@ size_t DefaultOpaqueMaterial::GetSBTEntrySize(RenderPass::Id pass) const
 	return sbtEntrySize;
 }
 
-void DefaultOpaqueMaterial::CreateShaderBindingTable(ID3D12Device5* device, RenderPass::Id pass)
-{
-	const size_t sbtSize = GetSBTEntrySize(pass) * 3; // For RGS, CHS and MS
-
-	D3D12_RESOURCE_DESC resDesc = {};
-	resDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER; 
-	resDesc.Width = sbtSize * k_gfxBufferCount; // n copies where n = buffer count
-	resDesc.Height = 1;
-	resDesc.DepthOrArraySize = 1;
-	resDesc.MipLevels = 1;
-	resDesc.Format = DXGI_FORMAT_UNKNOWN;
-	resDesc.SampleDesc.Count = 1;
-	resDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
-
-	D3D12_HEAP_PROPERTIES heapDesc = {};
-	heapDesc.Type = D3D12_HEAP_TYPE_UPLOAD;
-	heapDesc.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
-
-	CHECK(device->CreateCommittedResource(
-		&heapDesc,
-		D3D12_HEAP_FLAG_NONE,
-		&resDesc,
-		D3D12_RESOURCE_STATE_GENERIC_READ,
-		nullptr,
-		IID_PPV_ARGS(m_shaderBindingTable[pass].GetAddressOf())
-	));
-
-	D3D12_RANGE readRange = { 0 };
-	CHECK(shaderBindingTable[pass]->Map(0, &readRange, reinterpret_cast<void**)&sbtPtr);
-}
-
-void DefaultOpaqueMaterial::BindConstants(uint32_t bufferIndex, RenderPass::Id pass, ID3D12GraphicsCommandList4* cmdList, D3D12_GPU_VIRTUAL_ADDRESS tlas, D3D12_GPU_DESCRIPTOR_HANDLE meshBuffer, D3D12_GPU_VIRTUAL_ADDRESS objConstants, D3D12_GPU_VIRTUAL_ADDRESS viewConstants, D3D12_GPU_VIRTUAL_ADDRESS lightConstants, D3D12_GPU_VIRTUAL_ADDRESS shadowConstants, D3D12_GPU_DESCRIPTOR_HANDLE outputUAV) const
+void DefaultOpaqueMaterial::BindConstants(uint8_t* pData, RenderPass::Id pass, ID3D12GraphicsCommandList4* cmdList, D3D12_GPU_VIRTUAL_ADDRESS tlas, D3D12_GPU_DESCRIPTOR_HANDLE meshBuffer, D3D12_GPU_VIRTUAL_ADDRESS objConstants, D3D12_GPU_VIRTUAL_ADDRESS viewConstants, D3D12_GPU_VIRTUAL_ADDRESS lightConstants, D3D12_GPU_VIRTUAL_ADDRESS shadowConstants, D3D12_GPU_DESCRIPTOR_HANDLE outputUAV) const
 {
 	if (pass == RenderPass::Raytrace)
 	{
-		if (m_sbtPtr[pass] == nullptr)
-		{
-			CreateShaderBindingTable(device, pass);
-		}
-
-		const size_t sbtEntrySize = GetSBTEntrySize(pass);
-		const size_t sbtSize = sbtEntrySize * 3; // For RGS, CHS and MS
-
-		uint8_t* pData = m_sbtPtr[pass] + bufferIndex * sbtSize;
-
 		// Entry 0 - Ray Generation Program
 		{
 			memcpy(pData, m_raytracePipelines[pass]->GetShaderIdentifier(k_rgs), D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
@@ -411,7 +376,7 @@ void DefaultOpaqueMaterial::BindConstants(uint32_t bufferIndex, RenderPass::Id p
 			(*pDescriptorTables++) = m_srvBegin;
 		}
 
-		pData += sbtEntrySize;
+		pData += k_sbtEntrySize;
 
 		// Entry 1 - Miss Program
 		{
@@ -427,7 +392,7 @@ void DefaultOpaqueMaterial::BindConstants(uint32_t bufferIndex, RenderPass::Id p
 			(*pDescriptorTables++) = m_srvBegin;
 		}
 
-		pData += sbtEntrySize;
+		pData += k_sbtEntrySize;
 
 		// Entry 2 - Closest Hit Program / Hit Group
 		{
@@ -559,51 +524,10 @@ size_t DefaultMaskedMaterial::GetSBTEntrySize(RenderPass::Id pass) const
 	return sbtEntrySize;
 }
 
-void DefaultMaskedMaterial::CreateShaderBindingTable(ID3D12Device5* device, RenderPass::Id pass)
-{
-	const size_t sbtSize = GetSBTEntrySize(pass) * 3; // For RGS, CHS and MS
-
-	D3D12_RESOURCE_DESC resDesc = {};
-	resDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
-	resDesc.Width = sbtSize * k_gfxBufferCount; // n copies where n = buffer count
-	resDesc.Height = 1;
-	resDesc.DepthOrArraySize = 1;
-	resDesc.MipLevels = 1;
-	resDesc.Format = DXGI_FORMAT_UNKNOWN;
-	resDesc.SampleDesc.Count = 1;
-	resDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
-
-	D3D12_HEAP_PROPERTIES heapDesc = {};
-	heapDesc.Type = D3D12_HEAP_TYPE_UPLOAD;
-	heapDesc.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
-
-	CHECK(device->CreateCommittedResource(
-		&heapDesc,
-		D3D12_HEAP_FLAG_NONE,
-		&resDesc,
-		D3D12_RESOURCE_STATE_GENERIC_READ,
-		nullptr,
-		IID_PPV_ARGS(m_shaderBindingTable[pass].GetAddressOf())
-	));
-
-	D3D12_RANGE readRange = { 0 };
-	CHECK(shaderBindingTable[pass]->Map(0, &readRange, reinterpret_cast<void**)&sbtPtr);
-}
-
-void DefaultMaskedMaterial::BindConstants(uint32_t bufferIndex, RenderPass::Id pass, ID3D12GraphicsCommandList4* cmdList, D3D12_GPU_VIRTUAL_ADDRESS tlas, D3D12_GPU_DESCRIPTOR_HANDLE meshBuffer, D3D12_GPU_VIRTUAL_ADDRESS objConstants, D3D12_GPU_VIRTUAL_ADDRESS viewConstants, D3D12_GPU_VIRTUAL_ADDRESS lightConstants, D3D12_GPU_VIRTUAL_ADDRESS shadowConstants, D3D12_GPU_DESCRIPTOR_HANDLE outputUAV) const
+void DefaultMaskedMaterial::BindConstants(uint8_t* pData, RenderPass::Id pass, ID3D12GraphicsCommandList4* cmdList, D3D12_GPU_VIRTUAL_ADDRESS tlas, D3D12_GPU_DESCRIPTOR_HANDLE meshBuffer, D3D12_GPU_VIRTUAL_ADDRESS objConstants, D3D12_GPU_VIRTUAL_ADDRESS viewConstants, D3D12_GPU_VIRTUAL_ADDRESS lightConstants, D3D12_GPU_VIRTUAL_ADDRESS shadowConstants, D3D12_GPU_DESCRIPTOR_HANDLE outputUAV) const
 {
 	if (pass == RenderPass::Raytrace)
 	{
-		if (m_sbtPtr[pass] == nullptr)
-		{
-			CreateShaderBindingTable(device, pass);
-		}
-
-		const size_t sbtEntrySize = GetSBTEntrySize(pass);
-		const size_t sbtSize = sbtEntrySize * 3; // For RGS, CHS and MS
-
-		uint8_t* pData = m_sbtPtr[pass] + bufferIndex * sbtSize;
-
 		// Entry 0 - Ray Generation Program
 		{
 			memcpy(pData, m_raytracePipelines[pass]->GetShaderIdentifier(k_rgs), D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
@@ -619,7 +543,7 @@ void DefaultMaskedMaterial::BindConstants(uint32_t bufferIndex, RenderPass::Id p
 			(*pDescriptorTables++) = m_srvBegin;
 		}
 
-		pData += sbtEntrySize;
+		pData += k_sbtEntrySize;
 
 		// Entry 1 - Miss Program
 		{
@@ -635,7 +559,7 @@ void DefaultMaskedMaterial::BindConstants(uint32_t bufferIndex, RenderPass::Id p
 			(*pDescriptorTables++) = m_srvBegin;
 		}
 
-		pData += sbtEntrySize;
+		pData += k_sbtEntrySize;
 
 		// Entry 2 - Closest Hit Program / Hit Group
 		{
@@ -757,51 +681,10 @@ size_t UntexturedMaterial::GetSBTEntrySize(RenderPass::Id pass) const
 	return sbtEntrySize;
 }
 
-void UntexturedMaterial::CreateShaderBindingTable(ID3D12Device5* device, RenderPass::Id pass)
-{
-	const size_t sbtSize = GetSBTEntrySize(pass) * 3; // For RGS, CHS and MS
-
-	D3D12_RESOURCE_DESC resDesc = {};
-	resDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
-	resDesc.Width = sbtSize * k_gfxBufferCount; // n copies where n = buffer count
-	resDesc.Height = 1;
-	resDesc.DepthOrArraySize = 1;
-	resDesc.MipLevels = 1;
-	resDesc.Format = DXGI_FORMAT_UNKNOWN;
-	resDesc.SampleDesc.Count = 1;
-	resDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
-
-	D3D12_HEAP_PROPERTIES heapDesc = {};
-	heapDesc.Type = D3D12_HEAP_TYPE_UPLOAD;
-	heapDesc.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
-
-	CHECK(device->CreateCommittedResource(
-		&heapDesc,
-		D3D12_HEAP_FLAG_NONE,
-		&resDesc,
-		D3D12_RESOURCE_STATE_GENERIC_READ,
-		nullptr,
-		IID_PPV_ARGS(m_shaderBindingTable[pass].GetAddressOf())
-	));
-
-	D3D12_RANGE readRange = { 0 };
-	CHECK(shaderBindingTable[pass]->Map(0, &readRange, reinterpret_cast<void**)&sbtPtr);
-}
-
-void UntexturedMaterial::BindConstants(uint32_t bufferIndex, RenderPass::Id pass, ID3D12GraphicsCommandList4* cmdList, D3D12_GPU_VIRTUAL_ADDRESS tlas, D3D12_GPU_DESCRIPTOR_HANDLE meshBuffer, D3D12_GPU_VIRTUAL_ADDRESS objConstants, D3D12_GPU_VIRTUAL_ADDRESS viewConstants, D3D12_GPU_VIRTUAL_ADDRESS lightConstants, D3D12_GPU_VIRTUAL_ADDRESS shadowConstants, D3D12_GPU_DESCRIPTOR_HANDLE outputUAV) const
+void UntexturedMaterial::BindConstants(uint8_t* pData, RenderPass::Id pass, ID3D12GraphicsCommandList4* cmdList, D3D12_GPU_VIRTUAL_ADDRESS tlas, D3D12_GPU_DESCRIPTOR_HANDLE meshBuffer, D3D12_GPU_VIRTUAL_ADDRESS objConstants, D3D12_GPU_VIRTUAL_ADDRESS viewConstants, D3D12_GPU_VIRTUAL_ADDRESS lightConstants, D3D12_GPU_VIRTUAL_ADDRESS shadowConstants, D3D12_GPU_DESCRIPTOR_HANDLE outputUAV) const
 {
 	if (pass == RenderPass::Raytrace)
 	{
-		if (m_sbtPtr[pass] == nullptr)
-		{
-			CreateShaderBindingTable(device, pass);
-		}
-
-		const size_t sbtEntrySize = GetSBTEntrySize(pass);
-		const size_t sbtSize = sbtEntrySize * 3; // For RGS, CHS and MS
-
-		uint8_t* pData = m_sbtPtr[pass] + bufferIndex * sbtSize;
-
 		// Entry 0 - Ray Generation Program
 		{
 			memcpy(pData, m_raytracePipelines[pass]->GetShaderIdentifier(k_rgs), D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
@@ -817,7 +700,7 @@ void UntexturedMaterial::BindConstants(uint32_t bufferIndex, RenderPass::Id pass
 			(*pDescriptorTables++) = meshBuffer;
 		}
 
-		pData += sbtEntrySize;
+		pData += k_sbtEntrySize;
 
 		// Entry 1 - Miss Program
 		{
@@ -833,7 +716,7 @@ void UntexturedMaterial::BindConstants(uint32_t bufferIndex, RenderPass::Id pass
 			(*pDescriptorTables++) = meshBuffer;
 		}
 
-		pData += sbtEntrySize;
+		pData += k_sbtEntrySize;
 
 		// Entry 2 - Closest Hit Program / Hit Group
 		{

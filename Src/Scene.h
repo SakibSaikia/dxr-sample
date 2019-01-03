@@ -23,6 +23,7 @@ private:
 	void LoadEntities(const aiNode* node);
 
 	void CreateTLAS(ID3D12Device5* device, ID3D12GraphicsCommandList4* cmdList, UploadBuffer* uploadBuffer, ResourceHeap* scratchHeap, ResourceHeap* resourceHeap, const size_t srvStartOffset, const size_t srvDescriptorSize);
+	void CreateShaderBindingTable(ID3D12Device5* device);
 
 	void InitLights(ID3D12Device5* device);
 	void InitBounds(ID3D12Device5* device, ID3D12GraphicsCommandList4* cmdList);
@@ -39,6 +40,9 @@ private:
 
 	Microsoft::WRL::ComPtr<ID3D12Resource> m_tlasBuffer;
 	D3D12_GPU_DESCRIPTOR_HANDLE m_tlasSrv;
+
+	Microsoft::WRL::ComPtr<ID3D12Resource> m_shaderBindingTable[RenderPass::Count];
+	uint8_t* m_sbtPtr[RenderPass::Count] = {};
 
 	Microsoft::WRL::ComPtr<ID3D12Resource> m_objectConstantBuffer;
 	ObjectConstants* m_objectConstantBufferPtr;

@@ -62,7 +62,6 @@ private:
 	// Output UAV
 	Microsoft::WRL::ComPtr<ID3D12Resource> m_dxrOutput;
 
-
 	// Descriptor heaps
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_rtvHeap;
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_cbvSrvUavHeap;
