@@ -128,23 +128,11 @@ void App::InitSwapChain(HWND windowHandle)
 	));
 }
 
-void App::InitRenderTargetsAndUAVs()
+void App::InitSurfaces()
 {
 	D3D12_HEAP_PROPERTIES heapDesc = {};
 	heapDesc.Type = D3D12_HEAP_TYPE_DEFAULT;
 	heapDesc.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
-
-	// RTVs
-	{
-		D3D12_CPU_DESCRIPTOR_HANDLE rtvHeapHandle = m_rtvHeap->GetCPUDescriptorHandleForHeapStart();
-		for (auto bufferIdx = 0; bufferIdx < k_gfxBufferCount; bufferIdx++)
-		{
-			CHECK(m_swapChain->GetBuffer(bufferIdx, IID_PPV_ARGS(m_swapChainBuffers.at(bufferIdx).GetAddressOf())));
-
-			m_d3dDevice->CreateRenderTargetView(m_swapChainBuffers.at(bufferIdx).Get(), nullptr, rtvHeapHandle);
-			rtvHeapHandle.ptr += m_rtvDescriptorSize;
-		}
-	}
 
 	// UAVs
 	{
@@ -185,14 +173,28 @@ void App::InitRenderTargetsAndUAVs()
 	}
 }
 
+void App::InitRaytracePipelines()
+{
+	for (int pass = 0; pass < RenderPass::Count; pass++)
+	{
+		// Holds temp resources such as blobs and root signatures until the pipeline is committed
+		std::vector<IUnknown*> pendingResources;
+
+		// Add any new materials to the list below
+		auto rtPipeline = std::make_unique<RaytraceMaterialPipeline>(m_d3dDevice.Get(), pass, pendingResources);
+		rtPipeline->BuildFromMaterial(m_d3dDevice.Get(), L"DefaultOpaue",  DefaultOpaqueMaterial::GetRaytracePipelineDesc(pass), pendingResources);
+		rtPipeline->BuildFromMaterial(m_d3dDevice.Get(), L"DefaultMasked", DefaultMaskedMaterial::GetRaytracePipelineDesc(pass), pendingResources);
+		rtPipeline->BuildFromMaterial(m_d3dDevice.Get(), L"Untextured", UntexturedMaterial::GetRaytracePipelineDesc(pass), pendingResources);
+
+		// Finalize and build
+		rtPipeline->Commit(m_d3dDevice.Get(), pendingResources);
+
+		m_raytracePipelines[pass] = std::move(rtPipeline);
+	}
+}
+
 void App::InitDescriptorHeaps()
 {
-	// rtv heap
-	D3D12_DESCRIPTOR_HEAP_DESC rtvHeapDesc = {};
-	rtvHeapDesc.NumDescriptors = RTV::Count;
-	rtvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
-	CHECK(m_d3dDevice->CreateDescriptorHeap(&rtvHeapDesc, IID_PPV_ARGS(m_rtvHeap.GetAddressOf())));
-
 	// srv heap
 	D3D12_DESCRIPTOR_HEAP_DESC cbvSrvUavHeapDesc = {};
 	cbvSrvUavHeapDesc.NumDescriptors = SrvUav::Count;
@@ -244,7 +246,7 @@ void App::Init(HWND windowHandle)
 	InitCommandObjects();
 	InitSwapChain(windowHandle);
 	InitDescriptorHeaps();
-	InitRenderTargetsAndUAVs();
+	InitSurfaces();
 	InitUploadBuffer();
 	InitResourceHeaps();
 	InitScene();
@@ -285,94 +287,50 @@ void App::Render()
 		ID3D12DescriptorHeap* descriptorHeaps[] = { m_cbvSrvUavHeap.Get() };
 		m_gfxCmdList->SetDescriptorHeaps(std::extent<decltype(descriptorHeaps)>::value, descriptorHeaps);
 
-		{
-			PIXScopedEvent(m_gfxCmdList.Get(), 0, L"depth_only");
+		D3D12_RESOURCE_BARRIER barriers[2] = {};
 
-			// clear
-			m_gfxCmdList->ClearDepthStencilView(dsvHandle, D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, 1.f, 0, 0, nullptr);
+		// Transition back buffer from present to copy dest
+		barriers[0].Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+		barriers[0].Transition.pResource = m_swapChainBuffers.at(m_gfxBufferIndex).Get();
+		barriers[0].Transition.StateBefore = D3D12_RESOURCE_STATE_PRESENT;
+		barriers[0].Transition.StateAfter = D3D12_RESOURCE_STATE_COPY_DEST;
+		barriers[0].Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
 
-			// viewport
-			D3D12_VIEWPORT viewport{ 0.f, 0.f, k_screenWidth, k_screenHeight, 0.f, 1.f };
-			D3D12_RECT screenRect{ 0.f, 0.f, k_screenWidth, k_screenHeight };
-			m_gfxCmdList->RSSetViewports(1, &viewport);
-			m_gfxCmdList->RSSetScissorRects(1, &screenRect);
+		// Transition the DXR output buffer from copy source to UAV
+		barriers[1].Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+		barriers[1].Transition.pResource = m_dxrOutput.Get();
+		barriers[1].Transition.StateBefore = D3D12_RESOURCE_STATE_COPY_SOURCE;
+		barriers[1].Transition.StateAfter = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
+		barriers[1].Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
 
-			// rt & dsv
-			m_gfxCmdList->OMSetRenderTargets(0, nullptr, FALSE, &dsvHandle);
-
-			m_scene.Render(RenderPass::DepthOnly, m_d3dDevice.Get(), m_gfxCmdList.Get(), m_gfxBufferIndex, m_view, GetSrvUavDescriptorGPU(SrvUav::RenderSurfaceBegin));
-		}
-
-		{
-			PIXScopedEvent(m_gfxCmdList.Get(), 0, "shadowmap");
-
-			// Transition to depth buffer
-			D3D12_RESOURCE_BARRIER barrierDesc = {};
-			barrierDesc.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-			barrierDesc.Transition.pResource = m_shadowMapSurface.Get();
-			barrierDesc.Transition.StateBefore = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
-			barrierDesc.Transition.StateAfter = D3D12_RESOURCE_STATE_DEPTH_WRITE;
-			barrierDesc.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
-			m_gfxCmdList->ResourceBarrier(1, &barrierDesc);
-
-			// clear
-			m_gfxCmdList->ClearDepthStencilView(dsvHandle, D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, 1.f, 0, 0, nullptr);
-
-			// viewport
-			D3D12_VIEWPORT viewport{ 0.f, 0.f, k_shadowmapSize, k_shadowmapSize, 0.f, 1.f };
-			D3D12_RECT screenRect{ 0.f, 0.f, k_shadowmapSize, k_shadowmapSize };
-			m_gfxCmdList->RSSetViewports(1, &viewport);
-			m_gfxCmdList->RSSetScissorRects(1, &screenRect);
-
-			// dsv
-			m_gfxCmdList->OMSetRenderTargets(0, nullptr, FALSE, &dsvHandle);
-
-			m_scene.Render(RenderPass::Shadowmap, m_d3dDevice.Get(), m_gfxCmdList.Get(), m_gfxBufferIndex, m_view, GetSrvUavDescriptorGPU(SrvUav::RenderSurfaceBegin));
-
-			// Transition to SRV
-			barrierDesc.Transition.StateBefore = D3D12_RESOURCE_STATE_DEPTH_WRITE;
-			barrierDesc.Transition.StateAfter = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
-			m_gfxCmdList->ResourceBarrier(1, &barrierDesc);
-		}
-
-		// Transition back buffer from present to render target
-		D3D12_RESOURCE_BARRIER barrierDesc = {};
-		barrierDesc.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-		barrierDesc.Transition.pResource = m_swapChainBuffers.at(m_gfxBufferIndex).Get();
-		barrierDesc.Transition.StateBefore = D3D12_RESOURCE_STATE_PRESENT;
-		barrierDesc.Transition.StateAfter = D3D12_RESOURCE_STATE_RENDER_TARGET;
-		barrierDesc.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
-		m_gfxCmdList->ResourceBarrier(1, &barrierDesc);
+		m_gfxCmdList->ResourceBarrier(2, barriers);
 
 		{
-			PIXScopedEvent(m_gfxCmdList.Get(), 0, L"scene_geo");
-
-			D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle = GetRenderTargetViewCPU(static_cast<RTV::Id>(RTV::SwapChain + m_gfxBufferIndex));
-			
-			// clear
-			float clearColor[] = { .8f, .8f, 1.f, 0.f };
-			m_gfxCmdList->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
-
-			// viewport
-			D3D12_VIEWPORT viewport{ 0.f, 0.f, k_screenWidth, k_screenHeight, 0.f, 1.f };
-			D3D12_RECT screenRect{ 0.f, 0.f, k_screenWidth, k_screenHeight };
-			m_gfxCmdList->RSSetViewports(1, &viewport);
-			m_gfxCmdList->RSSetScissorRects(1, &screenRect);
-
-			// rt & dsv
-			m_gfxCmdList->OMSetRenderTargets(1, &rtvHandle, FALSE, &dsvHandle);
-
+			PIXScopedEvent(m_gfxCmdList.Get(), 0, L"scene");
 			m_scene.Render(RenderPass::Geometry, m_d3dDevice.Get(), m_gfxCmdList.Get(), m_gfxBufferIndex, m_view, GetSrvUavDescriptorGPU(SrvUav::RenderSurfaceBegin));
 		}
 
-		// Transition back buffer from render target to present
-		barrierDesc = {};
-		barrierDesc.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-		barrierDesc.Transition.pResource = m_swapChainBuffers.at(m_gfxBufferIndex).Get();
-		barrierDesc.Transition.StateBefore = D3D12_RESOURCE_STATE_RENDER_TARGET;
-		barrierDesc.Transition.StateAfter = D3D12_RESOURCE_STATE_PRESENT;
-		barrierDesc.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
-		m_gfxCmdList->ResourceBarrier(1, &barrierDesc);
+		// Transition DXR output from UAV to copy source
+		barriers[1].Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+		barriers[1].Transition.pResource = m_dxrOutput.Get();
+		barriers[1].Transition.StateBefore = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
+		barriers[1].Transition.StateAfter = D3D12_RESOURCE_STATE_COPY_SOURCE;
+		barriers[1].Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+		m_gfxCmdList->ResourceBarrier(1, &barriers[1]);
+
+		// Blit to back buffer
+		m_gfxCmdList->CopyResource(
+			m_swapChainBuffers.at(m_gfxBufferIndex).Get(),
+			m_dxrOutput.Get()
+		);
+
+		// Transition back buffer from copy dest to present
+		barriers[0].Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+		barriers[0].Transition.pResource = m_swapChainBuffers.at(m_gfxBufferIndex).Get();
+		barriers[0].Transition.StateBefore = D3D12_RESOURCE_STATE_COPY_DEST;
+		barriers[0].Transition.StateAfter = D3D12_RESOURCE_STATE_PRESENT;
+		barriers[0].Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+		m_gfxCmdList->ResourceBarrier(1, &barriers[0]);
 	}
 
 	// Execute
@@ -388,13 +346,6 @@ void App::Render()
 
 	// Swap buffers
 	AdvanceGfxFrame();
-}
-
-D3D12_CPU_DESCRIPTOR_HANDLE App::GetRenderTargetViewCPU(RTV::Id rtvId) const
-{
-	D3D12_CPU_DESCRIPTOR_HANDLE hnd;
-	hnd.ptr = m_rtvHeap->GetCPUDescriptorHandleForHeapStart().ptr + rtvId * m_rtvDescriptorSize;
-	return hnd;
 }
 
 D3D12_CPU_DESCRIPTOR_HANDLE App::GetSrvUavDescriptorCPU(SrvUav::Id srvId) const

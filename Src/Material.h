@@ -2,25 +2,28 @@
 
 #include "Common.h"
 
-class MaterialPipeline
-{
-public:
-	virtual void Bind(ID3D12GraphicsCommandList4* cmdList) const = 0;
-};
+using MaterialRtPipelineDesc = std::tuple<std::string, std::string, D3D12_ROOT_SIGNATURE_DESC>;
 
-class RaytraceMaterialPipeline : public MaterialPipeline
+class RaytraceMaterialPipeline
 {
 public:
-	RaytraceMaterialPipeline(ID3D12Device5* device, RenderPass::Id renderPass, const std::string rgs, const std::string chs, const std::string ms, const D3D12_ROOT_SIGNATURE_DESC& rootSigDesc);
-	void Bind(ID3D12GraphicsCommandList4* cmdList) const override;
+	RaytraceMaterialPipeline(ID3D12Device5* device, RenderPass::Id pass);
+	void BuildFromMaterial(ID3D12Device5* device, std::wstring materialName, MaterialRtPipelineDesc pipelineDesc, std::vector<IUnknown*>& pendingResources);
+	void Commit(ID3D12Device5* device, std::vector<IUnknown*>& pendingResources);
+	void Bind(ID3D12GraphicsCommandList4* cmdList, uint8_t* pData, RenderPass::Id pass, D3D12_GPU_VIRTUAL_ADDRESS viewConstants, D3D12_GPU_DESCRIPTOR_HANDLE outputUAV) const override;
 	size_t GetRootSignatureSize() const;
 	void* GetShaderIdentifier(const std::string& exportName) const;
+
+private:
+	static D3D12_ROOT_SIGNATURE_DESC BuildRaygenRootSignature(RenderPass::Id pass);
 
 private:
 	Microsoft::WRL::ComPtr<ID3D12StateObject> m_pso;
 	Microsoft::WRL::ComPtr<ID3D12StateObjectProperties> m_psoProperties;
 	Microsoft::WRL::ComPtr<ID3D12RootSignature> m_raytraceRootSignature;
 	size_t m_raytraceRootSignatureSize;
+	std::list<D3D12_STATE_SUBOBJECT> m_pipelineSubObjects;
+	D3D12_STATE_SUBOBJECT* m_pPayloadSubobject;
 };
 
 class Material
@@ -29,9 +32,7 @@ public:
 	Material() = default;
 	Material(const std::string& name);
 
-	virtual void BindPipeline(ID3D12Device5* device, ID3D12GraphicsCommandList4* cmdList, RenderPass::Id renderPass) = 0;
-	virtual void BindConstants(uint32_t bufferIndex, RenderPass::Id pass, ID3D12GraphicsCommandList4* cmdList, D3D12_GPU_VIRTUAL_ADDRESS tlas, D3D12_GPU_DESCRIPTOR_HANDLE meshBuffer, D3D12_GPU_VIRTUAL_ADDRESS objConstants, D3D12_GPU_VIRTUAL_ADDRESS viewConstants, D3D12_GPU_VIRTUAL_ADDRESS lightConstants, D3D12_GPU_VIRTUAL_ADDRESS shadowConstants, D3D12_GPU_DESCRIPTOR_HANDLE outputUAV) const = 0;
-	virtual size_t GetHash(RenderPass::Id renderPass, VertexFormat::Type vertexFormat) const = 0;
+	virtual void BindConstants(uint32_t bufferIndex, RenderPass::Id pass, D3D12_GPU_VIRTUAL_ADDRESS tlas, D3D12_GPU_DESCRIPTOR_HANDLE meshBuffer, D3D12_GPU_VIRTUAL_ADDRESS objConstants, D3D12_GPU_VIRTUAL_ADDRESS viewConstants, D3D12_GPU_VIRTUAL_ADDRESS lightConstants, D3D12_GPU_DESCRIPTOR_HANDLE outputUAV) const = 0;
 	bool IsValid() const;
 
 protected:
@@ -54,12 +55,11 @@ public:
 	};
 
 	UntexturedMaterial(std::string& name, Microsoft::WRL::ComPtr<ID3D12Resource> constantBuffer);
-	static void BindPipeline(ID3D12Device5* device, ID3D12GraphicsCommandList4* cmdList, RenderPass::Id renderPass) override;
-	void BindConstants(uint8_t* pData, RenderPass::Id pass, ID3D12GraphicsCommandList4* cmdList, D3D12_GPU_VIRTUAL_ADDRESS tlas, D3D12_GPU_DESCRIPTOR_HANDLE meshBuffer, D3D12_GPU_VIRTUAL_ADDRESS objConstants, D3D12_GPU_VIRTUAL_ADDRESS viewConstants, D3D12_GPU_VIRTUAL_ADDRESS lightConstants, D3D12_GPU_VIRTUAL_ADDRESS shadowConstants, D3D12_GPU_DESCRIPTOR_HANDLE outputUAV) const override;
-	size_t GetHash(RenderPass::Id renderPass, VertexFormat::Type vertexFormat) const override;
+	static MaterialRtPipelineDesc GetRaytracePipelineDesc(RenderPass::Id renderPass);
+	void BindConstants(uint8_t* pData, RaytraceMaterialPipeline* pipeline, D3D12_GPU_VIRTUAL_ADDRESS tlas, D3D12_GPU_DESCRIPTOR_HANDLE meshBuffer, D3D12_GPU_VIRTUAL_ADDRESS objConstants, D3D12_GPU_VIRTUAL_ADDRESS viewConstants, D3D12_GPU_VIRTUAL_ADDRESS lightConstants, D3D12_GPU_DESCRIPTOR_HANDLE outputUAV) const override;
 
 private:
-	static D3D12_ROOT_SIGNATURE_DESC BuildRaytraceRootSignature(ID3D12Device5* device, RenderPass::Id pass);
+	static D3D12_ROOT_SIGNATURE_DESC BuildRaytraceRootSignature(RenderPass::Id pass);
 
 private:
 	Microsoft::WRL::ComPtr<ID3D12Resource> m_constantBuffer;
@@ -73,9 +73,8 @@ class DefaultOpaqueMaterial : public Material
 
 public:
 	DefaultOpaqueMaterial(std::string& name, const D3D12_GPU_DESCRIPTOR_HANDLE srvHandle);
-	static void BindPipeline(ID3D12Device5* device, ID3D12GraphicsCommandList4* cmdList, RenderPass::Id renderPass) override;
-	void BindConstants(uint8_t* pData, RenderPass::Id pass, ID3D12GraphicsCommandList4* cmdList, D3D12_GPU_VIRTUAL_ADDRESS tlas, D3D12_GPU_DESCRIPTOR_HANDLE meshBuffer, D3D12_GPU_VIRTUAL_ADDRESS objConstants, D3D12_GPU_VIRTUAL_ADDRESS viewConstants, D3D12_GPU_VIRTUAL_ADDRESS lightConstants, D3D12_GPU_VIRTUAL_ADDRESS shadowConstants, D3D12_GPU_DESCRIPTOR_HANDLE outputUAV) const override;
-	size_t GetHash(RenderPass::Id renderPass, VertexFormat::Type vertexFormat) const override;
+	static MaterialRtPipelineDesc GetRaytracePipelineDesc(RenderPass::Id renderPass);
+	void BindConstants(uint8_t* pData, RaytraceMaterialPipeline* pipeline, D3D12_GPU_VIRTUAL_ADDRESS tlas, D3D12_GPU_DESCRIPTOR_HANDLE meshBuffer, D3D12_GPU_VIRTUAL_ADDRESS objConstants, D3D12_GPU_VIRTUAL_ADDRESS viewConstants, D3D12_GPU_VIRTUAL_ADDRESS lightConstants, D3D12_GPU_DESCRIPTOR_HANDLE outputUAV) const override;
 
 private:
 	static D3D12_ROOT_SIGNATURE_DESC BuildRaytraceRootSignature(ID3D12Device5* device, RenderPass::Id pass);
@@ -92,9 +91,8 @@ class DefaultMaskedMaterial : public Material
 
 public:
 	DefaultMaskedMaterial(std::string& name, const D3D12_GPU_DESCRIPTOR_HANDLE srvHandle, const D3D12_GPU_DESCRIPTOR_HANDLE opacityMaskSrvHandle);
-	static void BindPipeline(ID3D12Device5* device, ID3D12GraphicsCommandList4* cmdList, RenderPass::Id renderPass) override;
-	void BindConstants(uint8_t* pData, RenderPass::Id pass, ID3D12GraphicsCommandList4* cmdList, D3D12_GPU_VIRTUAL_ADDRESS tlas, D3D12_GPU_DESCRIPTOR_HANDLE meshBuffer, D3D12_GPU_VIRTUAL_ADDRESS objConstants, D3D12_GPU_VIRTUAL_ADDRESS viewConstants, D3D12_GPU_VIRTUAL_ADDRESS lightConstants, D3D12_GPU_VIRTUAL_ADDRESS shadowConstants, D3D12_GPU_DESCRIPTOR_HANDLE outputUAV) const override;
-	size_t GetHash(RenderPass::Id renderPass, VertexFormat::Type vertexFormat) const override;
+	static MaterialRtPipelineDesc GetRaytracePipelineDesc(RenderPass::Id renderPass);
+	void BindConstants(uint8_t* pData, RaytraceMaterialPipeline* pipeline, D3D12_GPU_VIRTUAL_ADDRESS tlas, D3D12_GPU_DESCRIPTOR_HANDLE meshBuffer, D3D12_GPU_VIRTUAL_ADDRESS objConstants, D3D12_GPU_VIRTUAL_ADDRESS viewConstants, D3D12_GPU_VIRTUAL_ADDRESS lightConstants, D3D12_GPU_DESCRIPTOR_HANDLE outputUAV) const override;
 
 private:
 	static D3D12_ROOT_SIGNATURE_DESC BuildRaytraceRootSignature(ID3D12Device5* device, RenderPass::Id pass);

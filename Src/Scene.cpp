@@ -252,20 +252,6 @@ void Scene::LoadEntities(const aiNode* node)
 			LoadEntities(childNode);
 		}
 	}
-
-	// sort entities by pipeline state
-	std::sort(m_meshEntities.begin(), m_meshEntities.end(),
-		[this](auto& entity1, auto& entity2)
-		{
-			const auto& sm1 = m_meshes.at(entity1->GetMeshIndex());
-			const auto& sm2 = m_meshes.at(entity2->GetMeshIndex());
-
-			const auto& mat1 = m_materials.at(sm1->GetMaterialIndex());
-			const auto& mat2 = m_materials.at(sm2->GetMaterialIndex());
-
-			return mat1->GetHash(RenderPass::Geometry, VertexFormat::Type::P3N3T3B3U2) < mat2->GetHash(RenderPass::Geometry, VertexFormat::Type::P3N3T3B3U2);
-		}
-	);
 }
 
 void Scene::CreateTLAS(
@@ -493,7 +479,6 @@ void Scene::InitResources(
 		CreateShaderBindingTable(device);
 		InitLights(device);
 		InitBounds(device, cmdList);
-		m_debugDraw.Init(device, cmdList);
 	}
 
 	// Object Constant Buffer
@@ -557,58 +542,11 @@ void Scene::InitResources(
 		auto** ptr = reinterpret_cast<void**>(&m_lightConstantBufferPtr);
 		m_lightConstantBuffer->Map(0, nullptr, ptr);
 	}
-
-	// Shadow Constant Buffer
-	{
-		D3D12_RESOURCE_DESC resDesc = {};
-		resDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
-		resDesc.Width = sizeof(ShadowConstants) * k_gfxBufferCount; // n copies where n = buffer count
-		resDesc.Height = 1;
-		resDesc.DepthOrArraySize = 1;
-		resDesc.MipLevels = 1;
-		resDesc.Format = DXGI_FORMAT_UNKNOWN;
-		resDesc.SampleDesc.Count = 1;
-		resDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
-
-		D3D12_HEAP_PROPERTIES heapDesc = {};
-		heapDesc.Type = D3D12_HEAP_TYPE_UPLOAD; // must be CPU accessible
-		heapDesc.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN; // GPU or system mem
-
-		CHECK(device->CreateCommittedResource(
-			&heapDesc,
-			D3D12_HEAP_FLAG_NONE,
-			&resDesc,
-			D3D12_RESOURCE_STATE_GENERIC_READ,
-			nullptr,
-			IID_PPV_ARGS(m_shadowConstantBuffer.GetAddressOf())
-		));
-
-		// Get ptr to mapped resource
-		auto** ptr = reinterpret_cast<void**>(&m_shadowConstantBufferPtr);
-		m_shadowConstantBuffer->Map(0, nullptr, ptr);
-	}
 }
 
 void Scene::Update(float dt)
 {
 	m_light->Update(dt, m_sceneBounds);
-
-#if 0
-	m_debugDraw.AddBox(m_sceneBounds, DirectX::XMFLOAT3{ 0.0, 1.0, 0.0 });
-
-	// shadow frustum
-	DirectX::BoundingBox lightBounds = { {0.f,0.f,0.5f}, {1.f,1.f,0.5f} };
-	DirectX::XMMATRIX mat = DirectX::XMLoadFloat4x4(&m_light->GetViewProjectionMatrix());
-	mat = DirectX::XMMatrixInverse(nullptr, mat);
-	m_debugDraw.AddTransformedBox(lightBounds, mat, DirectX::XMFLOAT3{ 1.f, 0.f, 0.f });
-
-	// light location
-	DirectX::XMMATRIX m = DirectX::XMLoadFloat4x4(&m_light->GetViewMatrix());
-	m = DirectX::XMMatrixInverse(nullptr, m);
-	m_debugDraw.AddAxes(m, 200.f);
-
-	m_debugDraw.AddAxes(DirectX::XMMatrixIdentity(), 200.f);
-#endif
 }
 
 void Scene::UpdateRenderResources(uint32_t bufferIndex)
@@ -622,11 +560,7 @@ void Scene::UpdateRenderResources(uint32_t bufferIndex)
 
 	// light(s)
 	LightConstants* l = m_lightConstantBufferPtr + bufferIndex;
-	ShadowConstants* s = m_shadowConstantBufferPtr + bufferIndex;
-	m_light->FillConstants(l, s);
-
-	// debug draw
-	m_debugDraw.UpdateRenderResources(bufferIndex);
+	m_light->FillConstants(l);
 }
 
 void Scene::Render(RenderPass::Id pass, ID3D12Device5* device, ID3D12GraphicsCommandList4* cmdList, uint32_t bufferIndex, const View& view, D3D12_GPU_DESCRIPTOR_HANDLE outputUAV)
@@ -634,26 +568,17 @@ void Scene::Render(RenderPass::Id pass, ID3D12Device5* device, ID3D12GraphicsCom
 	const size_t sbtSize = k_sbtEntrySize * ( 1 + 2 * m_materials.size());
 	uint8_t* pData = m_sbtPtr[pass] + bufferIndex * sbtSize;
 
-	// TODO - write RGS and data to pData and update pData
+	// Bind pipeline
+	pipeline->Bind(pData, viewConstants, outputUAV);
+	pData += k_sbtEntrySize;
 
+	// Populate SBT
 	int entityId = 0;
-	size_t currentMaterialHash = 0;
 	for (const auto& meshEntity : m_meshEntities)
 	{
 		StaticMesh* sm = m_meshes.at(meshEntity->GetMeshIndex()).get();
 		uint32_t materialIndex = sm->GetMaterialIndex();
 		Material* mat = m_materials.at(materialIndex).get();
-		auto hash = mat->GetHash(pass, sm->GetVertexFormat());
-
-		if (hash != currentMaterialHash)
-		{
-			PIXScopedEvent(cmdList, 0, L"bind_pipeline");
-
-			// root sig
-			mat->BindPipeline(device, cmdList, pass, sm->GetVertexFormat());
-
-			currentMaterialHash = hash;
-		}
 
 		if (mat->IsValid())
 		{
@@ -662,15 +587,30 @@ void Scene::Render(RenderPass::Id pass, ID3D12Device5* device, ID3D12GraphicsCom
 			D3D12_GPU_VIRTUAL_ADDRESS ObjConstants = m_objectConstantBuffer->GetGPUVirtualAddress() + (bufferIndex * m_meshEntities.size() + entityId) * sizeof(ObjectConstants);
 			D3D12_GPU_VIRTUAL_ADDRESS viewConstants = view.GetConstantBuffer()->GetGPUVirtualAddress() + bufferIndex * sizeof(ViewConstants);
 			D3D12_GPU_VIRTUAL_ADDRESS lightConstants = m_lightConstantBuffer->GetGPUVirtualAddress() + bufferIndex * sizeof(LightConstants);
-			D3D12_GPU_VIRTUAL_ADDRESS shadowConstants = m_shadowConstantBuffer->GetGPUVirtualAddress() + bufferIndex * sizeof(ShadowConstants);
-
-			static_assert(sizeof(ShadowConstants) == sizeof(ViewConstants) && L"Size must match so that we can switch out view constants in the shadow map pass!");
 
 			uint8_t* materialData = pData + materialIndex * k_sbtEntrySize;
-			mat->BindConstants(materialData, pass, cmdList, meshEntity->GetTLASAddress(), sm->GetVertexAndIndexBufferSRVHandle(), ObjConstants, viewConstants, lightConstants, shadowConstants, outputUAV);
-			sm->Render(cmdList);
+			mat->BindConstants(materialData, pipeline, meshEntity->GetTLASAddress(), sm->GetVertexAndIndexBufferSRVHandle(), ObjConstants, viewConstants, lightConstants, outputUAV);
 		}
 
 		++entityId;
 	}
+
+	// Dispatch rays!
+	D3D12_DISPATCH_RAYS_DESC desc = {};
+	desc.RayGenerationShaderRecord.StartAddress = dxr.sbt->GetGPUVirtualAddress();
+	desc.RayGenerationShaderRecord.SizeInBytes = dxr.sbtEntrySize;
+
+	desc.MissShaderTable.StartAddress = dxr.sbt->GetGPUVirtualAddress() + dxr.sbtEntrySize;
+	desc.MissShaderTable.SizeInBytes = dxr.sbtEntrySize;		// Only a single Miss program entry
+	desc.MissShaderTable.StrideInBytes = dxr.sbtEntrySize;
+
+	desc.HitGroupTable.StartAddress = dxr.sbt->GetGPUVirtualAddress() + (dxr.sbtEntrySize * 2);
+	desc.HitGroupTable.SizeInBytes = dxr.sbtEntrySize;			// Only a single Hit program entry
+	desc.HitGroupTable.StrideInBytes = dxr.sbtEntrySize;
+
+	desc.Width = k_screenWidth;
+	desc.Height = k_screenHeight;
+	desc.Depth = 1;
+
+	cmdList->DispatchRays(&desc);
 }

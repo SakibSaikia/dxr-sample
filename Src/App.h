@@ -29,9 +29,9 @@ private:
 	void InitResourceHeaps();
 	void InitView();
 	void InitScene();
-	void InitRenderTargetsAndUAVs();
+	void InitSurfaces();
+	void InitRaytracePipelines();
 
-	D3D12_CPU_DESCRIPTOR_HANDLE GetRenderTargetViewCPU(RTV::Id rtvId) const;
 	D3D12_CPU_DESCRIPTOR_HANDLE GetSrvUavDescriptorCPU(SrvUav::Id srvId) const;
 	D3D12_GPU_DESCRIPTOR_HANDLE GetSrvUavDescriptorGPU(SrvUav::Id srvId) const;
 
@@ -63,7 +63,6 @@ private:
 	Microsoft::WRL::ComPtr<ID3D12Resource> m_dxrOutput;
 
 	// Descriptor heaps
-	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_rtvHeap;
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_cbvSrvUavHeap;
 
 	// Resource heaps
@@ -84,6 +83,9 @@ private:
 
 	// View
 	View m_view;
+
+	// Raytracing Pipelines
+	std::array<std::unique_ptr<RaytraceMaterialPipeline>, RenderPass::Count> m_raytracePipelines;
 
 	// Mouse
 	WPARAM m_buttonState = {};

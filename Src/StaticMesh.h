@@ -17,7 +17,6 @@ public:
 
 	StaticMesh() = default;
 	void Init(ID3D12Device5* device, ID3D12GraphicsCommandList4* cmdList, UploadBuffer* uploadBuffer, ResourceHeap* scratchHeap, ResourceHeap* resourceHeap, std::vector<VertexType> vertexData, std::vector<IndexType> indexData, uint32_t matIndex, ID3D12DescriptorHeap* srvHeap, const size_t offsetInHeap, const size_t srvDescriptorSize);
-	void Render(ID3D12GraphicsCommandList4* cmdList);
 
 	uint32_t GetMaterialIndex() const;
 	VertexFormat::Type GetVertexFormat() const;
@@ -35,8 +34,6 @@ private:
 	Microsoft::WRL::ComPtr<ID3D12Resource> m_indexBuffer;
 	Microsoft::WRL::ComPtr<ID3D12Resource> m_blasBuffer;
 	D3D12_GPU_DESCRIPTOR_HANDLE m_meshSRVHandle;
-	D3D12_VERTEX_BUFFER_VIEW m_vertexBufferView;
-	D3D12_INDEX_BUFFER_VIEW m_indexBufferView;
 	uint32_t m_materialIndex;
 	uint32_t m_numIndices;
 };

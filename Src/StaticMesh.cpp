@@ -89,11 +89,6 @@ void StaticMesh::CreateVertexBuffer(
 		&vbBarrierDesc
 	);
 
-	// VB descriptor (not required for DXR)
-	m_vertexBufferView.BufferLocation = m_vertexBuffer->GetGPUVirtualAddress();
-	m_vertexBufferView.StrideInBytes = sizeof(VertexType);
-	m_vertexBufferView.SizeInBytes = vertexData.size() * sizeof(VertexType);
-
 	// VB SRV
 	D3D12_SHADER_RESOURCE_VIEW_DESC vbSrvDesc{};
 	vbSrvDesc.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
@@ -174,11 +169,6 @@ void StaticMesh::CreateIndexBuffer(
 		1,
 		&ibBarrierDesc
 	);
-
-	// IB descriptor (not required for DXR)
-	m_indexBufferView.BufferLocation = m_indexBuffer->GetGPUVirtualAddress();
-	m_indexBufferView.Format = DXGI_FORMAT_R32_UINT;
-	m_indexBufferView.SizeInBytes = indexData.size() * sizeof(IndexType);
 
 	// IB SRV
 	D3D12_SHADER_RESOURCE_VIEW_DESC ibSrvDesc{};
@@ -287,13 +277,6 @@ void StaticMesh::CreateBLAS(ID3D12Device5* device, ID3D12GraphicsCommandList4* c
 
 	cmdList->ResourceBarrier(1, &uavBarrier);
 	
-}
-
-void StaticMesh::Render(ID3D12GraphicsCommandList4* cmdList)
-{
-	cmdList->IASetVertexBuffers(0, 1, &m_vertexBufferView);
-	cmdList->IASetIndexBuffer(&m_indexBufferView);
-	cmdList->DrawIndexedInstanced(m_numIndices, 1, 0, 0, 0);
 }
 
 uint32_t StaticMesh::GetMaterialIndex() const

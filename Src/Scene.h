@@ -50,8 +50,5 @@ private:
 	Microsoft::WRL::ComPtr<ID3D12Resource> m_lightConstantBuffer;
 	LightConstants* m_lightConstantBufferPtr;
 
-	Microsoft::WRL::ComPtr<ID3D12Resource> m_shadowConstantBuffer;
-	ShadowConstants* m_shadowConstantBufferPtr;
-
 	DirectX::BoundingBox m_sceneBounds;
 };
