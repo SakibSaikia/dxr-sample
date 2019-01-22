@@ -383,8 +383,8 @@ void Scene::CreateTLAS(
 
 void Scene::CreateShaderBindingTable(ID3D12Device5* device)
 {
-	const size_t numMaterials = m_materials.size();
-	const size_t sbtSize = k_sbtEntrySize * (1 + 2 * numMaterials); // 1 for RGS. CHS and MS params are unique per material
+	const size_t numEntities = m_meshEntities.size();
+	const size_t sbtSize = k_sbtEntrySize * (1 + 2 * numEntities); // 1 for RGS. CHS and MS params are unique per material
 
 	D3D12_RESOURCE_DESC resDesc = {};
 	resDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
@@ -565,8 +565,9 @@ void Scene::UpdateRenderResources(uint32_t bufferIndex)
 
 void Scene::Render(RenderPass::Id pass, ID3D12Device5* device, ID3D12GraphicsCommandList4* cmdList, uint32_t bufferIndex, const View& view, D3D12_GPU_DESCRIPTOR_HANDLE outputUAV)
 {
-	const size_t sbtSize = k_sbtEntrySize * ( 1 + 2 * m_materials.size());
+	const size_t sbtSize = k_sbtEntrySize * ( 1 + 2 * m_meshEntities.size());
 	uint8_t* pData = m_sbtPtr[pass] + bufferIndex * sbtSize;
+	D3D12_GPU_VIRTUAL_ADDRESS gpuAddress = m_sbtPtr[pass]->GetGPUVirtualAddress() + bufferIndex * sbtSize;
 
 	// Bind pipeline
 	pipeline->Bind(pData, viewConstants, outputUAV);
@@ -580,33 +581,30 @@ void Scene::Render(RenderPass::Id pass, ID3D12Device5* device, ID3D12GraphicsCom
 		uint32_t materialIndex = sm->GetMaterialIndex();
 		Material* mat = m_materials.at(materialIndex).get();
 
-		if (mat->IsValid())
-		{
-			PIXScopedEvent(cmdList, 0, meshEntity->GetName().c_str());
+		PIXScopedEvent(cmdList, 0, meshEntity->GetName().c_str());
 
-			D3D12_GPU_VIRTUAL_ADDRESS ObjConstants = m_objectConstantBuffer->GetGPUVirtualAddress() + (bufferIndex * m_meshEntities.size() + entityId) * sizeof(ObjectConstants);
-			D3D12_GPU_VIRTUAL_ADDRESS viewConstants = view.GetConstantBuffer()->GetGPUVirtualAddress() + bufferIndex * sizeof(ViewConstants);
-			D3D12_GPU_VIRTUAL_ADDRESS lightConstants = m_lightConstantBuffer->GetGPUVirtualAddress() + bufferIndex * sizeof(LightConstants);
+		D3D12_GPU_VIRTUAL_ADDRESS ObjConstants = m_objectConstantBuffer->GetGPUVirtualAddress() + (bufferIndex * m_meshEntities.size() + entityId) * sizeof(ObjectConstants);
+		D3D12_GPU_VIRTUAL_ADDRESS viewConstants = view.GetConstantBuffer()->GetGPUVirtualAddress() + bufferIndex * sizeof(ViewConstants);
+		D3D12_GPU_VIRTUAL_ADDRESS lightConstants = m_lightConstantBuffer->GetGPUVirtualAddress() + bufferIndex * sizeof(LightConstants);
 
-			uint8_t* materialData = pData + materialIndex * k_sbtEntrySize;
-			mat->BindConstants(materialData, pipeline, meshEntity->GetTLASAddress(), sm->GetVertexAndIndexBufferSRVHandle(), ObjConstants, viewConstants, lightConstants, outputUAV);
-		}
+		uint8_t* materialData = pData + materialIndex * k_sbtEntrySize;
+		mat->BindConstants(materialData, pipeline, meshEntity->GetTLASAddress(), sm->GetVertexAndIndexBufferSRVHandle(), ObjConstants, viewConstants, lightConstants, outputUAV);
 
 		++entityId;
 	}
 
 	// Dispatch rays!
 	D3D12_DISPATCH_RAYS_DESC desc = {};
-	desc.RayGenerationShaderRecord.StartAddress = dxr.sbt->GetGPUVirtualAddress();
-	desc.RayGenerationShaderRecord.SizeInBytes = dxr.sbtEntrySize;
+	desc.RayGenerationShaderRecord.StartAddress = gpuAddress;
+	desc.RayGenerationShaderRecord.SizeInBytes = k_sbtEntrySize;
 
-	desc.MissShaderTable.StartAddress = dxr.sbt->GetGPUVirtualAddress() + dxr.sbtEntrySize;
-	desc.MissShaderTable.SizeInBytes = dxr.sbtEntrySize;		// Only a single Miss program entry
-	desc.MissShaderTable.StrideInBytes = dxr.sbtEntrySize;
+	desc.MissShaderTable.StartAddress = desc.RayGenerationShaderRecord.StartAddress + k_sbtEntrySize;
+	desc.MissShaderTable.SizeInBytes = 2 * k_sbtEntrySize * m_meshEntities.size();
+	desc.MissShaderTable.StrideInBytes = 2 * k_sbtEntrySize; // miss and hit shaders are interleaved
 
-	desc.HitGroupTable.StartAddress = dxr.sbt->GetGPUVirtualAddress() + (dxr.sbtEntrySize * 2);
-	desc.HitGroupTable.SizeInBytes = dxr.sbtEntrySize;			// Only a single Hit program entry
-	desc.HitGroupTable.StrideInBytes = dxr.sbtEntrySize;
+	desc.HitGroupTable.StartAddress = desc.MissShaderTable.StartAddress + k_sbtEntrySize;
+	desc.HitGroupTable.SizeInBytes = 2 * k_sbtEntrySize * m_meshEntities.size();
+	desc.HitGroupTable.StrideInBytes = 2 * k_sbtEntrySize; // miss and hit shaders are interleaved
 
 	desc.Width = k_screenWidth;
 	desc.Height = k_screenHeight;

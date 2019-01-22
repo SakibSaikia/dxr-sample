@@ -331,15 +331,9 @@ void* RaytraceMaterialPipeline::GetShaderIdentifier(const std::string& exportNam
 }
 
 Material::Material(const std::string& name) :
-	m_valid{ true },
 	m_name { std::move(name) },
 	m_pipelines{}
 {
-}
-
-bool Material::IsValid() const
-{
-	return m_valid;
 }
 
 DefaultOpaqueMaterial::DefaultOpaqueMaterial(std::string& name, const D3D12_GPU_DESCRIPTOR_HANDLE srvHandle) :
@@ -438,23 +432,6 @@ void DefaultOpaqueMaterial::BindConstants(uint8_t* pData, RaytraceMaterialPipeli
 {
 	if (pass == RenderPass::Raytrace)
 	{
-		// Entry 0 - Ray Generation Program
-		{
-			memcpy(pData, pipeline->GetShaderIdentifier(k_rgs), D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
-
-			D3D12_GPU_VIRTUAL_ADDRESS* pRootDescriptors = *reinterpret_cast<D3D12_GPU_VIRTUAL_ADDRESS*>(pData + D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
-			*(pRootDescriptors++) = viewConstants;
-			*(pRootDescriptors++) = lightConstants;
-			*(pRootDescriptors++) = outputUAV;
-			*(pRootDescriptors++) = tlas;
-
-			D3D12_GPU_DESCRIPTOR_HANDLE* pDescriptorTables = *reinterpret_cast<D3D12_GPU_DESCRIPTOR_HANDLE>(pRootDescriptors);
-			(*pDescriptorTables++) = meshBuffer;
-			(*pDescriptorTables++) = m_srvBegin;
-		}
-
-		pData += k_sbtEntrySize;
-
 		// Entry 1 - Miss Program
 		{
 			memcpy(pData, pipeline->GetShaderIdentifier(k_ms), D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
@@ -584,23 +561,6 @@ void DefaultMaskedMaterial::BindConstants(uint8_t* pData, RaytraceMaterialPipeli
 {
 	if (pass == RenderPass::Raytrace)
 	{
-		// Entry 0 - Ray Generation Program
-		{
-			memcpy(pData, pipeline->GetShaderIdentifier(k_rgs), D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
-
-			D3D12_GPU_VIRTUAL_ADDRESS* pRootDescriptors = *reinterpret_cast<D3D12_GPU_VIRTUAL_ADDRESS*>(pData + D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
-			*(pRootDescriptors++) = viewConstants;
-			*(pRootDescriptors++) = lightConstants;
-			*(pRootDescriptors++) = outputUAV;
-			*(pRootDescriptors++) = tlas;
-
-			D3D12_GPU_DESCRIPTOR_HANDLE* pDescriptorTables = *reinterpret_cast<D3D12_GPU_DESCRIPTOR_HANDLE>(pRootDescriptors);
-			(*pDescriptorTables++) = meshBuffer;
-			(*pDescriptorTables++) = m_srvBegin;
-		}
-
-		pData += k_sbtEntrySize;
-
 		// Entry 1 - Miss Program
 		{
 			memcpy(pData, pipeline->GetShaderIdentifier(k_ms), D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
@@ -720,23 +680,6 @@ void UntexturedMaterial::BindConstants(uint8_t* pData, RaytraceMaterialPipeline*
 {
 	if (pass == RenderPass::Raytrace)
 	{
-		// Entry 0 - Ray Generation Program
-		{
-			memcpy(pData, pipeline->GetShaderIdentifier(k_rgs), D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
-
-			D3D12_GPU_VIRTUAL_ADDRESS* pRootDescriptors = *reinterpret_cast<D3D12_GPU_VIRTUAL_ADDRESS*>(pData + D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
-			*(pRootDescriptors++) = viewConstants;
-			*(pRootDescriptors++) = lightConstants;
-			*(pRootDescriptor++) = m_constantBuffer->GetGPUVirtualAddress();
-			*(pRootDescriptors++) = outputUAV;
-			*(pRootDescriptors++) = tlas;
-
-			D3D12_GPU_DESCRIPTOR_HANDLE* pDescriptorTables = *reinterpret_cast<D3D12_GPU_DESCRIPTOR_HANDLE>(pRootDescriptors);
-			(*pDescriptorTables++) = meshBuffer;
-		}
-
-		pData += k_sbtEntrySize;
-
 		// Entry 1 - Miss Program
 		{
 			memcpy(pData, pipeline->GetShaderIdentifier(k_ms), D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);

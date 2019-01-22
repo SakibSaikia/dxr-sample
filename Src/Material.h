@@ -29,15 +29,12 @@ private:
 class Material
 {
 public:
-	Material() = default;
 	Material(const std::string& name);
 
 	virtual void BindConstants(uint32_t bufferIndex, RenderPass::Id pass, D3D12_GPU_VIRTUAL_ADDRESS tlas, D3D12_GPU_DESCRIPTOR_HANDLE meshBuffer, D3D12_GPU_VIRTUAL_ADDRESS objConstants, D3D12_GPU_VIRTUAL_ADDRESS viewConstants, D3D12_GPU_VIRTUAL_ADDRESS lightConstants, D3D12_GPU_DESCRIPTOR_HANDLE outputUAV) const = 0;
-	bool IsValid() const;
 
 protected:
 	std::string m_name;
-	bool m_valid;
 };
 
 class UntexturedMaterial : public Material
