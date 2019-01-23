@@ -30,6 +30,5 @@ void Light::Update(float dt, const DirectX::BoundingBox& sceneBounds)
 		DirectX::XMVECTOR lightDir = DirectX::XMLoadFloat3(&m_originalDirection);
 		lightDir = DirectX::XMVector3TransformNormal(lightDir, r);
 		XMStoreFloat3(&m_direction, lightDir);
-		m_dirty = true;
 	}
 }

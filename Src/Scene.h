@@ -5,7 +5,6 @@
 #include "Material.h"
 #include "Texture.h"
 #include "View.h"
-#include "DebugDraw.h"
 #include "Light.h"
 
 class Scene
