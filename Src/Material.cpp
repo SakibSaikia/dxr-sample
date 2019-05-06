@@ -147,11 +147,10 @@ RaytraceMaterialPipeline::RaytraceMaterialPipeline(ID3D12Device5* device, Render
 	shaderConfigAssociationSubObject.pDesc = &shaderConfigAssociationDesc;
 	m_pipelineSubObjects.push_back(shaderConfigAssociationSubObject);
 
-	// Root Signature
+	// Raygen Root Signature
 	D3D12_ROOT_SIGNATURE_DESC rootSigDesc = BuildRaygenRootSignature(pass);
-	assert(GetRootSignatureSizeInBytes(device, rootSigDesc) <= k_maxRootSignatureSize);
-	ID3D12RootSignature* rootSig = CreateRootSignature(device, rootSigDesc);
-	m_pipelineSubObjects.push_back(rootSig);
+	assert(GetRootSignatureSizeInBytes(rootSigDesc) <= k_maxRootSignatureSize);
+	m_raytraceRootSignature = CreateRootSignature(device, rootSigDesc);
 
 	D3D12_STATE_SUBOBJECT raygenRootSigSubObject{};
 	raygenRootSigSubObject.Type = D3D12_STATE_SUBOBJECT_TYPE_LOCAL_ROOT_SIGNATURE;
@@ -183,11 +182,8 @@ RaytraceMaterialPipeline::RaytraceMaterialPipeline(ID3D12Device5* device, Render
 
 void RaytraceMaterialPipeline::BuildFromMaterial(ID3D12Device5* device, std::wstring materialName, MaterialRtPipelineDesc pipelineDesc, std::vector<IUnknown*>& pendingResources)
 {
-	auto&&[chs, ms, rootSigDesc] = pipelineDesc;
-
-
 	// Closest Hit Shader
-	ID3DBlob* chsByteCode = LoadBlob(chs);
+	ID3DBlob* chsByteCode = LoadBlob(pipelineDesc.closestHitShader);
 	pendingResources.push_back(chsByteCode);
 
 	D3D12_EXPORT_DESC chsExportDesc{};
@@ -207,7 +203,7 @@ void RaytraceMaterialPipeline::BuildFromMaterial(ID3D12Device5* device, std::wst
 
 
 	// Miss Shader
-	ID3DBlob* msByteCode = LoadBlob(ms);
+	ID3DBlob* msByteCode = LoadBlob(pipelineDesc.missShader);
 	pendingResources.push_back(msByteCode);
 
 	D3D12_EXPORT_DESC msExportDesc{};
@@ -255,8 +251,8 @@ void RaytraceMaterialPipeline::BuildFromMaterial(ID3D12Device5* device, std::wst
 
 
 	// Root Signature
-	assert(GetRootSignatureSizeInBytes(device, rootSigDesc) <= k_maxRootSignatureSize);
-	ID3D12RootSignature* rootSig = CreateRootSignature(device, rootSigDesc);
+	assert(GetRootSignatureSizeInBytes(device, pipelineDesc.rootsigDesc) <= k_maxRootSignatureSize);
+	ID3D12RootSignature* rootSig = CreateRootSignature(device, pipelineDesc.rootsigDesc);
 	pendingResources.push_back(rootSig);
 
 	D3D12_STATE_SUBOBJECT sharedRootSigSubObject{};
@@ -324,14 +320,13 @@ size_t RaytraceMaterialPipeline::GetRootSignatureSize() const
 	return m_raytraceRootSignatureSize;
 }
 
-void* RaytraceMaterialPipeline::GetShaderIdentifier(const wchat_t* exportName) const
+void* RaytraceMaterialPipeline::GetShaderIdentifier(const wchar_t* exportName) const
 {
 	return m_psoProperties->GetShaderIdentifier(exportName);
 }
 
 Material::Material(const std::string& name) :
-	m_name { std::move(name) },
-	m_pipelines{}
+	m_name { std::move(name) }
 {
 }
 
@@ -344,7 +339,7 @@ DefaultOpaqueMaterial::DefaultOpaqueMaterial(std::string& name, const D3D12_GPU_
 MaterialRtPipelineDesc DefaultOpaqueMaterial::GetRaytracePipelineDesc(RenderPass::Id renderPass)
 {
 	auto rootSigDesc = BuildRaytraceRootSignature(renderPass);
-	return std::make_tuple(k_chs, k_ms, rootSigDesc);
+	return MaterialRtPipelineDesc{ k_chs, k_ms, rootSigDesc };
 }
 
 D3D12_ROOT_SIGNATURE_DESC DefaultOpaqueMaterial::BuildRaytraceRootSignature(RenderPass::Id pass)
@@ -472,10 +467,10 @@ DefaultMaskedMaterial::DefaultMaskedMaterial(std::string& name, const D3D12_GPU_
 {
 }
 
-MaterialRtPipelineDesc DefaultMaskedMaterial::GetRaytracePipelineDesc(RenderPass::Id renderPass)
+MaterialRtPipelineDesc DefaultMaskedMaterial::GetRaytracePipelineDesc(RenderPass::Id pass)
 {
 	auto rootSigDesc = BuildRaytraceRootSignature( pass);
-	return std::make_tuple(k_chs, k_ms, rootSigDesc);
+	return MaterialRtPipelineDesc{ k_chs, k_ms, rootSigDesc };
 }
 
 D3D12_ROOT_SIGNATURE_DESC DefaultMaskedMaterial::BuildRaytraceRootSignature(RenderPass::Id pass)
@@ -602,10 +597,10 @@ UntexturedMaterial::UntexturedMaterial(std::string& name, Microsoft::WRL::ComPtr
 {
 }
 
-MaterialRtPipelineDesc UntexturedMaterial::GetRaytracePipelineDesc(RenderPass::Id renderPass)
+MaterialRtPipelineDesc UntexturedMaterial::GetRaytracePipelineDesc(RenderPass::Id pass)
 {
 	auto rootSigDesc = BuildRaytraceRootSignature(pass);
-	return std::make_tuple(k_chs, k_ms, rootSigDesc);
+	return MaterialRtPipelineDesc{ k_chs, k_ms, rootSigDesc };
 }
 
 D3D12_ROOT_SIGNATURE_DESC UntexturedMaterial::BuildRaytraceRootSignature(RenderPass::Id pass)
@@ -667,8 +662,8 @@ D3D12_ROOT_SIGNATURE_DESC UntexturedMaterial::BuildRaytraceRootSignature(RenderP
 		rootParams.push_back(meshSRVs);
 
 		// Full root signature
-		rootDesc.NumParameters = rootParameters.size();
-		rootDesc.pParameters = rootParameters.data();
+		rootDesc.NumParameters = rootParams.size();
+		rootDesc.pParameters = rootParams.data();
 		rootDesc.Flags = D3D12_ROOT_SIGNATURE_FLAG_LOCAL_ROOT_SIGNATURE;
 	}
 

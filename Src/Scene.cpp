@@ -6,7 +6,6 @@ Scene::~Scene()
 {
 	m_objectConstantBuffer->Unmap(0, nullptr);
 	m_lightConstantBuffer->Unmap(0, nullptr);
-	m_shadowConstantBuffer->Unmap(0, nullptr);
 }
 
 void Scene::LoadMeshes(
@@ -261,7 +260,7 @@ void Scene::CreateTLAS(
 	ResourceHeap* scratchHeap,
 	ResourceHeap* resourceHeap,
 	ID3D12DescriptorHeap* srvHeap,
-	const size_t offsetInHeap,
+	const size_t srvHeapOffset,
 	const size_t srvDescriptorSize)
 {
 	// Instance description for top level acceleration structure
@@ -331,7 +330,7 @@ void Scene::CreateTLAS(
 	// Create TLAS buffer
 	D3D12_RESOURCE_DESC tlasBufDesc = {};
 	tlasBufDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
-	tlasBufDesc.Alignment = std::max(D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BYTE_ALIGNMENT, D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT);
+	tlasBufDesc.Alignment = std::max<UINT64>(D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BYTE_ALIGNMENT, D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT);
 	tlasBufDesc.Width = alignedTLASBufferSize;
 	tlasBufDesc.Height = 1;
 	tlasBufDesc.DepthOrArraySize = 1;
@@ -375,8 +374,8 @@ void Scene::CreateTLAS(
 	tlasSrvDesc.RaytracingAccelerationStruction.Location = m_tlasBuffer->GetGPUVirtualAddress();
 
 	D3D12_CPU_DESCRIPTOR_HANDLE cpuHnd;
-	cpuHnd.ptr = srvHeap->GetCPUDescriptorHandleForHeapStart().ptr + offsetInHeap * descriptorSize;
-	m_tlasSrv.ptr = srvHeap->GetGPUDescriptorHandleForHeapStart().ptr + offsetInHeap * descriptorSize;
+	cpuHnd.ptr = srvHeap->GetCPUDescriptorHandleForHeapStart().ptr + srvHeapOffset * srvDescriptorSize;
+	m_tlasSrv.ptr = srvHeap->GetGPUDescriptorHandleForHeapStart().ptr + srvHeapOffset * srvDescriptorSize;
 
 	device->CreateShaderResourceView(nullptr, &tlasSrvDesc, cpuHnd);
 }
@@ -413,7 +412,7 @@ void Scene::CreateShaderBindingTable(ID3D12Device5* device)
 		));
 
 		D3D12_RANGE readRange = { 0 };
-		CHECK(m_shaderBindingTable[pass]->Map(0, &readRange, reinterpret_cast<void**)&m_sbtPtr[pass]);
+		CHECK(m_shaderBindingTable[pass]->Map(0, &readRange, reinterpret_cast<void**>&m_sbtPtr[pass]);
 	}
 }
 
@@ -475,7 +474,7 @@ void Scene::InitResources(
 		LoadMeshes(scene, device, cmdList, uploadBuffer, scratchHeap, meshDataHeap, srvHeap, SrvUav::MeshdataBegin, srvDescriptorSize);
 		LoadMaterials(scene, device, cmdList, cmdQueue, uploadBuffer, mtlConstantsHeap, srvHeap, SrvUav::MaterialTexturesBegin, srvDescriptorSize);
 		LoadEntities(scene->mRootNode);
-		CreateTLAS(device, cmdList, uploadBuffer, scratchHeap, meshDataHeap, SrvUav::TLASBegin, srvDescriptorSize);
+		CreateTLAS(device, cmdList, uploadBuffer, scratchHeap, meshDataHeap, srvHeap, SrvUav::TLASBegin, srvDescriptorSize);
 		CreateShaderBindingTable(device);
 		InitLights(device);
 		InitBounds(device, cmdList);
@@ -577,18 +576,27 @@ void Scene::Render(RenderPass::Id pass, ID3D12Device5* device, ID3D12GraphicsCom
 	int entityId = 0;
 	for (const auto& meshEntity : m_meshEntities)
 	{
+		PIXScopedEvent(cmdList, 0, meshEntity->GetName().c_str());
+
 		StaticMesh* sm = m_meshes.at(meshEntity->GetMeshIndex()).get();
 		uint32_t materialIndex = sm->GetMaterialIndex();
 		Material* mat = m_materials.at(materialIndex).get();
-
-		PIXScopedEvent(cmdList, 0, meshEntity->GetName().c_str());
 
 		D3D12_GPU_VIRTUAL_ADDRESS ObjConstants = m_objectConstantBuffer->GetGPUVirtualAddress() + (bufferIndex * m_meshEntities.size() + entityId) * sizeof(ObjectConstants);
 		D3D12_GPU_VIRTUAL_ADDRESS viewConstants = view.GetConstantBuffer()->GetGPUVirtualAddress() + bufferIndex * sizeof(ViewConstants);
 		D3D12_GPU_VIRTUAL_ADDRESS lightConstants = m_lightConstantBuffer->GetGPUVirtualAddress() + bufferIndex * sizeof(LightConstants);
 
 		uint8_t* materialData = pData + materialIndex * k_sbtEntrySize;
-		mat->BindConstants(materialData, pipeline, meshEntity->GetTLASAddress(), sm->GetVertexAndIndexBufferSRVHandle(), ObjConstants, viewConstants, lightConstants, outputUAV);
+
+		mat->BindConstants(
+			materialData, 
+			pipeline, 
+			meshEntity->GetTLASAddress(), 
+			sm->GetVertexAndIndexBufferSRVHandle(), 
+			ObjConstants, 
+			viewConstants, 
+			lightConstants, 
+			outputUAV);
 
 		++entityId;
 	}

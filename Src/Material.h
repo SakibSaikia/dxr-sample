@@ -2,7 +2,12 @@
 
 #include "Common.h"
 
-using MaterialRtPipelineDesc = std::tuple<std::string, std::string, D3D12_ROOT_SIGNATURE_DESC>;
+struct MaterialRtPipelineDesc
+{
+	std::string closestHitShader;
+	std::string missShader; 
+	D3D12_ROOT_SIGNATURE_DESC rootsigDesc;
+};
 
 class RaytraceMaterialPipeline
 {
@@ -30,6 +35,7 @@ class Material
 {
 public:
 	Material(const std::string& name);
+	virtual ~Material() {}
 
 	virtual void BindConstants(
 		uint8_t* pData,

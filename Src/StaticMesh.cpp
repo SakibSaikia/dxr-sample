@@ -146,7 +146,7 @@ void StaticMesh::CreateIndexBuffer(
 		&ibLayout, nullptr, &ibSizeInBytes, nullptr);
 
 	auto[destIbPtr, ibOffset] = uploadBuffer->GetAlloc(ibSizeInBytes);
-	pSrc = reinterpret_cast<const uint8_t*>(indexData.data());
+	const auto* pSrc = reinterpret_cast<const uint8_t*>(indexData.data());
 	memcpy(destIbPtr, pSrc, ibSizeInBytes);
 
 	// schedule copy to default index buffer

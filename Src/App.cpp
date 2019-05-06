@@ -183,7 +183,7 @@ void App::InitRaytracePipelines()
 		std::vector<IUnknown*> pendingResources;
 
 		// Add any new materials to the list below
-		auto rtPipeline = std::make_unique<RaytraceMaterialPipeline>(m_d3dDevice.Get(), renderPass, pendingResources);
+		auto rtPipeline = std::make_unique<RaytraceMaterialPipeline>(m_d3dDevice.Get(), renderPass);
 		rtPipeline->BuildFromMaterial(m_d3dDevice.Get(), L"DefaultOpaue",  DefaultOpaqueMaterial::GetRaytracePipelineDesc(renderPass), pendingResources);
 		rtPipeline->BuildFromMaterial(m_d3dDevice.Get(), L"DefaultMasked", DefaultMaskedMaterial::GetRaytracePipelineDesc(renderPass), pendingResources);
 		rtPipeline->BuildFromMaterial(m_d3dDevice.Get(), L"Untextured", UntexturedMaterial::GetRaytracePipelineDesc(renderPass), pendingResources);
