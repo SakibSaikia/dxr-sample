@@ -3,13 +3,13 @@
 
 namespace
 {
-	std::string k_rgs = "mtl_untextured.rgs";
+	static const wchar_t* k_rgs = L"mtl_untextured.rgs";
 	std::unique_ptr<RaytraceMaterialPipeline> s_raytracePipelines[RenderPass::Count];
 }
 
-ID3DBlob* LoadBlob(const std::string& filename)
+ID3DBlob* LoadBlob(const std::wstring& filename)
 {
-	std::string filepath = R"(CompiledShaders\)" + filename + R"(.cso)";
+	std::wstring filepath = L"CompiledShaders\\" + filename + L".cso";
 	std::ifstream fileHandle(filepath, std::ios::binary);
 	assert(fileHandle.good() && L"Error opening file");
 
@@ -103,7 +103,6 @@ RaytraceMaterialPipeline::RaytraceMaterialPipeline(ID3D12Device5* device, Render
 {
 	// RayGen shader
 	Microsoft::WRL::ComPtr<ID3DBlob> rgsByteCode = LoadBlob(k_rgs);
-	std::wstring rgsExportName(k_rgs.begin(), k_rgs.end());
 
 	D3D12_EXPORT_DESC rgsExportDesc{};
 	rgsExportDesc.Name = L"RayGenDefaultPass";
@@ -296,7 +295,7 @@ void RaytraceMaterialPipeline::Commit(ID3D12Device5* device, std::vector<IUnknow
 	}
 }
 
-void RaytraceMaterialPipeline::Bind(ID3D12GraphicsCommandList4* cmdList, uint8_t* pData, RenderPass::Id pass, D3D12_GPU_VIRTUAL_ADDRESS viewConstants, D3D12_GPU_DESCRIPTOR_HANDLE outputUAV) const
+void RaytraceMaterialPipeline::Bind(ID3D12GraphicsCommandList4* cmdList, uint8_t* pData, RenderPass::Id pass, D3D12_GPU_DESCRIPTOR_HANDLE outputUAV) const
 {
 	// Bind PSO
 	cmdList->SetPipelineState1(m_pso.Get());
@@ -307,8 +306,7 @@ void RaytraceMaterialPipeline::Bind(ID3D12GraphicsCommandList4* cmdList, uint8_t
 	// Raygen shader bindings
 	if (pass == RenderPass::Raytrace)
 	{
-		D3D12_GPU_VIRTUAL_ADDRESS* pRootDescriptors = *reinterpret_cast<D3D12_GPU_VIRTUAL_ADDRESS*>(pData + D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
-		*(pRootDescriptors++) = viewConstants;
+		D3D12_GPU_DESCRIPTOR_HANDLE* pRootDescriptors = *reinterpret_cast<D3D12_GPU_DESCRIPTOR_HANDLE*>(pData + D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
 		*(pRootDescriptors++) = outputUAV;
 	}
 

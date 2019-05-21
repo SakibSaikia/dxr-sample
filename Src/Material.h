@@ -4,8 +4,8 @@
 
 struct MaterialRtPipelineDesc
 {
-	std::string closestHitShader;
-	std::string missShader; 
+	std::wstring closestHitShader;
+	std::wstring missShader; 
 	D3D12_ROOT_SIGNATURE_DESC rootsigDesc;
 };
 
@@ -15,7 +15,7 @@ public:
 	RaytraceMaterialPipeline(ID3D12Device5* device, RenderPass::Id pass);
 	void BuildFromMaterial(ID3D12Device5* device, std::wstring materialName, MaterialRtPipelineDesc pipelineDesc, std::vector<IUnknown*>& pendingResources);
 	void Commit(ID3D12Device5* device, std::vector<IUnknown*>& pendingResources);
-	void Bind(ID3D12GraphicsCommandList4* cmdList, uint8_t* pData, RenderPass::Id pass, D3D12_GPU_VIRTUAL_ADDRESS viewConstants, D3D12_GPU_DESCRIPTOR_HANDLE outputUAV) const;
+	void Bind(ID3D12GraphicsCommandList4* cmdList, uint8_t* pData, RenderPass::Id pass, D3D12_GPU_DESCRIPTOR_HANDLE outputUAV) const;
 	size_t GetRootSignatureSize() const;
 	void* GetShaderIdentifier(const wchar_t* exportName) const;
 

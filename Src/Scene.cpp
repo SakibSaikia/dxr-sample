@@ -569,7 +569,7 @@ void Scene::Render(RenderPass::Id pass, ID3D12Device5* device, ID3D12GraphicsCom
 	D3D12_GPU_VIRTUAL_ADDRESS gpuAddress = m_sbtPtr[pass]->GetGPUVirtualAddress() + bufferIndex * sbtSize;
 
 	// Bind pipeline
-	pipeline->Bind(pData, viewConstants, outputUAV);
+	pipeline->Bind(pData, outputUAV);
 	pData += k_sbtEntrySize;
 
 	// Populate SBT
