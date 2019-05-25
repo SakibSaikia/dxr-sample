@@ -71,7 +71,7 @@ D3D12_ROOT_SIGNATURE_DESC RaytraceMaterialPipeline::BuildRaygenRootSignature()
 	D3D12_ROOT_SIGNATURE_DESC rootDesc = {};
 
 	std::vector<D3D12_ROOT_PARAMETER> rootParams;
-	rootParams.reserve(2);
+	rootParams.reserve(3);
 
 	// Constant buffers
 	D3D12_ROOT_PARAMETER viewCBV{};
@@ -79,6 +79,14 @@ D3D12_ROOT_SIGNATURE_DESC RaytraceMaterialPipeline::BuildRaygenRootSignature()
 	viewCBV.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
 	viewCBV.Descriptor.ShaderRegister = 0;
 	rootParams.push_back(viewCBV);
+
+	// TLAS SRV
+	D3D12_ROOT_PARAMETER tlasSRV{};
+	tlasSRV.ParameterType = D3D12_ROOT_PARAMETER_TYPE_SRV;
+	tlasSRV.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+	tlasSRV.Descriptor.RegisterSpace = 0;
+	tlasSRV.Descriptor.ShaderRegister = 0;
+	rootParams.push_back(tlasSRV);
 
 	// UAV
 	D3D12_ROOT_PARAMETER outputUAV{};
@@ -291,7 +299,13 @@ void RaytraceMaterialPipeline::Commit(ID3D12Device5* device, std::vector<IUnknow
 	}
 }
 
-void RaytraceMaterialPipeline::Bind(ID3D12GraphicsCommandList4* cmdList, uint8_t* pData, D3D12_GPU_DESCRIPTOR_HANDLE outputUAV) const
+void RaytraceMaterialPipeline::Bind(
+	ID3D12GraphicsCommandList4* cmdList,
+	uint8_t* pData, 
+	D3D12_GPU_VIRTUAL_ADDRESS viewCBV,
+	D3D12_GPU_DESCRIPTOR_HANDLE tlasSRV,
+	D3D12_GPU_DESCRIPTOR_HANDLE outputUAV
+) const
 {
 	// Bind PSO
 	cmdList->SetPipelineState1(m_pso.Get());
@@ -300,8 +314,10 @@ void RaytraceMaterialPipeline::Bind(ID3D12GraphicsCommandList4* cmdList, uint8_t
 	memcpy(pData, GetShaderIdentifier(k_rgs), D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
 
 	// Raygen shader bindings
-	D3D12_GPU_DESCRIPTOR_HANDLE* pRootDescriptors = *reinterpret_cast<D3D12_GPU_DESCRIPTOR_HANDLE*>(pData + D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
-	*(pRootDescriptors++) = outputUAV;
+	auto* pRootDescriptors = reinterpret_cast<D3D12_GPU_VIRTUAL_ADDRESS*>(pData + D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
+	*(pRootDescriptors++) = viewCBV;
+	*(pRootDescriptors++) = tlasSRV.ptr;
+	*(pRootDescriptors++) = outputUAV.ptr;
 }
 
 size_t RaytraceMaterialPipeline::GetRootSignatureSize() const
@@ -351,21 +367,6 @@ D3D12_ROOT_SIGNATURE_DESC DefaultOpaqueMaterial::BuildRaytraceRootSignature()
 	lightCBV.Descriptor.ShaderRegister = 1;
 	rootParams.push_back(lightCBV);
 
-	// UAV
-	D3D12_ROOT_PARAMETER outputUAV{};
-	outputUAV.ParameterType = D3D12_ROOT_PARAMETER_TYPE_UAV;
-	outputUAV.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
-	outputUAV.Descriptor.ShaderRegister = 0;
-	rootParams.push_back(outputUAV);
-
-	// TLAS SRV
-	D3D12_ROOT_PARAMETER tlasSRV{};
-	tlasSRV.ParameterType = D3D12_ROOT_PARAMETER_TYPE_SRV;
-	tlasSRV.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
-	tlasSRV.Descriptor.RegisterSpace = 0;
-	tlasSRV.Descriptor.ShaderRegister = 0;
-	rootParams.push_back(tlasSRV);
-
 	// Meshdata SRVs
 	D3D12_DESCRIPTOR_RANGE meshSRVRange{};
 	meshSRVRange.BaseShaderRegister = 1;
@@ -406,25 +407,21 @@ D3D12_ROOT_SIGNATURE_DESC DefaultOpaqueMaterial::BuildRaytraceRootSignature()
 
 void DefaultOpaqueMaterial::BindConstants(
 	uint8_t* pData, 
-	RaytraceMaterialPipeline* pipeline, 
-	D3D12_GPU_VIRTUAL_ADDRESS tlas, 
+	const RaytraceMaterialPipeline* pipeline,
 	D3D12_GPU_DESCRIPTOR_HANDLE meshBuffer, 
 	D3D12_GPU_VIRTUAL_ADDRESS objConstants, 
 	D3D12_GPU_VIRTUAL_ADDRESS viewConstants, 
-	D3D12_GPU_VIRTUAL_ADDRESS lightConstants,
-	D3D12_GPU_DESCRIPTOR_HANDLE outputUAV
+	D3D12_GPU_VIRTUAL_ADDRESS lightConstants
 ) const
 {
 	// Entry 1 - Miss Program
 	{
 		memcpy(pData, pipeline->GetShaderIdentifier(k_ms), D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
-		D3D12_GPU_VIRTUAL_ADDRESS* pRootDescriptors = reinterpret_cast<D3D12_GPU_VIRTUAL_ADDRESS*>(pData + D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
+		auto* pRootDescriptors = reinterpret_cast<D3D12_GPU_VIRTUAL_ADDRESS*>(pData + D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
 		*(pRootDescriptors++) = viewConstants;
 		*(pRootDescriptors++) = lightConstants;
-		*(pRootDescriptors++) = outputUAV;
-		*(pRootDescriptors++) = tlas;
 
-		D3D12_GPU_DESCRIPTOR_HANDLE* pDescriptorTables = *reinterpret_cast<D3D12_GPU_DESCRIPTOR_HANDLE>(pRootDescriptors);
+		auto* pDescriptorTables = reinterpret_cast<D3D12_GPU_DESCRIPTOR_HANDLE*>(pRootDescriptors);
 		(*pDescriptorTables++) = meshBuffer;
 		(*pDescriptorTables++) = m_srvBegin;
 	}
@@ -434,13 +431,11 @@ void DefaultOpaqueMaterial::BindConstants(
 	// Entry 2 - Closest Hit Program / Hit Group
 	{
 		memcpy(pData, pipeline->GetShaderIdentifier(L"HitGroup"), D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
-		D3D12_GPU_VIRTUAL_ADDRESS* pRootDescriptors = *reinterpret_cast<D3D12_GPU_VIRTUAL_ADDRESS*>(pData + D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
+		auto* pRootDescriptors = reinterpret_cast<D3D12_GPU_VIRTUAL_ADDRESS*>(pData + D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
 		*(pRootDescriptors++) = viewConstants;
 		*(pRootDescriptors++) = lightConstants;
-		*(pRootDescriptors++) = outputUAV;
-		*(pRootDescriptors++) = tlas;
 
-		D3D12_GPU_DESCRIPTOR_HANDLE* pDescriptorTables = *reinterpret_cast<D3D12_GPU_DESCRIPTOR_HANDLE>(pRootDescriptors);
+		auto* pDescriptorTables = reinterpret_cast<D3D12_GPU_DESCRIPTOR_HANDLE*>(pRootDescriptors);
 		(*pDescriptorTables++) = meshBuffer;
 		(*pDescriptorTables++) = m_srvBegin;
 	}
@@ -478,21 +473,6 @@ D3D12_ROOT_SIGNATURE_DESC DefaultMaskedMaterial::BuildRaytraceRootSignature()
 	lightCBV.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
 	lightCBV.Descriptor.ShaderRegister = 1;
 	rootParams.push_back(lightCBV);
-
-	// UAV
-	D3D12_ROOT_PARAMETER outputUAV{};
-	outputUAV.ParameterType = D3D12_ROOT_PARAMETER_TYPE_UAV;
-	outputUAV.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
-	outputUAV.Descriptor.ShaderRegister = 0;
-	rootParams.push_back(outputUAV);
-
-	// TLAS SRV
-	D3D12_ROOT_PARAMETER tlasSRV{};
-	tlasSRV.ParameterType = D3D12_ROOT_PARAMETER_TYPE_SRV;
-	tlasSRV.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
-	tlasSRV.Descriptor.RegisterSpace = 0;
-	tlasSRV.Descriptor.ShaderRegister = 0;
-	rootParams.push_back(tlasSRV);
 
 	// Mesh SRVs
 	D3D12_DESCRIPTOR_RANGE meshSRVRange{};
@@ -534,25 +514,21 @@ D3D12_ROOT_SIGNATURE_DESC DefaultMaskedMaterial::BuildRaytraceRootSignature()
 
 void DefaultMaskedMaterial::BindConstants(
 	uint8_t* pData, 
-	RaytraceMaterialPipeline* pipeline,
-	D3D12_GPU_VIRTUAL_ADDRESS tlas,
+	const RaytraceMaterialPipeline* pipeline,
 	D3D12_GPU_DESCRIPTOR_HANDLE meshBuffer,
 	D3D12_GPU_VIRTUAL_ADDRESS objConstants,
 	D3D12_GPU_VIRTUAL_ADDRESS viewConstants,
-	D3D12_GPU_VIRTUAL_ADDRESS lightConstants,
-	D3D12_GPU_DESCRIPTOR_HANDLE outputUAV
+	D3D12_GPU_VIRTUAL_ADDRESS lightConstants
 ) const
 {
 	// Entry 1 - Miss Program
 	{
 		memcpy(pData, pipeline->GetShaderIdentifier(k_ms), D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
-		D3D12_GPU_VIRTUAL_ADDRESS* pRootDescriptors = reinterpret_cast<D3D12_GPU_VIRTUAL_ADDRESS*>(pData + D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
+		auto* pRootDescriptors = reinterpret_cast<D3D12_GPU_VIRTUAL_ADDRESS*>(pData + D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
 		*(pRootDescriptors++) = viewConstants;
 		*(pRootDescriptors++) = lightConstants;
-		*(pRootDescriptors++) = outputUAV.ptr;
-		*(pRootDescriptors++) = tlas;
 
-		D3D12_GPU_DESCRIPTOR_HANDLE* pDescriptorTables = *reinterpret_cast<D3D12_GPU_DESCRIPTOR_HANDLE>(pRootDescriptors);
+		auto* pDescriptorTables = reinterpret_cast<D3D12_GPU_DESCRIPTOR_HANDLE*>(pRootDescriptors);
 		(*pDescriptorTables++) = meshBuffer;
 		(*pDescriptorTables++) = m_srvBegin;
 	}
@@ -562,13 +538,11 @@ void DefaultMaskedMaterial::BindConstants(
 	// Entry 2 - Closest Hit Program / Hit Group
 	{
 		memcpy(pData, pipeline->GetShaderIdentifier(L"HitGroup"), D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
-		D3D12_GPU_VIRTUAL_ADDRESS* pRootDescriptors = *reinterpret_cast<D3D12_GPU_VIRTUAL_ADDRESS*>(pData + D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
+		auto* pRootDescriptors = reinterpret_cast<D3D12_GPU_VIRTUAL_ADDRESS*>(pData + D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
 		*(pRootDescriptors++) = viewConstants;
 		*(pRootDescriptors++) = lightConstants;
-		*(pRootDescriptors++) = outputUAV;
-		*(pRootDescriptors++) = tlas;
 
-		D3D12_GPU_DESCRIPTOR_HANDLE* pDescriptorTables = *reinterpret_cast<D3D12_GPU_DESCRIPTOR_HANDLE>(pRootDescriptors);
+		auto* pDescriptorTables = reinterpret_cast<D3D12_GPU_DESCRIPTOR_HANDLE*>(pRootDescriptors);
 		(*pDescriptorTables++) = meshBuffer;
 		(*pDescriptorTables++) = m_srvBegin;
 	}
@@ -612,21 +586,6 @@ D3D12_ROOT_SIGNATURE_DESC UntexturedMaterial::BuildRaytraceRootSignature()
 	materialCBV.Descriptor.ShaderRegister = 2;
 	rootParams.push_back(materialCBV);
 
-	// UAV
-	D3D12_ROOT_PARAMETER outputUAV{};
-	outputUAV.ParameterType = D3D12_ROOT_PARAMETER_TYPE_UAV;
-	outputUAV.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
-	outputUAV.Descriptor.ShaderRegister = 0;
-	rootParams.push_back(outputUAV);
-
-	// TLAS SRV
-	D3D12_ROOT_PARAMETER tlasSRV{};
-	tlasSRV.ParameterType = D3D12_ROOT_PARAMETER_TYPE_SRV;
-	tlasSRV.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
-	tlasSRV.Descriptor.RegisterSpace = 0;
-	tlasSRV.Descriptor.ShaderRegister = 0;
-	rootParams.push_back(tlasSRV);
-
 	// Mesh SRVs
 	D3D12_DESCRIPTOR_RANGE meshSRVRange{};
 	meshSRVRange.BaseShaderRegister = 1;
@@ -652,26 +611,22 @@ D3D12_ROOT_SIGNATURE_DESC UntexturedMaterial::BuildRaytraceRootSignature()
 
 void UntexturedMaterial::BindConstants(
 	uint8_t* pData,
-	RaytraceMaterialPipeline* pipeline,
-	D3D12_GPU_VIRTUAL_ADDRESS tlas,
+	const RaytraceMaterialPipeline* pipeline,
 	D3D12_GPU_DESCRIPTOR_HANDLE meshBuffer,
 	D3D12_GPU_VIRTUAL_ADDRESS objConstants,
 	D3D12_GPU_VIRTUAL_ADDRESS viewConstants,
-	D3D12_GPU_VIRTUAL_ADDRESS lightConstants,
-	D3D12_GPU_DESCRIPTOR_HANDLE outputUAV
+	D3D12_GPU_VIRTUAL_ADDRESS lightConstants
 ) const
 {
 	// Entry 1 - Miss Program
 	{
 		memcpy(pData, pipeline->GetShaderIdentifier(k_ms), D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
-		D3D12_GPU_VIRTUAL_ADDRESS* pRootDescriptors = reinterpret_cast<D3D12_GPU_VIRTUAL_ADDRESS*>(pData + D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
+		auto* pRootDescriptors = reinterpret_cast<D3D12_GPU_VIRTUAL_ADDRESS*>(pData + D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
 		*(pRootDescriptors++) = viewConstants;
 		*(pRootDescriptors++) = lightConstants;
-		*(pRootDescriptor++) = m_constantBuffer->GetGPUVirtualAddress();
-		*(pRootDescriptors++) = outputUAV;
-		*(pRootDescriptors++) = tlas;
+		*(pRootDescriptors++) = m_constantBuffer->GetGPUVirtualAddress();
 
-		D3D12_GPU_DESCRIPTOR_HANDLE* pDescriptorTables = *reinterpret_cast<D3D12_GPU_DESCRIPTOR_HANDLE>(pRootDescriptors);
+		auto* pDescriptorTables = reinterpret_cast<D3D12_GPU_DESCRIPTOR_HANDLE*>(pRootDescriptors);
 		(*pDescriptorTables++) = meshBuffer;
 	}
 
@@ -680,14 +635,12 @@ void UntexturedMaterial::BindConstants(
 	// Entry 2 - Closest Hit Program / Hit Group
 	{
 		memcpy(pData, pipeline->GetShaderIdentifier(L"HitGroup"), D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
-		D3D12_GPU_VIRTUAL_ADDRESS* pRootDescriptors = *reinterpret_cast<D3D12_GPU_VIRTUAL_ADDRESS*>(pData + D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
+		auto* pRootDescriptors = reinterpret_cast<D3D12_GPU_VIRTUAL_ADDRESS*>(pData + D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
 		*(pRootDescriptors++) = viewConstants;
 		*(pRootDescriptors++) = lightConstants;
 		*(pRootDescriptor++) = m_constantBuffer->GetGPUVirtualAddress();
-		*(pRootDescriptors++) = outputUAV;
-		*(pRootDescriptors++) = tlas;
 
-		D3D12_GPU_DESCRIPTOR_HANDLE* pDescriptorTables = *reinterpret_cast<D3D12_GPU_DESCRIPTOR_HANDLE>(pRootDescriptors);
+		auto* pDescriptorTables = reinterpret_cast<D3D12_GPU_DESCRIPTOR_HANDLE*>(pRootDescriptors);
 		(*pDescriptorTables++) = meshBuffer;
 	}
 }

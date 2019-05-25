@@ -15,7 +15,7 @@ public:
 	RaytraceMaterialPipeline(ID3D12Device5* device);
 	void BuildFromMaterial(ID3D12Device5* device, std::wstring materialName, MaterialRtPipelineDesc pipelineDesc, std::vector<IUnknown*>& pendingResources);
 	void Commit(ID3D12Device5* device, std::vector<IUnknown*>& pendingResources);
-	void Bind(ID3D12GraphicsCommandList4* cmdList, uint8_t* pData, D3D12_GPU_DESCRIPTOR_HANDLE outputUAV) const;
+	void Bind(ID3D12GraphicsCommandList4* cmdList, uint8_t* pData, D3D12_GPU_VIRTUAL_ADDRESS viewCBV, D3D12_GPU_DESCRIPTOR_HANDLE tlasSRV, D3D12_GPU_DESCRIPTOR_HANDLE outputUAV) const;
 	size_t GetRootSignatureSize() const;
 	void* GetShaderIdentifier(const wchar_t* exportName) const;
 
@@ -39,13 +39,11 @@ public:
 
 	virtual void BindConstants(
 		uint8_t* pData,
-		RaytraceMaterialPipeline* pipeline,
-		D3D12_GPU_VIRTUAL_ADDRESS tlas,
+		const RaytraceMaterialPipeline* pipeline,
 		D3D12_GPU_DESCRIPTOR_HANDLE meshBuffer,
 		D3D12_GPU_VIRTUAL_ADDRESS objConstants,
 		D3D12_GPU_VIRTUAL_ADDRESS viewConstants,
-		D3D12_GPU_VIRTUAL_ADDRESS lightConstants,
-		D3D12_GPU_DESCRIPTOR_HANDLE outputUAV
+		D3D12_GPU_VIRTUAL_ADDRESS lightConstants
 	) const = 0;
 
 protected:
@@ -70,13 +68,11 @@ public:
 	static MaterialRtPipelineDesc GetRaytracePipelineDesc();
 	void BindConstants(
 		uint8_t* pData,
-		RaytraceMaterialPipeline* pipeline,
-		D3D12_GPU_VIRTUAL_ADDRESS tlas,
+		const RaytraceMaterialPipeline* pipeline,
 		D3D12_GPU_DESCRIPTOR_HANDLE meshBuffer,
 		D3D12_GPU_VIRTUAL_ADDRESS objConstants,
 		D3D12_GPU_VIRTUAL_ADDRESS viewConstants, 
-		D3D12_GPU_VIRTUAL_ADDRESS lightConstants,
-		D3D12_GPU_DESCRIPTOR_HANDLE outputUAV
+		D3D12_GPU_VIRTUAL_ADDRESS lightConstants
 	) const override;
 
 private:
@@ -96,13 +92,11 @@ public:
 	static MaterialRtPipelineDesc GetRaytracePipelineDesc();
 	void BindConstants(
 		uint8_t* pData,
-		RaytraceMaterialPipeline* pipeline, 
-		D3D12_GPU_VIRTUAL_ADDRESS tlas, 
+		const RaytraceMaterialPipeline* pipeline,
 		D3D12_GPU_DESCRIPTOR_HANDLE meshBuffer, 
 		D3D12_GPU_VIRTUAL_ADDRESS objConstants, 
 		D3D12_GPU_VIRTUAL_ADDRESS viewConstants, 
-		D3D12_GPU_VIRTUAL_ADDRESS lightConstants, 
-		D3D12_GPU_DESCRIPTOR_HANDLE outputUAV
+		D3D12_GPU_VIRTUAL_ADDRESS lightConstants
 	) const override;
 
 private:
@@ -122,13 +116,11 @@ public:
 	static MaterialRtPipelineDesc GetRaytracePipelineDesc();
 	void BindConstants(
 		uint8_t* pData, 
-		RaytraceMaterialPipeline* pipeline, 
-		D3D12_GPU_VIRTUAL_ADDRESS tlas, 
+		const RaytraceMaterialPipeline* pipeline,
 		D3D12_GPU_DESCRIPTOR_HANDLE meshBuffer, 
 		D3D12_GPU_VIRTUAL_ADDRESS objConstants, 
 		D3D12_GPU_VIRTUAL_ADDRESS viewConstants, 
-		D3D12_GPU_VIRTUAL_ADDRESS lightConstants, 
-		D3D12_GPU_DESCRIPTOR_HANDLE outputUAV
+		D3D12_GPU_VIRTUAL_ADDRESS lightConstants
 	) const override;
 
 private:

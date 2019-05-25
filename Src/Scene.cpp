@@ -539,10 +539,13 @@ void Scene::Render(ID3D12Device5* device, ID3D12GraphicsCommandList4* cmdList, u
 {
 	const size_t sbtSize = k_sbtEntrySize * ( 1 + 2 * m_meshEntities.size());
 	uint8_t* pData = m_sbtPtr + bufferIndex * sbtSize;
-	D3D12_GPU_VIRTUAL_ADDRESS gpuAddress = m_sbtPtr->GetGPUVirtualAddress() + bufferIndex * sbtSize;
+	D3D12_GPU_VIRTUAL_ADDRESS gpuAddress = m_shaderBindingTable->GetGPUVirtualAddress() + bufferIndex * sbtSize;
+
+	D3D12_GPU_VIRTUAL_ADDRESS viewConstants = view.GetConstantBuffer()->GetGPUVirtualAddress() + bufferIndex * sizeof(ViewConstants);
+	D3D12_GPU_VIRTUAL_ADDRESS lightConstants = m_lightConstantBuffer->GetGPUVirtualAddress() + bufferIndex * sizeof(LightConstants);
 
 	// Bind pipeline
-	pipeline->Bind(pData, outputUAV);
+	pipeline->Bind(cmdList, pData, viewConstants, m_tlasSrv, outputUAV);
 	pData += k_sbtEntrySize;
 
 	// Populate SBT
@@ -556,20 +559,16 @@ void Scene::Render(ID3D12Device5* device, ID3D12GraphicsCommandList4* cmdList, u
 		Material* mat = m_materials.at(materialIndex).get();
 
 		D3D12_GPU_VIRTUAL_ADDRESS ObjConstants = m_objectConstantBuffer->GetGPUVirtualAddress() + (bufferIndex * m_meshEntities.size() + entityId) * sizeof(ObjectConstants);
-		D3D12_GPU_VIRTUAL_ADDRESS viewConstants = view.GetConstantBuffer()->GetGPUVirtualAddress() + bufferIndex * sizeof(ViewConstants);
-		D3D12_GPU_VIRTUAL_ADDRESS lightConstants = m_lightConstantBuffer->GetGPUVirtualAddress() + bufferIndex * sizeof(LightConstants);
 
 		uint8_t* materialData = pData + materialIndex * k_sbtEntrySize;
 
 		mat->BindConstants(
 			materialData, 
 			pipeline, 
-			meshEntity->GetTLASAddress(), 
 			sm->GetVertexAndIndexBufferSRVHandle(), 
 			ObjConstants, 
 			viewConstants, 
-			lightConstants, 
-			outputUAV);
+			lightConstants);
 
 		++entityId;
 	}

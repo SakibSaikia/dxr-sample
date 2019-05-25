@@ -23,7 +23,10 @@ D3D12_GPU_DESCRIPTOR_HANDLE Texture::CreateShaderResourceView(ID3D12Device5* dev
 {
 	D3D12_CPU_DESCRIPTOR_HANDLE cpuHnd;
 	cpuHnd.ptr = srvHeap->GetCPUDescriptorHandleForHeapStart().ptr + offsetInHeap * descriptorSize;
-	device->CreateShaderResourceView(m_resource.Get(), nullptr /*default descriptor*/, cpuHnd);
+	device->CreateShaderResourceView(
+		m_resource.Get(), 
+		nullptr, // default descriptor
+		cpuHnd);
 
 	D3D12_GPU_DESCRIPTOR_HANDLE gpuHnd;
 	gpuHnd.ptr = srvHeap->GetGPUDescriptorHandleForHeapStart().ptr + offsetInHeap * descriptorSize;
