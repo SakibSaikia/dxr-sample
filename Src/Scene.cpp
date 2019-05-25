@@ -297,7 +297,7 @@ void Scene::CreateTLAS(
 	asInputs.Flags = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_PREFER_FAST_TRACE;
 
 	D3D12_RAYTRACING_ACCELERATION_STRUCTURE_PREBUILD_INFO asPrebuildInfo{};
-	device->GetRayTracingAccelerationStructurePrebuildInfo(*asInputs, &asPrebuildInfo);
+	device->GetRaytracingAccelerationStructurePrebuildInfo(&asInputs, &asPrebuildInfo);
 
 	const size_t alignedScratchSize = (asPrebuildInfo.ScratchDataSizeInBytes + D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BYTE_ALIGNMENT - 1) & ~D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BYTE_ALIGNMENT;
 	const size_t alignedTLASBufferSize = (asPrebuildInfo.ResultDataMaxSizeInBytes + D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BYTE_ALIGNMENT - 1) & ~D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BYTE_ALIGNMENT;
@@ -305,7 +305,7 @@ void Scene::CreateTLAS(
 	// Create scratch buffer
 	D3D12_RESOURCE_DESC scratchBufDesc = {};
 	scratchBufDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
-	scratchBufDesc.Alignment = std::max(D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BYTE_ALIGNMENT, D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT);
+	scratchBufDesc.Alignment = max(D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BYTE_ALIGNMENT, D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT);
 	scratchBufDesc.Width = alignedScratchSize;
 	scratchBufDesc.Height = 1;
 	scratchBufDesc.DepthOrArraySize = 1;
@@ -345,7 +345,7 @@ void Scene::CreateTLAS(
 	CHECK(device->CreatePlacedResource(
 		resourceHeap->GetHeap(),
 		offsetInHeap,
-		&blasBufDesc,
+		&tlasBufDesc,
 		D3D12_RESOURCE_STATE_RAYTRACING_ACCELERATION_STRUCTURE,
 		nullptr,
 		IID_PPV_ARGS(m_tlasBuffer.GetAddressOf())
@@ -371,7 +371,7 @@ void Scene::CreateTLAS(
 	tlasSrvDesc.Format = DXGI_FORMAT_UNKNOWN;
 	tlasSrvDesc.ViewDimention = D3D12_SRV_DIMENSION_RAYTRACING_ACCELERATION_STRUCTURE;
 	tlasSrvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-	tlasSrvDesc.RaytracingAccelerationStruction.Location = m_tlasBuffer->GetGPUVirtualAddress();
+	tlasSrvDesc.RaytracingAccelerationStructure.Location = m_tlasBuffer->GetGPUVirtualAddress();
 
 	D3D12_CPU_DESCRIPTOR_HANDLE cpuHnd;
 	cpuHnd.ptr = srvHeap->GetCPUDescriptorHandleForHeapStart().ptr + srvHeapOffset * srvDescriptorSize;
@@ -412,36 +412,13 @@ void Scene::CreateShaderBindingTable(ID3D12Device5* device)
 		));
 
 		D3D12_RANGE readRange = { 0 };
-		CHECK(m_shaderBindingTable[pass]->Map(0, &readRange, reinterpret_cast<void**>&m_sbtPtr[pass]);
+		CHECK(m_shaderBindingTable[pass]->Map(0, &readRange, &reinterpret_cast<void*>(m_sbtPtr[pass])));
 	}
 }
 
 void Scene::InitLights(ID3D12Device5* device)
 {
 	m_light = std::make_unique<Light>(DirectX::XMFLOAT3{ 0.57735f, 1.57735f, 0.57735f }, DirectX::XMFLOAT3{ 1.f, 1.f, 1.f }, 10000.f);
-}
-
-void Scene::InitBounds(ID3D12Device5* device, ID3D12GraphicsCommandList4* cmdList)
-{
-	// world space mesh bounds
-	m_meshWorldBounds.resize(m_meshEntities.size());
-
-	int i = 0;
-	for (const auto& meshEntity : m_meshEntities)
-	{
-		DirectX::XMMATRIX worldTransform = DirectX::XMLoadFloat4x4(&meshEntity->GetLocalToWorldMatrix());
-
-		const DirectX::BoundingBox& objectBounds = m_meshes.at(meshEntity->GetMeshIndex())->GetBounds();
-		DirectX::BoundingBox& outWorldBounds = m_meshWorldBounds.at(i++);
-		objectBounds.Transform(outWorldBounds, worldTransform);
-	}
-
-	// world space scene bounds
-	m_sceneBounds = m_meshWorldBounds.at(0);
-	for (const auto& meshWorldBounds : m_meshWorldBounds)
-	{
-		DirectX::BoundingBox::CreateMerged(m_sceneBounds, m_sceneBounds, meshWorldBounds);
-	}
 }
 
 void Scene::InitResources(
@@ -477,7 +454,6 @@ void Scene::InitResources(
 		CreateTLAS(device, cmdList, uploadBuffer, scratchHeap, meshDataHeap, srvHeap, SrvUav::TLASBegin, srvDescriptorSize);
 		CreateShaderBindingTable(device);
 		InitLights(device);
-		InitBounds(device, cmdList);
 	}
 
 	// Object Constant Buffer

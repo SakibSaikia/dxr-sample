@@ -192,11 +192,11 @@ void StaticMesh::CreateBLAS(ID3D12Device5* device, ID3D12GraphicsCommandList4* c
 	D3D12_RAYTRACING_GEOMETRY_DESC geoDesc{};
 	geoDesc.Type = D3D12_RAYTRACING_GEOMETRY_TYPE_TRIANGLES;
 	geoDesc.Triangles.VertexBuffer.StartAddress = m_vertexBuffer->GetGPUVirtualAddress();
-	geoDesc.Triangles.VertexBuffer.StrideInBytes = m_vertexBufferView.StrideInBytes;
+	geoDesc.Triangles.VertexBuffer.StrideInBytes = sizeof(VertexType);
 	geoDesc.Triangles.VertexCount = numVerts;
 	geoDesc.Triangles.VertexFormat = DXGI_FORMAT_R32G32B32_FLOAT;
 	geoDesc.Triangles.IndexBuffer = m_indexBuffer->GetGPUVirtualAddress();
-	geoDesc.Triangles.IndexFormat = m_indexBufferView.Format;
+	geoDesc.Triangles.IndexFormat = (sizeof(IndexType) == sizeof(uint32_t) ? DXGI_FORMAT_R32_UINT : DXGI_FORMAT_R16_UINT);
 	geoDesc.Triangles.IndexCount = numIndices;
 
 	// Compute size for bottom level acceleration structure buffers
@@ -216,7 +216,7 @@ void StaticMesh::CreateBLAS(ID3D12Device5* device, ID3D12GraphicsCommandList4* c
 	// Create scratch buffer
 	D3D12_RESOURCE_DESC scratchBufDesc = {};
 	scratchBufDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
-	scratchBufDesc.Alignment = std::max(D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BYTE_ALIGNMENT, D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT);
+	scratchBufDesc.Alignment = max(D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BYTE_ALIGNMENT, D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT);
 	scratchBufDesc.Width = alignedScratchSize;
 	scratchBufDesc.Height = 1;
 	scratchBufDesc.DepthOrArraySize = 1;
@@ -241,7 +241,7 @@ void StaticMesh::CreateBLAS(ID3D12Device5* device, ID3D12GraphicsCommandList4* c
 	// Create BLAS buffer
 	D3D12_RESOURCE_DESC blasBufDesc = {};
 	blasBufDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
-	blasBufDesc.Alignment = std::max(D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BYTE_ALIGNMENT, D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT);
+	blasBufDesc.Alignment = max(D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BYTE_ALIGNMENT, D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT);
 	blasBufDesc.Width = alignedBLASBufferSize;
 	blasBufDesc.Height = 1;
 	blasBufDesc.DepthOrArraySize = 1;
@@ -289,11 +289,6 @@ VertexFormat::Type StaticMesh::GetVertexFormat() const
 	return VertexFormat::Type::P3N3T3B3U2;
 }
 
-const DirectX::BoundingBox& StaticMesh::GetBounds() const
-{
-	return m_bounds;
-}
-
 const D3D12_GPU_VIRTUAL_ADDRESS StaticMesh::GetBLASAddress() const
 {
 	return m_blasBuffer->GetGPUVirtualAddress();
@@ -333,9 +328,4 @@ DirectX::XMFLOAT4X4 StaticMeshEntity::GetLocalToWorldMatrix() const
 std::string StaticMeshEntity::GetName() const
 {
 	return m_name;
-}
-
-const D3D12_GPU_VIRTUAL_ADDRESS StaticMeshEntity::GetTLASAddress() const
-{
-	return m_tlasBuffer->GetGPUVirtualAddress();
 }

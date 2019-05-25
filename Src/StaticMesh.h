@@ -20,7 +20,6 @@ public:
 
 	uint32_t GetMaterialIndex() const;
 	VertexFormat::Type GetVertexFormat() const;
-	const DirectX::BoundingBox& GetBounds() const;
 	const D3D12_GPU_VIRTUAL_ADDRESS GetBLASAddress() const;
 	const D3D12_GPU_DESCRIPTOR_HANDLE GetVertexAndIndexBufferSRVHandle() const;
 
@@ -48,7 +47,6 @@ public:
 	DirectX::XMFLOAT4X4 GetLocalToWorldMatrix() const;
 	uint64_t GetMeshIndex() const;
 	std::string GetName() const;
-	const D3D12_GPU_VIRTUAL_ADDRESS GetTLASAddress() const;
 
 private:
 	std::string m_name;

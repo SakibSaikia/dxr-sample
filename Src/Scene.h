@@ -74,8 +74,6 @@ private:
 
 	void InitLights(ID3D12Device5* device);
 
-	void InitBounds(ID3D12Device5* device, ID3D12GraphicsCommandList4* cmdList);
-
 	D3D12_GPU_DESCRIPTOR_HANDLE LoadTexture(
 		const std::string& textureName, 
 		ID3D12Device5* device, 
