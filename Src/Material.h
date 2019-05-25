@@ -12,15 +12,15 @@ struct MaterialRtPipelineDesc
 class RaytraceMaterialPipeline
 {
 public:
-	RaytraceMaterialPipeline(ID3D12Device5* device, RenderPass::Id pass);
+	RaytraceMaterialPipeline(ID3D12Device5* device);
 	void BuildFromMaterial(ID3D12Device5* device, std::wstring materialName, MaterialRtPipelineDesc pipelineDesc, std::vector<IUnknown*>& pendingResources);
 	void Commit(ID3D12Device5* device, std::vector<IUnknown*>& pendingResources);
-	void Bind(ID3D12GraphicsCommandList4* cmdList, uint8_t* pData, RenderPass::Id pass, D3D12_GPU_DESCRIPTOR_HANDLE outputUAV) const;
+	void Bind(ID3D12GraphicsCommandList4* cmdList, uint8_t* pData, D3D12_GPU_DESCRIPTOR_HANDLE outputUAV) const;
 	size_t GetRootSignatureSize() const;
 	void* GetShaderIdentifier(const wchar_t* exportName) const;
 
 private:
-	static D3D12_ROOT_SIGNATURE_DESC BuildRaygenRootSignature(RenderPass::Id pass);
+	static D3D12_ROOT_SIGNATURE_DESC BuildRaygenRootSignature();
 
 private:
 	Microsoft::WRL::ComPtr<ID3D12StateObject> m_pso;
@@ -67,7 +67,7 @@ public:
 	};
 
 	UntexturedMaterial(std::string& name, Microsoft::WRL::ComPtr<ID3D12Resource> constantBuffer);
-	static MaterialRtPipelineDesc GetRaytracePipelineDesc(RenderPass::Id renderPass);
+	static MaterialRtPipelineDesc GetRaytracePipelineDesc();
 	void BindConstants(
 		uint8_t* pData,
 		RaytraceMaterialPipeline* pipeline,
@@ -80,7 +80,7 @@ public:
 	) const override;
 
 private:
-	static D3D12_ROOT_SIGNATURE_DESC BuildRaytraceRootSignature(RenderPass::Id pass);
+	static D3D12_ROOT_SIGNATURE_DESC BuildRaytraceRootSignature();
 
 private:
 	Microsoft::WRL::ComPtr<ID3D12Resource> m_constantBuffer;
@@ -93,7 +93,7 @@ class DefaultOpaqueMaterial : public Material
 
 public:
 	DefaultOpaqueMaterial(std::string& name, const D3D12_GPU_DESCRIPTOR_HANDLE srvHandle);
-	static MaterialRtPipelineDesc GetRaytracePipelineDesc(RenderPass::Id renderPass);
+	static MaterialRtPipelineDesc GetRaytracePipelineDesc();
 	void BindConstants(
 		uint8_t* pData,
 		RaytraceMaterialPipeline* pipeline, 
@@ -106,7 +106,7 @@ public:
 	) const override;
 
 private:
-	static D3D12_ROOT_SIGNATURE_DESC BuildRaytraceRootSignature(RenderPass::Id pass);
+	static D3D12_ROOT_SIGNATURE_DESC BuildRaytraceRootSignature();
 
 private:
 	D3D12_GPU_DESCRIPTOR_HANDLE m_srvBegin;
@@ -119,7 +119,7 @@ class DefaultMaskedMaterial : public Material
 
 public:
 	DefaultMaskedMaterial(std::string& name, const D3D12_GPU_DESCRIPTOR_HANDLE srvHandle, const D3D12_GPU_DESCRIPTOR_HANDLE opacityMaskSrvHandle);
-	static MaterialRtPipelineDesc GetRaytracePipelineDesc(RenderPass::Id renderPass);
+	static MaterialRtPipelineDesc GetRaytracePipelineDesc();
 	void BindConstants(
 		uint8_t* pData, 
 		RaytraceMaterialPipeline* pipeline, 
@@ -132,7 +132,7 @@ public:
 	) const override;
 
 private:
-	static D3D12_ROOT_SIGNATURE_DESC BuildRaytraceRootSignature(RenderPass::Id pass);
+	static D3D12_ROOT_SIGNATURE_DESC BuildRaytraceRootSignature();
 
 private:
 	D3D12_GPU_DESCRIPTOR_HANDLE m_srvBegin;

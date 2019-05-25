@@ -28,11 +28,11 @@ public:
 	void UpdateRenderResources(uint32_t bufferIndex);
 
 	void Render(
-		RenderPass::Id pass, 
 		ID3D12Device5* device, 
 		ID3D12GraphicsCommandList4* cmdList, 
 		uint32_t bufferIndex, 
 		const View& view, 
+		const RaytraceMaterialPipeline* pipeline,
 		D3D12_GPU_DESCRIPTOR_HANDLE outputUAV);
 
 private:
@@ -93,8 +93,8 @@ private:
 	Microsoft::WRL::ComPtr<ID3D12Resource> m_tlasBuffer;
 	D3D12_GPU_DESCRIPTOR_HANDLE m_tlasSrv;
 
-	Microsoft::WRL::ComPtr<ID3D12Resource> m_shaderBindingTable[RenderPass::Count];
-	uint8_t* m_sbtPtr[RenderPass::Count] = {};
+	Microsoft::WRL::ComPtr<ID3D12Resource> m_shaderBindingTable;
+	uint8_t* m_sbtPtr = {};
 
 	Microsoft::WRL::ComPtr<ID3D12Resource> m_objectConstantBuffer;
 	ObjectConstants* m_objectConstantBufferPtr;

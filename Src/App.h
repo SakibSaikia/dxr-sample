@@ -84,8 +84,8 @@ private:
 	// View
 	View m_view;
 
-	// Raytracing Pipelines
-	std::array<std::unique_ptr<RaytraceMaterialPipeline>, RenderPass::Count> m_raytracePipelines;
+	// Raytracing Pipeline
+	std::unique_ptr<RaytraceMaterialPipeline> m_raytracePipeline;
 
 	// Mouse
 	WPARAM m_buttonState = {};

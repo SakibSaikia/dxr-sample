@@ -175,24 +175,19 @@ void App::InitSurfaces()
 
 void App::InitRaytracePipelines()
 {
-	for (int pass = 0; pass < RenderPass::Count; pass++)
-	{
-		RenderPass::Id renderPass = static_cast<RenderPass::Id>(pass);
+	// Holds temp resources such as blobs and root signatures until the pipeline is committed
+	std::vector<IUnknown*> pendingResources;
 
-		// Holds temp resources such as blobs and root signatures until the pipeline is committed
-		std::vector<IUnknown*> pendingResources;
+	// Add any new materials to the list below
+	auto rtPipeline = std::make_unique<RaytraceMaterialPipeline>(m_d3dDevice.Get());
+	rtPipeline->BuildFromMaterial(m_d3dDevice.Get(), L"DefaultOpaue", DefaultOpaqueMaterial::GetRaytracePipelineDesc(), pendingResources);
+	rtPipeline->BuildFromMaterial(m_d3dDevice.Get(), L"DefaultMasked", DefaultMaskedMaterial::GetRaytracePipelineDesc(), pendingResources);
+	rtPipeline->BuildFromMaterial(m_d3dDevice.Get(), L"Untextured", UntexturedMaterial::GetRaytracePipelineDesc(), pendingResources);
 
-		// Add any new materials to the list below
-		auto rtPipeline = std::make_unique<RaytraceMaterialPipeline>(m_d3dDevice.Get(), renderPass);
-		rtPipeline->BuildFromMaterial(m_d3dDevice.Get(), L"DefaultOpaue",  DefaultOpaqueMaterial::GetRaytracePipelineDesc(renderPass), pendingResources);
-		rtPipeline->BuildFromMaterial(m_d3dDevice.Get(), L"DefaultMasked", DefaultMaskedMaterial::GetRaytracePipelineDesc(renderPass), pendingResources);
-		rtPipeline->BuildFromMaterial(m_d3dDevice.Get(), L"Untextured", UntexturedMaterial::GetRaytracePipelineDesc(renderPass), pendingResources);
+	// Finalize and build
+	rtPipeline->Commit(m_d3dDevice.Get(), pendingResources);
 
-		// Finalize and build
-		rtPipeline->Commit(m_d3dDevice.Get(), pendingResources);
-
-		m_raytracePipelines[pass] = std::move(rtPipeline);
-	}
+	m_raytracePipeline = std::move(rtPipeline);
 }
 
 void App::InitDescriptorHeaps()
@@ -309,7 +304,7 @@ void App::Render()
 
 		{
 			PIXScopedEvent(m_gfxCmdList.Get(), 0, L"scene");
-			m_scene.Render(RenderPass::Raytrace, m_d3dDevice.Get(), m_gfxCmdList.Get(), m_gfxBufferIndex, m_view, GetSrvUavDescriptorGPU(SrvUav::DxrOutputUAV));
+			m_scene.Render(m_d3dDevice.Get(), m_gfxCmdList.Get(), m_gfxBufferIndex, m_view, m_raytracePipeline.get(), GetSrvUavDescriptorGPU(SrvUav::DxrOutputUAV));
 		}
 
 		// Transition DXR output from UAV to copy source

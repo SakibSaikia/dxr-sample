@@ -4,7 +4,6 @@
 namespace
 {
 	static const wchar_t* k_rgs = L"mtl_untextured.rgs";
-	std::unique_ptr<RaytraceMaterialPipeline> s_raytracePipelines[RenderPass::Count];
 }
 
 ID3DBlob* LoadBlob(const std::wstring& filename)
@@ -67,39 +66,36 @@ size_t GetRootSignatureSizeInBytes(const D3D12_ROOT_SIGNATURE_DESC& desc)
 	return size;
 }
 
-D3D12_ROOT_SIGNATURE_DESC RaytraceMaterialPipeline::BuildRaygenRootSignature(RenderPass::Id pass)
+D3D12_ROOT_SIGNATURE_DESC RaytraceMaterialPipeline::BuildRaygenRootSignature()
 {
 	D3D12_ROOT_SIGNATURE_DESC rootDesc = {};
 
-	if (pass == RenderPass::Raytrace)
-	{
-		std::vector<D3D12_ROOT_PARAMETER> rootParams;
-		rootParams.reserve(2);
+	std::vector<D3D12_ROOT_PARAMETER> rootParams;
+	rootParams.reserve(2);
 
-		// Constant buffers
-		D3D12_ROOT_PARAMETER viewCBV{};
-		viewCBV.ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
-		viewCBV.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
-		viewCBV.Descriptor.ShaderRegister = 0;
-		rootParams.push_back(viewCBV);
+	// Constant buffers
+	D3D12_ROOT_PARAMETER viewCBV{};
+	viewCBV.ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
+	viewCBV.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+	viewCBV.Descriptor.ShaderRegister = 0;
+	rootParams.push_back(viewCBV);
 
-		// UAV
-		D3D12_ROOT_PARAMETER outputUAV{};
-		outputUAV.ParameterType = D3D12_ROOT_PARAMETER_TYPE_UAV;
-		outputUAV.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
-		outputUAV.Descriptor.ShaderRegister = 0;
-		rootParams.push_back(outputUAV);
+	// UAV
+	D3D12_ROOT_PARAMETER outputUAV{};
+	outputUAV.ParameterType = D3D12_ROOT_PARAMETER_TYPE_UAV;
+	outputUAV.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+	outputUAV.Descriptor.ShaderRegister = 0;
+	rootParams.push_back(outputUAV);
 
-		// Full Root Signature
-		rootDesc.NumParameters = rootParams.size();
-		rootDesc.pParameters = rootParams.data();
-		rootDesc.Flags = D3D12_ROOT_SIGNATURE_FLAG_LOCAL_ROOT_SIGNATURE;
-	}
+	// Full Root Signature
+	rootDesc.NumParameters = rootParams.size();
+	rootDesc.pParameters = rootParams.data();
+	rootDesc.Flags = D3D12_ROOT_SIGNATURE_FLAG_LOCAL_ROOT_SIGNATURE;
 
 	return rootDesc;
 }
 
-RaytraceMaterialPipeline::RaytraceMaterialPipeline(ID3D12Device5* device, RenderPass::Id pass)
+RaytraceMaterialPipeline::RaytraceMaterialPipeline(ID3D12Device5* device)
 {
 	// RayGen shader
 	Microsoft::WRL::ComPtr<ID3DBlob> rgsByteCode = LoadBlob(k_rgs);
@@ -147,7 +143,7 @@ RaytraceMaterialPipeline::RaytraceMaterialPipeline(ID3D12Device5* device, Render
 	m_pipelineSubObjects.push_back(shaderConfigAssociationSubObject);
 
 	// Raygen Root Signature
-	D3D12_ROOT_SIGNATURE_DESC rootSigDesc = BuildRaygenRootSignature(pass);
+	D3D12_ROOT_SIGNATURE_DESC rootSigDesc = BuildRaygenRootSignature();
 	assert(GetRootSignatureSizeInBytes(rootSigDesc) <= k_maxRootSignatureSize);
 	m_raytraceRootSignature = CreateRootSignature(device, rootSigDesc);
 
@@ -250,7 +246,7 @@ void RaytraceMaterialPipeline::BuildFromMaterial(ID3D12Device5* device, std::wst
 
 
 	// Root Signature
-	assert(GetRootSignatureSizeInBytes(device, pipelineDesc.rootsigDesc) <= k_maxRootSignatureSize);
+	assert(GetRootSignatureSizeInBytes(pipelineDesc.rootsigDesc) <= k_maxRootSignatureSize);
 	ID3D12RootSignature* rootSig = CreateRootSignature(device, pipelineDesc.rootsigDesc);
 	pendingResources.push_back(rootSig);
 
@@ -295,7 +291,7 @@ void RaytraceMaterialPipeline::Commit(ID3D12Device5* device, std::vector<IUnknow
 	}
 }
 
-void RaytraceMaterialPipeline::Bind(ID3D12GraphicsCommandList4* cmdList, uint8_t* pData, RenderPass::Id pass, D3D12_GPU_DESCRIPTOR_HANDLE outputUAV) const
+void RaytraceMaterialPipeline::Bind(ID3D12GraphicsCommandList4* cmdList, uint8_t* pData, D3D12_GPU_DESCRIPTOR_HANDLE outputUAV) const
 {
 	// Bind PSO
 	cmdList->SetPipelineState1(m_pso.Get());
@@ -304,13 +300,8 @@ void RaytraceMaterialPipeline::Bind(ID3D12GraphicsCommandList4* cmdList, uint8_t
 	memcpy(pData, GetShaderIdentifier(k_rgs), D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
 
 	// Raygen shader bindings
-	if (pass == RenderPass::Raytrace)
-	{
-		D3D12_GPU_DESCRIPTOR_HANDLE* pRootDescriptors = *reinterpret_cast<D3D12_GPU_DESCRIPTOR_HANDLE*>(pData + D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
-		*(pRootDescriptors++) = outputUAV;
-	}
-
-
+	D3D12_GPU_DESCRIPTOR_HANDLE* pRootDescriptors = *reinterpret_cast<D3D12_GPU_DESCRIPTOR_HANDLE*>(pData + D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
+	*(pRootDescriptors++) = outputUAV;
 }
 
 size_t RaytraceMaterialPipeline::GetRootSignatureSize() const
@@ -334,84 +325,81 @@ DefaultOpaqueMaterial::DefaultOpaqueMaterial(std::string& name, const D3D12_GPU_
 {
 }
 
-MaterialRtPipelineDesc DefaultOpaqueMaterial::GetRaytracePipelineDesc(RenderPass::Id renderPass)
+MaterialRtPipelineDesc DefaultOpaqueMaterial::GetRaytracePipelineDesc()
 {
-	auto rootSigDesc = BuildRaytraceRootSignature(renderPass);
+	auto rootSigDesc = BuildRaytraceRootSignature();
 	return MaterialRtPipelineDesc{ k_chs, k_ms, rootSigDesc };
 }
 
-D3D12_ROOT_SIGNATURE_DESC DefaultOpaqueMaterial::BuildRaytraceRootSignature(RenderPass::Id pass)
+D3D12_ROOT_SIGNATURE_DESC DefaultOpaqueMaterial::BuildRaytraceRootSignature()
 {
 	D3D12_ROOT_SIGNATURE_DESC rootDesc = {};
 
-	if (pass == RenderPass::Raytrace)
-	{
-		std::vector<D3D12_ROOT_PARAMETER> rootParams;
-		rootParams.reserve(6);
+	std::vector<D3D12_ROOT_PARAMETER> rootParams;
+	rootParams.reserve(6);
 
-		// Constant buffers
-		D3D12_ROOT_PARAMETER viewCBV{};
-		viewCBV.ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
-		viewCBV.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
-		viewCBV.Descriptor.ShaderRegister = 0;
-		rootParams.push_back(viewCBV);
+	// Constant buffers
+	D3D12_ROOT_PARAMETER viewCBV{};
+	viewCBV.ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
+	viewCBV.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+	viewCBV.Descriptor.ShaderRegister = 0;
+	rootParams.push_back(viewCBV);
 
-		D3D12_ROOT_PARAMETER lightCBV{};
-		lightCBV.ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
-		lightCBV.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
-		lightCBV.Descriptor.ShaderRegister = 1;
-		rootParams.push_back(lightCBV);
+	D3D12_ROOT_PARAMETER lightCBV{};
+	lightCBV.ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
+	lightCBV.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+	lightCBV.Descriptor.ShaderRegister = 1;
+	rootParams.push_back(lightCBV);
 
-		// UAV
-		D3D12_ROOT_PARAMETER outputUAV{};
-		outputUAV.ParameterType = D3D12_ROOT_PARAMETER_TYPE_UAV;
-		outputUAV.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
-		outputUAV.Descriptor.ShaderRegister = 0;
-		rootParams.push_back(outputUAV);
+	// UAV
+	D3D12_ROOT_PARAMETER outputUAV{};
+	outputUAV.ParameterType = D3D12_ROOT_PARAMETER_TYPE_UAV;
+	outputUAV.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+	outputUAV.Descriptor.ShaderRegister = 0;
+	rootParams.push_back(outputUAV);
 
-		// TLAS SRV
-		D3D12_ROOT_PARAMETER tlasSRV{};
-		tlasSRV.ParameterType = D3D12_ROOT_PARAMETER_TYPE_SRV;
-		tlasSRV.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
-		tlasSRV.Descriptor.RegisterSpace = 0;
-		tlasSRV.Descriptor.ShaderRegister = 0;
-		rootParams.push_back(tlasSRV);
+	// TLAS SRV
+	D3D12_ROOT_PARAMETER tlasSRV{};
+	tlasSRV.ParameterType = D3D12_ROOT_PARAMETER_TYPE_SRV;
+	tlasSRV.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+	tlasSRV.Descriptor.RegisterSpace = 0;
+	tlasSRV.Descriptor.ShaderRegister = 0;
+	rootParams.push_back(tlasSRV);
 
-		// Meshdata SRVs
-		D3D12_DESCRIPTOR_RANGE meshSRVRange{};
-		meshSRVRange.BaseShaderRegister = 1;
-		meshSRVRange.NumDescriptors = 2; // VB, IB
-		meshSRVRange.RegisterSpace = 0;
-		meshSRVRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
-		meshSRVRange.OffsetInDescriptorsFromTableStart = 0;
+	// Meshdata SRVs
+	D3D12_DESCRIPTOR_RANGE meshSRVRange{};
+	meshSRVRange.BaseShaderRegister = 1;
+	meshSRVRange.NumDescriptors = 2; // VB, IB
+	meshSRVRange.RegisterSpace = 0;
+	meshSRVRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
+	meshSRVRange.OffsetInDescriptorsFromTableStart = 0;
 
-		D3D12_ROOT_PARAMETER meshSRVs{};
-		meshSRVs.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
-		meshSRVs.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
-		meshSRVs.DescriptorTable.NumDescriptorRanges = 1;
-		meshSRVs.DescriptorTable.pDescriptorRanges = &meshSRVRange;
-		rootParams.push_back(meshSRVs);
+	D3D12_ROOT_PARAMETER meshSRVs{};
+	meshSRVs.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+	meshSRVs.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+	meshSRVs.DescriptorTable.NumDescriptorRanges = 1;
+	meshSRVs.DescriptorTable.pDescriptorRanges = &meshSRVRange;
+	rootParams.push_back(meshSRVs);
 
-		// Material SRVs
-		D3D12_DESCRIPTOR_RANGE materialSRVRange{};
-		materialSRVRange.BaseShaderRegister = 0;
-		materialSRVRange.NumDescriptors = 4;
-		materialSRVRange.RegisterSpace = 1;
-		materialSRVRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
-		materialSRVRange.OffsetInDescriptorsFromTableStart = 0;
+	// Material SRVs
+	D3D12_DESCRIPTOR_RANGE materialSRVRange{};
+	materialSRVRange.BaseShaderRegister = 0;
+	materialSRVRange.NumDescriptors = 4;
+	materialSRVRange.RegisterSpace = 1;
+	materialSRVRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
+	materialSRVRange.OffsetInDescriptorsFromTableStart = 0;
 
-		D3D12_ROOT_PARAMETER materialSRVs{};
-		materialSRVs.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
-		materialSRVs.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
-		materialSRVs.DescriptorTable.NumDescriptorRanges = 1;
-		materialSRVs.DescriptorTable.pDescriptorRanges = &materialSRVRange;
-		rootParams.push_back(materialSRVs);
+	D3D12_ROOT_PARAMETER materialSRVs{};
+	materialSRVs.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+	materialSRVs.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+	materialSRVs.DescriptorTable.NumDescriptorRanges = 1;
+	materialSRVs.DescriptorTable.pDescriptorRanges = &materialSRVRange;
+	rootParams.push_back(materialSRVs);
 
-		// Full Root Signature
-		rootDesc.NumParameters = rootParams.size();
-		rootDesc.pParameters = rootParams.data();
-		rootDesc.Flags = D3D12_ROOT_SIGNATURE_FLAG_LOCAL_ROOT_SIGNATURE;
-	}
+	// Full Root Signature
+	rootDesc.NumParameters = rootParams.size();
+	rootDesc.pParameters = rootParams.data();
+	rootDesc.Flags = D3D12_ROOT_SIGNATURE_FLAG_LOCAL_ROOT_SIGNATURE;
 
 	return rootDesc;
 }
@@ -465,84 +453,81 @@ DefaultMaskedMaterial::DefaultMaskedMaterial(std::string& name, const D3D12_GPU_
 {
 }
 
-MaterialRtPipelineDesc DefaultMaskedMaterial::GetRaytracePipelineDesc(RenderPass::Id pass)
+MaterialRtPipelineDesc DefaultMaskedMaterial::GetRaytracePipelineDesc()
 {
-	auto rootSigDesc = BuildRaytraceRootSignature( pass);
+	auto rootSigDesc = BuildRaytraceRootSignature();
 	return MaterialRtPipelineDesc{ k_chs, k_ms, rootSigDesc };
 }
 
-D3D12_ROOT_SIGNATURE_DESC DefaultMaskedMaterial::BuildRaytraceRootSignature(RenderPass::Id pass)
+D3D12_ROOT_SIGNATURE_DESC DefaultMaskedMaterial::BuildRaytraceRootSignature()
 {
 	D3D12_ROOT_SIGNATURE_DESC rootDesc = {};
 
-	if (pass == RenderPass::Raytrace)
-	{
-		std::vector<D3D12_ROOT_PARAMETER> rootParams;
-		rootParams.reserve(6);
+	std::vector<D3D12_ROOT_PARAMETER> rootParams;
+	rootParams.reserve(6);
 
-		// Constant buffers
-		D3D12_ROOT_PARAMETER viewCBV{};
-		viewCBV.ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
-		viewCBV.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
-		viewCBV.Descriptor.ShaderRegister = 0;
-		rootParams.push_back(viewCBV);
+	// Constant buffers
+	D3D12_ROOT_PARAMETER viewCBV{};
+	viewCBV.ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
+	viewCBV.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+	viewCBV.Descriptor.ShaderRegister = 0;
+	rootParams.push_back(viewCBV);
 
-		D3D12_ROOT_PARAMETER lightCBV{};
-		lightCBV.ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
-		lightCBV.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
-		lightCBV.Descriptor.ShaderRegister = 1;
-		rootParams.push_back(lightCBV);
+	D3D12_ROOT_PARAMETER lightCBV{};
+	lightCBV.ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
+	lightCBV.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+	lightCBV.Descriptor.ShaderRegister = 1;
+	rootParams.push_back(lightCBV);
 
-		// UAV
-		D3D12_ROOT_PARAMETER outputUAV{};
-		outputUAV.ParameterType = D3D12_ROOT_PARAMETER_TYPE_UAV;
-		outputUAV.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
-		outputUAV.Descriptor.ShaderRegister = 0;
-		rootParams.push_back(outputUAV);
+	// UAV
+	D3D12_ROOT_PARAMETER outputUAV{};
+	outputUAV.ParameterType = D3D12_ROOT_PARAMETER_TYPE_UAV;
+	outputUAV.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+	outputUAV.Descriptor.ShaderRegister = 0;
+	rootParams.push_back(outputUAV);
 
-		// TLAS SRV
-		D3D12_ROOT_PARAMETER tlasSRV{};
-		tlasSRV.ParameterType = D3D12_ROOT_PARAMETER_TYPE_SRV;
-		tlasSRV.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
-		tlasSRV.Descriptor.RegisterSpace = 0;
-		tlasSRV.Descriptor.ShaderRegister = 0;
-		rootParams.push_back(tlasSRV);
+	// TLAS SRV
+	D3D12_ROOT_PARAMETER tlasSRV{};
+	tlasSRV.ParameterType = D3D12_ROOT_PARAMETER_TYPE_SRV;
+	tlasSRV.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+	tlasSRV.Descriptor.RegisterSpace = 0;
+	tlasSRV.Descriptor.ShaderRegister = 0;
+	rootParams.push_back(tlasSRV);
 
-		// Mesh SRVs
-		D3D12_DESCRIPTOR_RANGE meshSRVRange{};
-		meshSRVRange.BaseShaderRegister = 1;
-		meshSRVRange.NumDescriptors = 2; // VB, IB
-		meshSRVRange.RegisterSpace = 0;
-		meshSRVRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
-		meshSRVRange.OffsetInDescriptorsFromTableStart = 0;
+	// Mesh SRVs
+	D3D12_DESCRIPTOR_RANGE meshSRVRange{};
+	meshSRVRange.BaseShaderRegister = 1;
+	meshSRVRange.NumDescriptors = 2; // VB, IB
+	meshSRVRange.RegisterSpace = 0;
+	meshSRVRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
+	meshSRVRange.OffsetInDescriptorsFromTableStart = 0;
 
-		D3D12_ROOT_PARAMETER meshSRVs{};
-		meshSRVs.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
-		meshSRVs.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
-		meshSRVs.DescriptorTable.NumDescriptorRanges = 1;
-		meshSRVs.DescriptorTable.pDescriptorRanges = &meshSRVRange;
-		rootParams.push_back(meshSRVs);
+	D3D12_ROOT_PARAMETER meshSRVs{};
+	meshSRVs.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+	meshSRVs.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+	meshSRVs.DescriptorTable.NumDescriptorRanges = 1;
+	meshSRVs.DescriptorTable.pDescriptorRanges = &meshSRVRange;
+	rootParams.push_back(meshSRVs);
 
-		// Material SRVs
-		D3D12_DESCRIPTOR_RANGE materialSRVRange{};
-		materialSRVRange.BaseShaderRegister = 0;
-		materialSRVRange.NumDescriptors = 5;
-		materialSRVRange.RegisterSpace = 1;
-		materialSRVRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
-		materialSRVRange.OffsetInDescriptorsFromTableStart = 0;
+	// Material SRVs
+	D3D12_DESCRIPTOR_RANGE materialSRVRange{};
+	materialSRVRange.BaseShaderRegister = 0;
+	materialSRVRange.NumDescriptors = 5;
+	materialSRVRange.RegisterSpace = 1;
+	materialSRVRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
+	materialSRVRange.OffsetInDescriptorsFromTableStart = 0;
 
-		D3D12_ROOT_PARAMETER materialSRVs{};
-		materialSRVs.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
-		materialSRVs.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
-		materialSRVs.DescriptorTable.NumDescriptorRanges = 1;
-		materialSRVs.DescriptorTable.pDescriptorRanges = &materialSRVRange;
-		rootParams.push_back(materialSRVs);
+	D3D12_ROOT_PARAMETER materialSRVs{};
+	materialSRVs.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+	materialSRVs.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+	materialSRVs.DescriptorTable.NumDescriptorRanges = 1;
+	materialSRVs.DescriptorTable.pDescriptorRanges = &materialSRVRange;
+	rootParams.push_back(materialSRVs);
 
-		// Full Root Signature
-		rootDesc.NumParameters = rootParams.size();
-		rootDesc.pParameters = rootParams.data();
-		rootDesc.Flags = D3D12_ROOT_SIGNATURE_FLAG_LOCAL_ROOT_SIGNATURE;
-	}
+	// Full Root Signature
+	rootDesc.NumParameters = rootParams.size();
+	rootDesc.pParameters = rootParams.data();
+	rootDesc.Flags = D3D12_ROOT_SIGNATURE_FLAG_LOCAL_ROOT_SIGNATURE;
 
 	return rootDesc;
 }
@@ -595,75 +580,72 @@ UntexturedMaterial::UntexturedMaterial(std::string& name, Microsoft::WRL::ComPtr
 {
 }
 
-MaterialRtPipelineDesc UntexturedMaterial::GetRaytracePipelineDesc(RenderPass::Id pass)
+MaterialRtPipelineDesc UntexturedMaterial::GetRaytracePipelineDesc()
 {
-	auto rootSigDesc = BuildRaytraceRootSignature(pass);
+	auto rootSigDesc = BuildRaytraceRootSignature();
 	return MaterialRtPipelineDesc{ k_chs, k_ms, rootSigDesc };
 }
 
-D3D12_ROOT_SIGNATURE_DESC UntexturedMaterial::BuildRaytraceRootSignature(RenderPass::Id pass)
+D3D12_ROOT_SIGNATURE_DESC UntexturedMaterial::BuildRaytraceRootSignature()
 {
 	D3D12_ROOT_SIGNATURE_DESC rootDesc = {};
 
-	if (pass == RenderPass::Raytrace)
-	{
-		std::vector<D3D12_ROOT_PARAMETER> rootParams;
-		rootParams.reserve(7);
+	std::vector<D3D12_ROOT_PARAMETER> rootParams;
+	rootParams.reserve(7);
 
-		// Constant buffers
-		D3D12_ROOT_PARAMETER viewCBV{};
-		viewCBV.ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
-		viewCBV.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
-		viewCBV.Descriptor.ShaderRegister = 0;
-		rootParams.push_back(viewCBV);
+	// Constant buffers
+	D3D12_ROOT_PARAMETER viewCBV{};
+	viewCBV.ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
+	viewCBV.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+	viewCBV.Descriptor.ShaderRegister = 0;
+	rootParams.push_back(viewCBV);
 
-		D3D12_ROOT_PARAMETER lightCBV{};
-		lightCBV.ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
-		lightCBV.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
-		lightCBV.Descriptor.ShaderRegister = 1;
-		rootParams.push_back(lightCBV);
+	D3D12_ROOT_PARAMETER lightCBV{};
+	lightCBV.ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
+	lightCBV.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+	lightCBV.Descriptor.ShaderRegister = 1;
+	rootParams.push_back(lightCBV);
 
-		D3D12_ROOT_PARAMETER materialCBV{};
-		materialCBV.ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
-		materialCBV.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
-		materialCBV.Descriptor.ShaderRegister = 2;
-		rootParams.push_back(materialCBV);
+	D3D12_ROOT_PARAMETER materialCBV{};
+	materialCBV.ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
+	materialCBV.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+	materialCBV.Descriptor.ShaderRegister = 2;
+	rootParams.push_back(materialCBV);
 
-		// UAV
-		D3D12_ROOT_PARAMETER outputUAV{};
-		outputUAV.ParameterType = D3D12_ROOT_PARAMETER_TYPE_UAV;
-		outputUAV.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
-		outputUAV.Descriptor.ShaderRegister = 0;
-		rootParams.push_back(outputUAV);
+	// UAV
+	D3D12_ROOT_PARAMETER outputUAV{};
+	outputUAV.ParameterType = D3D12_ROOT_PARAMETER_TYPE_UAV;
+	outputUAV.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+	outputUAV.Descriptor.ShaderRegister = 0;
+	rootParams.push_back(outputUAV);
 
-		// TLAS SRV
-		D3D12_ROOT_PARAMETER tlasSRV{};
-		tlasSRV.ParameterType = D3D12_ROOT_PARAMETER_TYPE_SRV;
-		tlasSRV.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
-		tlasSRV.Descriptor.RegisterSpace = 0;
-		tlasSRV.Descriptor.ShaderRegister = 0;
-		rootParams.push_back(tlasSRV);
+	// TLAS SRV
+	D3D12_ROOT_PARAMETER tlasSRV{};
+	tlasSRV.ParameterType = D3D12_ROOT_PARAMETER_TYPE_SRV;
+	tlasSRV.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+	tlasSRV.Descriptor.RegisterSpace = 0;
+	tlasSRV.Descriptor.ShaderRegister = 0;
+	rootParams.push_back(tlasSRV);
 
-		// Mesh SRVs
-		D3D12_DESCRIPTOR_RANGE meshSRVRange{};
-		meshSRVRange.BaseShaderRegister = 1;
-		meshSRVRange.NumDescriptors = 2; // VB, IB
-		meshSRVRange.RegisterSpace = 0;
-		meshSRVRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
-		meshSRVRange.OffsetInDescriptorsFromTableStart = 0;
+	// Mesh SRVs
+	D3D12_DESCRIPTOR_RANGE meshSRVRange{};
+	meshSRVRange.BaseShaderRegister = 1;
+	meshSRVRange.NumDescriptors = 2; // VB, IB
+	meshSRVRange.RegisterSpace = 0;
+	meshSRVRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
+	meshSRVRange.OffsetInDescriptorsFromTableStart = 0;
 
-		D3D12_ROOT_PARAMETER meshSRVs{};
-		meshSRVs.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
-		meshSRVs.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
-		meshSRVs.DescriptorTable.NumDescriptorRanges = 1;
-		meshSRVs.DescriptorTable.pDescriptorRanges = &meshSRVRange;
-		rootParams.push_back(meshSRVs);
+	D3D12_ROOT_PARAMETER meshSRVs{};
+	meshSRVs.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+	meshSRVs.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+	meshSRVs.DescriptorTable.NumDescriptorRanges = 1;
+	meshSRVs.DescriptorTable.pDescriptorRanges = &meshSRVRange;
+	rootParams.push_back(meshSRVs);
 
-		// Full root signature
-		rootDesc.NumParameters = rootParams.size();
-		rootDesc.pParameters = rootParams.data();
-		rootDesc.Flags = D3D12_ROOT_SIGNATURE_FLAG_LOCAL_ROOT_SIGNATURE;
-	}
+	// Full root signature
+	rootDesc.NumParameters = rootParams.size();
+	rootDesc.pParameters = rootParams.data();
+	rootDesc.Flags = D3D12_ROOT_SIGNATURE_FLAG_LOCAL_ROOT_SIGNATURE;
 
 	return rootDesc;
 }

@@ -369,7 +369,7 @@ void Scene::CreateTLAS(
 	// TLAS SRV
 	D3D12_SHADER_RESOURCE_VIEW_DESC tlasSrvDesc{};
 	tlasSrvDesc.Format = DXGI_FORMAT_UNKNOWN;
-	tlasSrvDesc.ViewDimention = D3D12_SRV_DIMENSION_RAYTRACING_ACCELERATION_STRUCTURE;
+	tlasSrvDesc.ViewDimension = D3D12_SRV_DIMENSION_RAYTRACING_ACCELERATION_STRUCTURE;
 	tlasSrvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
 	tlasSrvDesc.RaytracingAccelerationStructure.Location = m_tlasBuffer->GetGPUVirtualAddress();
 
@@ -399,21 +399,18 @@ void Scene::CreateShaderBindingTable(ID3D12Device5* device)
 	heapDesc.Type = D3D12_HEAP_TYPE_UPLOAD;
 	heapDesc.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
 
-	// Create a shader binding table for each pass
-	for (int pass = 0; pass < RenderPass::Count; pass++)
-	{
-		CHECK(device->CreateCommittedResource(
-			&heapDesc,
-			D3D12_HEAP_FLAG_NONE,
-			&resDesc,
-			D3D12_RESOURCE_STATE_GENERIC_READ,
-			nullptr,
-			IID_PPV_ARGS(m_shaderBindingTable[pass].GetAddressOf())
-		));
+	// Create a shader binding table
+	CHECK(device->CreateCommittedResource(
+		&heapDesc,
+		D3D12_HEAP_FLAG_NONE,
+		&resDesc,
+		D3D12_RESOURCE_STATE_GENERIC_READ,
+		nullptr,
+		IID_PPV_ARGS(m_shaderBindingTable.GetAddressOf())
+	));
 
-		D3D12_RANGE readRange = { 0 };
-		CHECK(m_shaderBindingTable[pass]->Map(0, &readRange, &reinterpret_cast<void*>(m_sbtPtr[pass])));
-	}
+	D3D12_RANGE readRange = { 0 };
+	CHECK(m_shaderBindingTable->Map(0, &readRange, &reinterpret_cast<void*>(m_sbtPtr)));
 }
 
 void Scene::InitLights(ID3D12Device5* device)
@@ -538,11 +535,11 @@ void Scene::UpdateRenderResources(uint32_t bufferIndex)
 	m_light->FillConstants(l);
 }
 
-void Scene::Render(RenderPass::Id pass, ID3D12Device5* device, ID3D12GraphicsCommandList4* cmdList, uint32_t bufferIndex, const View& view, D3D12_GPU_DESCRIPTOR_HANDLE outputUAV)
+void Scene::Render(ID3D12Device5* device, ID3D12GraphicsCommandList4* cmdList, uint32_t bufferIndex, const View& view, const RaytraceMaterialPipeline* pipeline, D3D12_GPU_DESCRIPTOR_HANDLE outputUAV)
 {
 	const size_t sbtSize = k_sbtEntrySize * ( 1 + 2 * m_meshEntities.size());
-	uint8_t* pData = m_sbtPtr[pass] + bufferIndex * sbtSize;
-	D3D12_GPU_VIRTUAL_ADDRESS gpuAddress = m_sbtPtr[pass]->GetGPUVirtualAddress() + bufferIndex * sbtSize;
+	uint8_t* pData = m_sbtPtr + bufferIndex * sbtSize;
+	D3D12_GPU_VIRTUAL_ADDRESS gpuAddress = m_sbtPtr->GetGPUVirtualAddress() + bufferIndex * sbtSize;
 
 	// Bind pipeline
 	pipeline->Bind(pData, outputUAV);
