@@ -278,7 +278,14 @@ void Scene::CreateTLAS(
 		instanceDesc.InstanceMask = 1;
 		instanceDesc.Flags = D3D12_RAYTRACING_INSTANCE_FLAG_NONE;
 		instanceDesc.AccelerationStructure = mesh->GetBLASAddress();
-		memcpy(&instanceDesc.Transform[0][0], &meshEntity->GetLocalToWorldMatrix()(0,0), sizeof(instanceDesc.Transform));
+
+		// Transpose and convert to 3x4 matrix
+		const DirectX::XMFLOAT4X4& localToWorld = meshEntity->GetLocalToWorldMatrix();
+		decltype(instanceDesc.Transform)& dest = instanceDesc.Transform;
+		dest[0][0] = localToWorld._11;	dest[1][0] = localToWorld._12;	dest[2][0] = localToWorld._13;
+		dest[0][1] = localToWorld._21;	dest[1][1] = localToWorld._22;	dest[2][1] = localToWorld._23;
+		dest[0][2] = localToWorld._31;	dest[1][2] = localToWorld._32;	dest[2][2] = localToWorld._33;
+		dest[0][3] = localToWorld._41;	dest[1][3] = localToWorld._42;	dest[2][3] = localToWorld._43;
 
 		sceneEntities.emplace_back(instanceDesc);
 	}
