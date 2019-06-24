@@ -27,7 +27,7 @@ private:
 	Microsoft::WRL::ComPtr<ID3D12StateObjectProperties> m_psoProperties;
 	Microsoft::WRL::ComPtr<ID3D12RootSignature> m_raytraceRootSignature;
 	size_t m_raytraceRootSignatureSize;
-	std::list<D3D12_STATE_SUBOBJECT> m_pipelineSubObjects;
+	std::vector<D3D12_STATE_SUBOBJECT> m_pipelineSubObjects;
 	D3D12_STATE_SUBOBJECT* m_pPayloadSubobject;
 };
 

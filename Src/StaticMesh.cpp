@@ -12,15 +12,15 @@ void StaticMesh::Init(
 	std::vector<IndexType> indexData, 
 	const uint32_t matIndex, 
 	ID3D12DescriptorHeap* srvHeap, 
-	const size_t offsetInHeap, 
+	const size_t srvOffset, 
 	const size_t srvDescriptorSize)
 {
-	m_numIndices = indexData.size();
+	m_numIndices = static_cast<uint32_t>(indexData.size());
 	m_materialIndex = matIndex;
-	m_meshSRVHandle.ptr = srvHeap->GetGPUDescriptorHandleForHeapStart().ptr + offsetInHeap * descriptorSize;
+	m_meshSRVHandle.ptr = srvHeap->GetGPUDescriptorHandleForHeapStart().ptr + srvOffset * srvDescriptorSize;
 
-	CreateVertexBuffer(device, cmdList, uploadBuffer, resourceHeap, vertexData, srvHeap, offsetInHeap, srvDescriptorSize);
-	CreateIndexBuffer(device, cmdList, uploadBuffer, resourceHeap, indexData, srvHeap, offsetInHeap + 1, srvDescriptorSize);
+	CreateVertexBuffer(device, cmdList, uploadBuffer, resourceHeap, vertexData, srvHeap, srvOffset, srvDescriptorSize);
+	CreateIndexBuffer(device, cmdList, uploadBuffer, resourceHeap, indexData, srvHeap, srvOffset + 1, srvDescriptorSize);
 	CreateBLAS(device, cmdList, scratchHeap, resourceHeap, vertexData.size(), indexData.size());
 }
 
@@ -31,7 +31,7 @@ void StaticMesh::CreateVertexBuffer(
 	ResourceHeap* resourceHeap,
 	const std::vector<VertexType>& vertexData,
 	ID3D12DescriptorHeap* srvHeap,
-	const size_t offsetInHeap,
+	const size_t srvOffset,
 	const size_t srvDescriptorSize)
 {
 	// vertex buffer
@@ -96,11 +96,11 @@ void StaticMesh::CreateVertexBuffer(
 	vbSrvDesc.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_RAW;
 	vbSrvDesc.Buffer.StructureByteStride = 0;
 	vbSrvDesc.Buffer.FirstElement = 0;
-	vbSrvDesc.Buffer.NumElements = vertexData.size() * sizeof(VertexType) / sizeof(float);
+	vbSrvDesc.Buffer.NumElements = static_cast<UINT>(vertexData.size()) * sizeof(VertexType) / sizeof(float);
 	vbSrvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
 
 	D3D12_CPU_DESCRIPTOR_HANDLE cpuHnd;
-	cpuHnd.ptr = srvHeap->GetCPUDescriptorHandleForHeapStart().ptr + offsetInHeap * descriptorSize;
+	cpuHnd.ptr = srvHeap->GetCPUDescriptorHandleForHeapStart().ptr + srvOffset * srvDescriptorSize;
 
 	device->CreateShaderResourceView(m_vertexBuffer.Get(), &vbSrvDesc, cpuHnd);
 }
@@ -112,7 +112,7 @@ void StaticMesh::CreateIndexBuffer(
 	ResourceHeap* resourceHeap, 
 	const std::vector<IndexType>& indexData, 
 	ID3D12DescriptorHeap* srvHeap,
-	const size_t offsetInHeap,
+	const size_t srvOffset,
 	const size_t srvDescriptorSize)
 {
 	// index buffer
@@ -177,11 +177,11 @@ void StaticMesh::CreateIndexBuffer(
 	ibSrvDesc.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_RAW;
 	ibSrvDesc.Buffer.StructureByteStride = 0;
 	ibSrvDesc.Buffer.FirstElement = 0;
-	ibSrvDesc.Buffer.NumElements = indexData.size() * sizeof(UINT) / sizeof(float);
+	ibSrvDesc.Buffer.NumElements = static_cast<UINT>(indexData.size()) * sizeof(UINT) / sizeof(float);
 	ibSrvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
 
 	D3D12_CPU_DESCRIPTOR_HANDLE cpuHnd;
-	cpuHnd.ptr = srvHeap->GetCPUDescriptorHandleForHeapStart().ptr + offsetInHeap * descriptorSize;
+	cpuHnd.ptr = srvHeap->GetCPUDescriptorHandleForHeapStart().ptr + srvOffset * srvDescriptorSize;
 
 	device->CreateShaderResourceView(m_indexBuffer.Get(), &ibSrvDesc, cpuHnd);
 }
@@ -193,11 +193,11 @@ void StaticMesh::CreateBLAS(ID3D12Device5* device, ID3D12GraphicsCommandList4* c
 	geoDesc.Type = D3D12_RAYTRACING_GEOMETRY_TYPE_TRIANGLES;
 	geoDesc.Triangles.VertexBuffer.StartAddress = m_vertexBuffer->GetGPUVirtualAddress();
 	geoDesc.Triangles.VertexBuffer.StrideInBytes = sizeof(VertexType);
-	geoDesc.Triangles.VertexCount = numVerts;
+	geoDesc.Triangles.VertexCount = static_cast<UINT>(numVerts);
 	geoDesc.Triangles.VertexFormat = DXGI_FORMAT_R32G32B32_FLOAT;
 	geoDesc.Triangles.IndexBuffer = m_indexBuffer->GetGPUVirtualAddress();
 	geoDesc.Triangles.IndexFormat = (sizeof(IndexType) == sizeof(uint32_t) ? DXGI_FORMAT_R32_UINT : DXGI_FORMAT_R16_UINT);
-	geoDesc.Triangles.IndexCount = numIndices;
+	geoDesc.Triangles.IndexCount = static_cast<UINT>(numIndices);
 
 	// Compute size for bottom level acceleration structure buffers
 	D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_INPUTS asInputs{};

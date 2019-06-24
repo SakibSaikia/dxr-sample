@@ -304,7 +304,14 @@ void App::Render()
 
 		{
 			PIXScopedEvent(m_gfxCmdList.Get(), 0, L"scene");
-			m_scene.Render(m_d3dDevice.Get(), m_gfxCmdList.Get(), m_gfxBufferIndex, m_view, m_raytracePipeline.get(), GetSrvUavDescriptorGPU(SrvUav::DxrOutputUAV));
+			m_scene.Render(
+				m_d3dDevice.Get(), 
+				m_gfxCmdList.Get(), 
+				m_gfxBufferIndex, 
+				m_view, 
+				m_raytracePipeline.get(), 
+				GetSrvUavDescriptorGPU(SrvUav::DxrOutputUAV)
+			);
 		}
 
 		// Transition DXR output from UAV to copy source

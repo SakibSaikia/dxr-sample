@@ -45,7 +45,7 @@ ID3D12RootSignature* CreateRootSignature(ID3D12Device* device, const D3D12_ROOT_
 size_t GetRootSignatureSizeInBytes(const D3D12_ROOT_SIGNATURE_DESC& desc)
 {
 	size_t size{ 0 };
-	for (int i = 0; i < desc.NumParameters; i++)
+	for (auto i = 0u; i < desc.NumParameters; i++)
 	{
 		switch (desc.pParameters[i].ParameterType)
 		{
@@ -96,7 +96,7 @@ D3D12_ROOT_SIGNATURE_DESC RaytraceMaterialPipeline::BuildRaygenRootSignature()
 	rootParams.push_back(outputUAV);
 
 	// Full Root Signature
-	rootDesc.NumParameters = rootParams.size();
+	rootDesc.NumParameters = static_cast<UINT>(rootParams.size());
 	rootDesc.pParameters = rootParams.data();
 	rootDesc.Flags = D3D12_ROOT_SIGNATURE_FLAG_LOCAL_ROOT_SIGNATURE;
 
@@ -105,6 +105,9 @@ D3D12_ROOT_SIGNATURE_DESC RaytraceMaterialPipeline::BuildRaygenRootSignature()
 
 RaytraceMaterialPipeline::RaytraceMaterialPipeline(ID3D12Device5* device)
 {
+	// This is important as we don't want reallocations since subobjects can refer to other subobjects by ptr
+	m_pipelineSubObjects.reserve(k_maxRtPipelineSubobjectCount);
+
 	// RayGen shader
 	Microsoft::WRL::ComPtr<ID3DBlob> rgsByteCode = LoadBlob(k_rgs);
 
@@ -157,7 +160,7 @@ RaytraceMaterialPipeline::RaytraceMaterialPipeline(ID3D12Device5* device)
 
 	D3D12_STATE_SUBOBJECT raygenRootSigSubObject{};
 	raygenRootSigSubObject.Type = D3D12_STATE_SUBOBJECT_TYPE_LOCAL_ROOT_SIGNATURE;
-	raygenRootSigSubObject.pDesc = &rootSig;
+	raygenRootSigSubObject.pDesc = m_raytraceRootSignature.Get();
 	m_pipelineSubObjects.push_back(raygenRootSigSubObject);
 
 
@@ -183,7 +186,12 @@ RaytraceMaterialPipeline::RaytraceMaterialPipeline(ID3D12Device5* device)
 	m_pipelineSubObjects.push_back(pipelineConfigSubObject);
 }
 
-void RaytraceMaterialPipeline::BuildFromMaterial(ID3D12Device5* device, std::wstring materialName, MaterialRtPipelineDesc pipelineDesc, std::vector<IUnknown*>& pendingResources)
+void RaytraceMaterialPipeline::BuildFromMaterial(
+	ID3D12Device5* device, 
+	std::wstring materialName, 
+	MaterialRtPipelineDesc pipelineDesc, 
+	std::vector<IUnknown*>& pendingResources
+)
 {
 	// Closest Hit Shader
 	ID3DBlob* chsByteCode = LoadBlob(pipelineDesc.closestHitShader);
@@ -278,10 +286,12 @@ void RaytraceMaterialPipeline::BuildFromMaterial(ID3D12Device5* device, std::wst
 
 void RaytraceMaterialPipeline::Commit(ID3D12Device5* device, std::vector<IUnknown*>& pendingResources)
 {
+	assert(m_pipelineSubObjects.size() < k_maxRtPipelineSubobjectCount);
+
 	// Create the PSO
 	D3D12_STATE_OBJECT_DESC psoDesc;
 	psoDesc.Type = D3D12_STATE_OBJECT_TYPE_RAYTRACING_PIPELINE;
-	psoDesc.NumSubobjects = m_pipelineSubObjects.size();
+	psoDesc.NumSubobjects = static_cast<UINT>(m_pipelineSubObjects.size());
 	psoDesc.pSubobjects = m_pipelineSubObjects.data();
 
 	CHECK(device->CreateStateObject(
@@ -343,7 +353,7 @@ DefaultOpaqueMaterial::DefaultOpaqueMaterial(std::string& name, const D3D12_GPU_
 
 MaterialRtPipelineDesc DefaultOpaqueMaterial::GetRaytracePipelineDesc()
 {
-	auto rootSigDesc = BuildRaytraceRootSignature();
+	static D3D12_ROOT_SIGNATURE_DESC rootSigDesc = BuildRaytraceRootSignature();
 	return MaterialRtPipelineDesc{ k_chs, k_ms, rootSigDesc };
 }
 
@@ -398,7 +408,7 @@ D3D12_ROOT_SIGNATURE_DESC DefaultOpaqueMaterial::BuildRaytraceRootSignature()
 	rootParams.push_back(materialSRVs);
 
 	// Full Root Signature
-	rootDesc.NumParameters = rootParams.size();
+	rootDesc.NumParameters = static_cast<UINT>(rootParams.size());
 	rootDesc.pParameters = rootParams.data();
 	rootDesc.Flags = D3D12_ROOT_SIGNATURE_FLAG_LOCAL_ROOT_SIGNATURE;
 
@@ -426,7 +436,7 @@ void DefaultOpaqueMaterial::BindConstants(
 		(*pDescriptorTables++) = m_srvBegin;
 	}
 
-	pData += k_sbtEntrySize;
+	pData += k_shaderRecordSize;
 
 	// Entry 2 - Closest Hit Program / Hit Group
 	{
@@ -450,7 +460,7 @@ DefaultMaskedMaterial::DefaultMaskedMaterial(std::string& name, const D3D12_GPU_
 
 MaterialRtPipelineDesc DefaultMaskedMaterial::GetRaytracePipelineDesc()
 {
-	auto rootSigDesc = BuildRaytraceRootSignature();
+	static D3D12_ROOT_SIGNATURE_DESC rootSigDesc = BuildRaytraceRootSignature();
 	return MaterialRtPipelineDesc{ k_chs, k_ms, rootSigDesc };
 }
 
@@ -505,7 +515,7 @@ D3D12_ROOT_SIGNATURE_DESC DefaultMaskedMaterial::BuildRaytraceRootSignature()
 	rootParams.push_back(materialSRVs);
 
 	// Full Root Signature
-	rootDesc.NumParameters = rootParams.size();
+	rootDesc.NumParameters = static_cast<UINT>(rootParams.size());
 	rootDesc.pParameters = rootParams.data();
 	rootDesc.Flags = D3D12_ROOT_SIGNATURE_FLAG_LOCAL_ROOT_SIGNATURE;
 
@@ -533,7 +543,7 @@ void DefaultMaskedMaterial::BindConstants(
 		(*pDescriptorTables++) = m_srvBegin;
 	}
 
-	pData += k_sbtEntrySize;
+	pData += k_shaderRecordSize;
 
 	// Entry 2 - Closest Hit Program / Hit Group
 	{
@@ -556,7 +566,7 @@ UntexturedMaterial::UntexturedMaterial(std::string& name, Microsoft::WRL::ComPtr
 
 MaterialRtPipelineDesc UntexturedMaterial::GetRaytracePipelineDesc()
 {
-	auto rootSigDesc = BuildRaytraceRootSignature();
+	static D3D12_ROOT_SIGNATURE_DESC rootSigDesc = BuildRaytraceRootSignature();
 	return MaterialRtPipelineDesc{ k_chs, k_ms, rootSigDesc };
 }
 
@@ -602,7 +612,7 @@ D3D12_ROOT_SIGNATURE_DESC UntexturedMaterial::BuildRaytraceRootSignature()
 	rootParams.push_back(meshSRVs);
 
 	// Full root signature
-	rootDesc.NumParameters = rootParams.size();
+	rootDesc.NumParameters = static_cast<UINT>(rootParams.size());
 	rootDesc.pParameters = rootParams.data();
 	rootDesc.Flags = D3D12_ROOT_SIGNATURE_FLAG_LOCAL_ROOT_SIGNATURE;
 
@@ -630,7 +640,7 @@ void UntexturedMaterial::BindConstants(
 		(*pDescriptorTables++) = meshBuffer;
 	}
 
-	pData += k_sbtEntrySize;
+	pData += k_shaderRecordSize;
 
 	// Entry 2 - Closest Hit Program / Hit Group
 	{
@@ -638,7 +648,7 @@ void UntexturedMaterial::BindConstants(
 		auto* pRootDescriptors = reinterpret_cast<D3D12_GPU_VIRTUAL_ADDRESS*>(pData + D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
 		*(pRootDescriptors++) = viewConstants;
 		*(pRootDescriptors++) = lightConstants;
-		*(pRootDescriptor++) = m_constantBuffer->GetGPUVirtualAddress();
+		*(pRootDescriptors++) = m_constantBuffer->GetGPUVirtualAddress();
 
 		auto* pDescriptorTables = reinterpret_cast<D3D12_GPU_DESCRIPTOR_HANDLE*>(pRootDescriptors);
 		(*pDescriptorTables++) = meshBuffer;

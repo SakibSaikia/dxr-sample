@@ -269,8 +269,8 @@ void Scene::CreateTLAS(
 
 	for (size_t entityIndex = 0; entityIndex < m_meshEntities.size(); entityIndex++)
 	{
-		const auto meshEntity = m_meshEntities[entityIndex];
-		const auto mesh = m_meshes[meshEntity->GetMeshIndex()];
+		const StaticMeshEntity* meshEntity = m_meshEntities[entityIndex].get();
+		const StaticMesh* mesh = m_meshes[meshEntity->GetMeshIndex()].get();
 
 		D3D12_RAYTRACING_INSTANCE_DESC instanceDesc;
 		instanceDesc.InstanceID = entityIndex;
@@ -278,7 +278,7 @@ void Scene::CreateTLAS(
 		instanceDesc.InstanceMask = 1;
 		instanceDesc.Flags = D3D12_RAYTRACING_INSTANCE_FLAG_NONE;
 		instanceDesc.AccelerationStructure = mesh->GetBLASAddress();
-		memcpy(&instanceDesc.Transform[0][0], meshEntity->GetLocalToWorldMatrix(), sizeof(instanceDesc.Transform));
+		memcpy(&instanceDesc.Transform[0][0], &meshEntity->GetLocalToWorldMatrix()(0,0), sizeof(instanceDesc.Transform));
 
 		sceneEntities.emplace_back(instanceDesc);
 	}
@@ -293,7 +293,7 @@ void Scene::CreateTLAS(
 	asInputs.Type = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL;
 	asInputs.DescsLayout = D3D12_ELEMENTS_LAYOUT_ARRAY;
 	asInputs.InstanceDescs = uploadBuffer->GetResource()->GetGPUVirtualAddress() + offset;
-	asInputs.NumDescs = sceneEntities.size();
+	asInputs.NumDescs = static_cast<UINT>(sceneEntities.size());
 	asInputs.Flags = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_PREFER_FAST_TRACE;
 
 	D3D12_RAYTRACING_ACCELERATION_STRUCTURE_PREBUILD_INFO asPrebuildInfo{};
@@ -383,7 +383,7 @@ void Scene::CreateTLAS(
 void Scene::CreateShaderBindingTable(ID3D12Device5* device)
 {
 	const size_t numEntities = m_meshEntities.size();
-	const size_t sbtSize = k_sbtEntrySize * (1 + 2 * numEntities); // 1 for RGS. CHS and MS params are unique per material
+	const size_t sbtSize = k_shaderRecordSize * (1 + 2 * numEntities); // 1 for RGS. CHS and MS params are unique per material
 
 	D3D12_RESOURCE_DESC resDesc = {};
 	resDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
@@ -535,9 +535,16 @@ void Scene::UpdateRenderResources(uint32_t bufferIndex)
 	m_light->FillConstants(l);
 }
 
-void Scene::Render(ID3D12Device5* device, ID3D12GraphicsCommandList4* cmdList, uint32_t bufferIndex, const View& view, const RaytraceMaterialPipeline* pipeline, D3D12_GPU_DESCRIPTOR_HANDLE outputUAV)
+void Scene::Render(
+	ID3D12Device5* device, 
+	ID3D12GraphicsCommandList4* cmdList, 
+	uint32_t bufferIndex, 
+	const View& view, 
+	const RaytraceMaterialPipeline* pipeline, 
+	D3D12_GPU_DESCRIPTOR_HANDLE outputUAV
+)
 {
-	const size_t sbtSize = k_sbtEntrySize * ( 1 + 2 * m_meshEntities.size());
+	const size_t sbtSize = k_shaderRecordSize * ( 1 + 2 * m_meshEntities.size());
 	uint8_t* pData = m_sbtPtr + bufferIndex * sbtSize;
 	D3D12_GPU_VIRTUAL_ADDRESS gpuAddress = m_shaderBindingTable->GetGPUVirtualAddress() + bufferIndex * sbtSize;
 
@@ -546,7 +553,7 @@ void Scene::Render(ID3D12Device5* device, ID3D12GraphicsCommandList4* cmdList, u
 
 	// Bind pipeline
 	pipeline->Bind(cmdList, pData, viewConstants, m_tlasSrv, outputUAV);
-	pData += k_sbtEntrySize;
+	pData += k_shaderRecordSize;
 
 	// Populate SBT
 	int entityId = 0;
@@ -560,7 +567,7 @@ void Scene::Render(ID3D12Device5* device, ID3D12GraphicsCommandList4* cmdList, u
 
 		D3D12_GPU_VIRTUAL_ADDRESS ObjConstants = m_objectConstantBuffer->GetGPUVirtualAddress() + (bufferIndex * m_meshEntities.size() + entityId) * sizeof(ObjectConstants);
 
-		uint8_t* materialData = pData + materialIndex * k_sbtEntrySize;
+		uint8_t* materialData = pData + materialIndex * k_shaderRecordSize;
 
 		mat->BindConstants(
 			materialData, 
@@ -576,15 +583,15 @@ void Scene::Render(ID3D12Device5* device, ID3D12GraphicsCommandList4* cmdList, u
 	// Dispatch rays!
 	D3D12_DISPATCH_RAYS_DESC desc = {};
 	desc.RayGenerationShaderRecord.StartAddress = gpuAddress;
-	desc.RayGenerationShaderRecord.SizeInBytes = k_sbtEntrySize;
+	desc.RayGenerationShaderRecord.SizeInBytes = k_shaderRecordSize;
 
-	desc.MissShaderTable.StartAddress = desc.RayGenerationShaderRecord.StartAddress + k_sbtEntrySize;
-	desc.MissShaderTable.SizeInBytes = 2 * k_sbtEntrySize * m_meshEntities.size();
-	desc.MissShaderTable.StrideInBytes = 2 * k_sbtEntrySize; // miss and hit shaders are interleaved
+	desc.MissShaderTable.StartAddress = desc.RayGenerationShaderRecord.StartAddress + k_shaderRecordSize;
+	desc.MissShaderTable.SizeInBytes = 2 * k_shaderRecordSize * m_meshEntities.size();
+	desc.MissShaderTable.StrideInBytes = 2 * k_shaderRecordSize; // miss and hit shaders are interleaved
 
-	desc.HitGroupTable.StartAddress = desc.MissShaderTable.StartAddress + k_sbtEntrySize;
-	desc.HitGroupTable.SizeInBytes = 2 * k_sbtEntrySize * m_meshEntities.size();
-	desc.HitGroupTable.StrideInBytes = 2 * k_sbtEntrySize; // miss and hit shaders are interleaved
+	desc.HitGroupTable.StartAddress = desc.MissShaderTable.StartAddress + k_shaderRecordSize;
+	desc.HitGroupTable.SizeInBytes = 2 * k_shaderRecordSize * m_meshEntities.size();
+	desc.HitGroupTable.StrideInBytes = 2 * k_shaderRecordSize; // miss and hit shaders are interleaved
 
 	desc.Width = k_screenWidth;
 	desc.Height = k_screenHeight;
