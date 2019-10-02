@@ -1,12 +1,6 @@
 struct ViewConstants
 {
-	float4x4 viewMatrix;
-	float4x4 viewProjectionMatrix;
-};
-
-struct ObjectConstants
-{
-    float4x4 localToWorldMatrix;
+    float3 origin;
 };
 
 struct LightConstants
@@ -17,13 +11,6 @@ struct LightConstants
     float lightBrightness;
 };
 
-// same size as ViewConstants so that we can switch it out in the DepthRendering shader to render shadowmaps
-struct ShadowConstants
-{
-    float4x4 lightViewMatrix;
-    float4x4 lightViewProjectionMatrix;
-};
-
 struct MaterialConstants
 {
     float3 baseColor;
@@ -31,9 +18,17 @@ struct MaterialConstants
     float roughness;
 };
 
+struct HitInfo
+{
+    float3 color : SHADED_COLOR;
+    float hitT : HIT_T;
+};
 
-ConstantBuffer<ViewConstants> cb_view : register(b0);
-ConstantBuffer<ObjectConstants> cb_object : register(b1);
-ConstantBuffer<LightConstants> cb_light : register(b2);
-ConstantBuffer<ShadowConstants> cb_shadow : register(b3);
-ConstantBuffer<MaterialConstants> cb_material : register(b4);
+ConstantBuffer<ViewConstants> cb_view               : register(b0);
+ConstantBuffer<LightConstants> cb_light             : register(b1);
+#if defined(UNTEXTURED)
+    ConstantBuffer<MaterialConstants> cb_material   : register(b2);
+#endif
+
+RWTexture2D<float4> RTOutput : register(u0);
+RaytracingAccelerationStructure SceneBVH : register(t0); // Check for collision with mesh SRVs

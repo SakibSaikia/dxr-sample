@@ -45,9 +45,6 @@
     <ClCompile Include="View.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="DebugDraw.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="Light.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -83,9 +80,6 @@
     <ClInclude Include="View.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="DebugDraw.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="Common.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -108,11 +102,10 @@
       <Filter>Shaders</Filter>
     </None>
     <None Include="..\.gitignore" />
-    <None Include="DebugMaterial.hlsl">
+  </ItemGroup>
+  <ItemGroup>
+    <FxCompile Include="Raygen.hlsl">
       <Filter>Shaders</Filter>
-    </None>
-    <None Include="DepthRendering.hlsl">
-      <Filter>Shaders</Filter>
-    </None>
+    </FxCompile>
   </ItemGroup>
 </Project>

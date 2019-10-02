@@ -3,7 +3,7 @@
 
 namespace
 {
-	static const wchar_t* k_rgs = L"mtl_untextured.rgs";
+	static const wchar_t* k_rgs = L"raygen.rgs";
 }
 
 ID3DBlob* LoadBlob(const std::wstring& filename)
