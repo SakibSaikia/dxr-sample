@@ -6,7 +6,7 @@
 
 __declspec(align(256)) struct ObjectConstants
 {
-	DirectX::XMFLOAT4X4 localToWorldMatrix;
+	uint32_t vertexStride;
 };
 
 class StaticMesh

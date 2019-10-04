@@ -52,8 +52,10 @@ void View::UpdateRenderResources(const uint32_t bufferIndex)
 {
 	// Update constant buffer
 	ViewConstants* ptr = m_cbufferPtr + bufferIndex;
-	ptr->viewMatrix = m_camera.GetViewMatrix();
-	ptr->viewProjectionMatrix = m_camera.GetViewProjectionMatrix();
+	ptr->origin = m_camera.GetPosition();
+	ptr->up = m_camera.GetUp();
+	ptr->right = m_camera.GetRight();
+	ptr->look = m_camera.GetPosition();
 }
 
 ID3D12Resource* View::GetConstantBuffer() const

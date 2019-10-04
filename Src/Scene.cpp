@@ -572,7 +572,7 @@ void Scene::Render(
 		uint32_t materialIndex = sm->GetMaterialIndex();
 		Material* mat = m_materials.at(materialIndex).get();
 
-		D3D12_GPU_VIRTUAL_ADDRESS ObjConstants = m_objectConstantBuffer->GetGPUVirtualAddress() + (bufferIndex * m_meshEntities.size() + entityId) * sizeof(ObjectConstants);
+		D3D12_GPU_VIRTUAL_ADDRESS objConstants = m_objectConstantBuffer->GetGPUVirtualAddress() + (bufferIndex * m_meshEntities.size() + entityId) * sizeof(ObjectConstants);
 
 		uint8_t* materialData = pData + materialIndex * k_shaderRecordSize;
 
@@ -580,7 +580,7 @@ void Scene::Render(
 			materialData, 
 			pipeline, 
 			sm->GetVertexAndIndexBufferSRVHandle(), 
-			ObjConstants, 
+			objConstants,
 			viewConstants, 
 			lightConstants);
 

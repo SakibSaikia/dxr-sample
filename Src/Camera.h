@@ -5,6 +5,10 @@ class Camera
 public:
 	virtual void Init(float aspectRatio) = 0;
 	virtual void Update(float dt, WPARAM mouseBtnState, POINT mouseDelta) = 0;
+	DirectX::XMFLOAT4 GetPosition();
+	DirectX::XMFLOAT4 GetUp();
+	DirectX::XMFLOAT4 GetRight();
+	DirectX::XMFLOAT4 GetLook();
 	DirectX::XMFLOAT4X4 GetViewMatrix();
 	DirectX::XMFLOAT4X4 GetProjectionMatrix();
 	DirectX::XMFLOAT4X4 GetViewProjectionMatrix();
@@ -13,10 +17,10 @@ protected:
 	void UpdateViewMatrix();
 
 protected:
-	DirectX::XMFLOAT3 m_position;
-	DirectX::XMFLOAT3 m_right;
-	DirectX::XMFLOAT3 m_up;
-	DirectX::XMFLOAT3 m_look;
+	DirectX::XMFLOAT4 m_position;
+	DirectX::XMFLOAT4 m_right;
+	DirectX::XMFLOAT4 m_up;
+	DirectX::XMFLOAT4 m_look;
 
 	bool m_viewDirty = false;
 	DirectX::XMFLOAT4X4 m_viewMatrix;

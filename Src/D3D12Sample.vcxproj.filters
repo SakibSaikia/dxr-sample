@@ -95,16 +95,22 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
-    <None Include="Common.hlsl">
-      <Filter>Shaders</Filter>
-    </None>
-    <None Include="Material.hlsl">
-      <Filter>Shaders</Filter>
-    </None>
     <None Include="..\.gitignore" />
+    <None Include="Common.hlsli">
+      <Filter>Shaders</Filter>
+    </None>
+    <None Include="MaterialCommon.hlsli">
+      <Filter>Shaders</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="Raygen.hlsl">
+      <Filter>Shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="ClosestHit.hlsl">
+      <Filter>Shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="Miss.hlsl">
       <Filter>Shaders</Filter>
     </FxCompile>
   </ItemGroup>

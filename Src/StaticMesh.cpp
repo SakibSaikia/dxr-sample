@@ -312,7 +312,7 @@ StaticMeshEntity::StaticMeshEntity(
 
 void StaticMeshEntity::FillConstants(ObjectConstants* objConst) const
 {
-	objConst->localToWorldMatrix = m_localToWorld;
+	objConst->vertexStride = sizeof(StaticMesh::VertexType);
 }
 
 uint64_t StaticMeshEntity::GetMeshIndex() const

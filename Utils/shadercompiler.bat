@@ -1,24 +1,11 @@
 @echo off
 
-fxc /E"vs_main" /Tvs_5_1 /Fo"..\Src\CompiledShaders\mtl_default.vs.cso" /nologo /Zpr ..\Src\Material.hlsl
-fxc /E"ps_main" /Tps_5_1 /Fo"..\Src\CompiledShaders\mtl_default.ps.cso" /nologo /Zpr ..\Src\Material.hlsl
-fxc /E"args" /Trootsig_1_1 /Fo"..\Src\CompiledShaders\mtl_default.rootsig.cso" /nologo ..\Src\Material.hlsl
-fxc /E"vs_main" /Tvs_5_1 /Fo"..\Src\CompiledShaders\mtl_masked.vs.cso" /nologo /Zpr /D"MASKED" ..\Src\Material.hlsl
-fxc /E"ps_main" /Tps_5_1 /Fo"..\Src\CompiledShaders\mtl_masked.ps.cso" /nologo /Zpr /D"MASKED" ..\Src\Material.hlsl
-fxc /E"args" /Trootsig_1_1 /Fo"..\Src\CompiledShaders\mtl_masked.rootsig.cso" /nologo /D"MASKED" ..\Src\Material.hlsl
-fxc /E"vs_main" /Tvs_5_1 /Fo"..\Src\CompiledShaders\mtl_untextured.vs.cso" /nologo /Zpr /D"UNTEXTURED" ..\Src\Material.hlsl
-fxc /E"ps_main" /Tps_5_1 /Fo"..\Src\CompiledShaders\mtl_untextured.ps.cso" /nologo /Zpr /D"UNTEXTURED" ..\Src\Material.hlsl
-fxc /E"args" /Trootsig_1_1 /Fo"..\Src\CompiledShaders\mtl_untextured.rootsig.cso" /nologo /D"UNTEXTURED" ..\Src\Material.hlsl
-
-fxc /E"vs_main" /Tvs_5_1 /Fo"..\Src\CompiledShaders\mtl_depthonly_default.vs.cso" /nologo /Zpr ..\Src\DepthRendering.hlsl
-fxc /E"ps_main" /Tps_5_1 /Fo"..\Src\CompiledShaders\mtl_depthonly_default.ps.cso" /nologo /Zpr ..\Src\DepthRendering.hlsl
-fxc /E"args" /Trootsig_1_1 /Fo"..\Src\CompiledShaders\mtl_depthonly_default.rootsig.cso" /nologo ..\Src\DepthRendering.hlsl
-fxc /E"vs_main" /Tvs_5_1 /Fo"..\Src\CompiledShaders\mtl_depthonly_masked.vs.cso" /nologo /Zpr /D"MASKED" ..\Src\DepthRendering.hlsl
-fxc /E"ps_main" /Tps_5_1 /Fo"..\Src\CompiledShaders\mtl_depthonly_masked.ps.cso" /nologo /Zpr /D"MASKED" ..\Src\DepthRendering.hlsl
-fxc /E"args" /Trootsig_1_1 /Fo"..\Src\CompiledShaders\mtl_depthonly_masked.rootsig.cso" /nologo /D"MASKED" ..\Src\DepthRendering.hlsl
-
-fxc /E"vs_main" /Tvs_5_1 /Fo"..\Src\CompiledShaders\mtl_debug.vs.cso" /nologo /Zpr ..\Src\DebugMaterial.hlsl
-fxc /E"ps_main" /Tps_5_1 /Fo"..\Src\CompiledShaders\mtl_debug.ps.cso" /nologo /Zpr ..\Src\DebugMaterial.hlsl
-fxc /E"args" /Trootsig_1_1 /Fo"..\Src\CompiledShaders\mtl_debug.rootsig.cso" /nologo ..\Src\DebugMaterial.hlsl
+dxc -Tlib_6_3 -Fo"..\Src\CompiledShaders\raygen.rgs.cso" -Zpr ..\Src\Raygen.hlsl
+dxc -Tlib_6_3 -Fo"..\Src\CompiledShaders\mtl_default.chs.cso" -Zpr ..\Src\ClosestHit.hlsl
+dxc -Tlib_6_3 /Fo"..\Src\CompiledShaders\mtl_default.miss.cso" -Zpr ..\Src\Miss.hlsl
+dxc -Tlib_6_3 -Fo"..\Src\CompiledShaders\mtl_masked.chs.cso" -Zpr -D"MASKED" ..\Src\ClosestHit.hlsl
+dxc -Tlib_6_3 -Fo"..\Src\CompiledShaders\mtl_masked.miss.cso" -Zpr -D"MASKED" ..\Src\Miss.hlsl
+dxc -Tlib_6_3 -Fo"..\Src\CompiledShaders\mtl_untextured.chs.cso" -Zpr -D"UNTEXTURED" ..\Src\ClosestHit.hlsl
+dxc -Tlib_6_3 -Fo"..\Src\CompiledShaders\mtl_untextured.miss.cso" -Zpr -D"UNTEXTURED" ..\Src\Miss.hlsl
 
 pause

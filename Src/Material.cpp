@@ -362,24 +362,30 @@ D3D12_ROOT_SIGNATURE_DESC DefaultOpaqueMaterial::BuildRaytraceRootSignature()
 	D3D12_ROOT_SIGNATURE_DESC rootDesc = {};
 
 	std::vector<D3D12_ROOT_PARAMETER> rootParams;
-	rootParams.reserve(6);
+	rootParams.reserve(7);
 
 	// Constant buffers
+	D3D12_ROOT_PARAMETER objectCBV{};
+	objectCBV.ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
+	objectCBV.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+	objectCBV.Descriptor.ShaderRegister = 0;
+	rootParams.push_back(objectCBV);
+
 	D3D12_ROOT_PARAMETER viewCBV{};
 	viewCBV.ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
 	viewCBV.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
-	viewCBV.Descriptor.ShaderRegister = 0;
+	viewCBV.Descriptor.ShaderRegister = 1;
 	rootParams.push_back(viewCBV);
 
 	D3D12_ROOT_PARAMETER lightCBV{};
 	lightCBV.ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
 	lightCBV.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
-	lightCBV.Descriptor.ShaderRegister = 1;
+	lightCBV.Descriptor.ShaderRegister = 2;
 	rootParams.push_back(lightCBV);
 
 	// Meshdata SRVs
 	D3D12_DESCRIPTOR_RANGE meshSRVRange{};
-	meshSRVRange.BaseShaderRegister = 1;
+	meshSRVRange.BaseShaderRegister = 0;
 	meshSRVRange.NumDescriptors = 2; // VB, IB
 	meshSRVRange.RegisterSpace = 0;
 	meshSRVRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
@@ -428,6 +434,7 @@ void DefaultOpaqueMaterial::BindConstants(
 	{
 		memcpy(pData, pipeline->GetShaderIdentifier(k_ms), D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
 		auto* pRootDescriptors = reinterpret_cast<D3D12_GPU_VIRTUAL_ADDRESS*>(pData + D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
+		*(pRootDescriptors++) = objConstants;
 		*(pRootDescriptors++) = viewConstants;
 		*(pRootDescriptors++) = lightConstants;
 
@@ -469,24 +476,30 @@ D3D12_ROOT_SIGNATURE_DESC DefaultMaskedMaterial::BuildRaytraceRootSignature()
 	D3D12_ROOT_SIGNATURE_DESC rootDesc = {};
 
 	std::vector<D3D12_ROOT_PARAMETER> rootParams;
-	rootParams.reserve(6);
+	rootParams.reserve(5);
 
 	// Constant buffers
+	D3D12_ROOT_PARAMETER objectCBV{};
+	objectCBV.ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
+	objectCBV.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+	objectCBV.Descriptor.ShaderRegister = 0;
+	rootParams.push_back(objectCBV);
+
 	D3D12_ROOT_PARAMETER viewCBV{};
 	viewCBV.ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
 	viewCBV.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
-	viewCBV.Descriptor.ShaderRegister = 0;
+	viewCBV.Descriptor.ShaderRegister = 1;
 	rootParams.push_back(viewCBV);
 
 	D3D12_ROOT_PARAMETER lightCBV{};
 	lightCBV.ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
 	lightCBV.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
-	lightCBV.Descriptor.ShaderRegister = 1;
+	lightCBV.Descriptor.ShaderRegister = 2;
 	rootParams.push_back(lightCBV);
 
 	// Mesh SRVs
 	D3D12_DESCRIPTOR_RANGE meshSRVRange{};
-	meshSRVRange.BaseShaderRegister = 1;
+	meshSRVRange.BaseShaderRegister = 0;
 	meshSRVRange.NumDescriptors = 2; // VB, IB
 	meshSRVRange.RegisterSpace = 0;
 	meshSRVRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
@@ -535,6 +548,7 @@ void DefaultMaskedMaterial::BindConstants(
 	{
 		memcpy(pData, pipeline->GetShaderIdentifier(k_ms), D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
 		auto* pRootDescriptors = reinterpret_cast<D3D12_GPU_VIRTUAL_ADDRESS*>(pData + D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
+		*(pRootDescriptors++) = objConstants;
 		*(pRootDescriptors++) = viewConstants;
 		*(pRootDescriptors++) = lightConstants;
 
@@ -575,30 +589,36 @@ D3D12_ROOT_SIGNATURE_DESC UntexturedMaterial::BuildRaytraceRootSignature()
 	D3D12_ROOT_SIGNATURE_DESC rootDesc = {};
 
 	std::vector<D3D12_ROOT_PARAMETER> rootParams;
-	rootParams.reserve(7);
+	rootParams.reserve(5);
 
 	// Constant buffers
+	D3D12_ROOT_PARAMETER objectCBV{};
+	objectCBV.ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
+	objectCBV.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+	objectCBV.Descriptor.ShaderRegister = 0;
+	rootParams.push_back(objectCBV);
+
 	D3D12_ROOT_PARAMETER viewCBV{};
 	viewCBV.ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
 	viewCBV.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
-	viewCBV.Descriptor.ShaderRegister = 0;
+	viewCBV.Descriptor.ShaderRegister = 1;
 	rootParams.push_back(viewCBV);
 
 	D3D12_ROOT_PARAMETER lightCBV{};
 	lightCBV.ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
 	lightCBV.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
-	lightCBV.Descriptor.ShaderRegister = 1;
+	lightCBV.Descriptor.ShaderRegister = 2;
 	rootParams.push_back(lightCBV);
 
 	D3D12_ROOT_PARAMETER materialCBV{};
 	materialCBV.ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
 	materialCBV.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
-	materialCBV.Descriptor.ShaderRegister = 2;
+	materialCBV.Descriptor.ShaderRegister = 3;
 	rootParams.push_back(materialCBV);
 
 	// Mesh SRVs
 	D3D12_DESCRIPTOR_RANGE meshSRVRange{};
-	meshSRVRange.BaseShaderRegister = 1;
+	meshSRVRange.BaseShaderRegister = 0;
 	meshSRVRange.NumDescriptors = 2; // VB, IB
 	meshSRVRange.RegisterSpace = 0;
 	meshSRVRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
@@ -632,6 +652,7 @@ void UntexturedMaterial::BindConstants(
 	{
 		memcpy(pData, pipeline->GetShaderIdentifier(k_ms), D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
 		auto* pRootDescriptors = reinterpret_cast<D3D12_GPU_VIRTUAL_ADDRESS*>(pData + D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
+		*(pRootDescriptors++) = objConstants;
 		*(pRootDescriptors++) = viewConstants;
 		*(pRootDescriptors++) = lightConstants;
 		*(pRootDescriptors++) = m_constantBuffer->GetGPUVirtualAddress();

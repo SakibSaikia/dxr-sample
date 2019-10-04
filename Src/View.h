@@ -5,8 +5,10 @@
 __declspec(align(256))
 struct ViewConstants
 {
-	DirectX::XMFLOAT4X4 viewMatrix;
-	DirectX::XMFLOAT4X4 viewProjectionMatrix;
+	DirectX::XMFLOAT4 origin;
+	DirectX::XMFLOAT4 up;
+	DirectX::XMFLOAT4 right;
+	DirectX::XMFLOAT4 look;
 };
 
 class View
