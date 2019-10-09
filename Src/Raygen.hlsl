@@ -19,12 +19,12 @@ void Main()
     ndc.x = 2.f * uv.x - 1.f;
     ndc.y = -2.f * uv.y + 1.f;
 
-    float4 originImagePlane = cb_view.origin + IMAGE_PLANE_OFFSET * cb_view.look;
-    float4 p = originImagePlane + ndc.x * cb_view.fovScale.x * cb_view.right + ndc.y * cb_view.fovScale.y * cb_view.up;
+    float4 originImagePlane = cb_view.viewMatrix._14_24_34_44 + IMAGE_PLANE_OFFSET * cb_view.viewMatrix._13_23_33_43;
+    float4 p = originImagePlane + ndc.x * cb_view.fovScale.x * cb_view.viewMatrix._11_21_31_41 + ndc.y * cb_view.fovScale.y * cb_view.viewMatrix._12_22_32_42;
 
     RayDesc ray;
-    ray.Origin = cb_view.origin.xyz;
-    ray.Direction = normalize(p - cb_view.origin).xyz;
+    ray.Origin = cb_view.viewMatrix._14_24_34;
+    ray.Direction = normalize(p.xyz - cb_view.viewMatrix._14_24_34);
     ray.TMin = 0.1f;
     ray.TMax = 1000.f;
 

@@ -10,7 +10,7 @@ View::~View()
 void View::Init(ID3D12Device5* device, size_t bufferCount, const size_t width, const size_t height)
 {
 	float aspectRatio = static_cast<float>(width) / height;
-	m_camera.Init(aspectRatio);
+	m_camera.Init(0.25f * DirectX::XM_PI, aspectRatio);
 
 	// Constant Buffer
 	{
@@ -52,10 +52,8 @@ void View::UpdateRenderResources(const uint32_t bufferIndex)
 {
 	// Update constant buffer
 	ViewConstants* ptr = m_cbufferPtr + bufferIndex;
-	ptr->origin = m_camera.GetPosition();
-	ptr->up = m_camera.GetUp();
-	ptr->right = m_camera.GetRight();
-	ptr->look = m_camera.GetPosition();
+	ptr->viewMatrix = m_camera.GetViewMatrix();
+	ptr->fovScale = m_camera.GetFovScale();
 }
 
 ID3D12Resource* View::GetConstantBuffer() const

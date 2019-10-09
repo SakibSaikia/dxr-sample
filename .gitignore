@@ -1,7 +1,7 @@
 # Directories
 /Src/.vs/
 /Src/x64/
-#/Src/CompiledShaders
+/Src/CompiledShaders
 /Src/packages
 /Captures
 

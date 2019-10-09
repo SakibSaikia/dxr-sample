@@ -5,10 +5,8 @@ struct ObjectConstants
 
 struct ViewConstants
 {
-    float4 origin;
-    float4 up;
-    float4 right;
-    float4 look;
+    float4x4 viewMatrix;
+    float2 fovScale;
 };
 
 struct LightConstants
@@ -30,4 +28,9 @@ struct HitInfo
 {
     float3 color : SHADED_COLOR;
     float hitT : HIT_T;
+};
+
+struct Attributes
+{
+    float2 barycentricUV;
 };

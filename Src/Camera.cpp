@@ -5,23 +5,23 @@ void Camera::UpdateViewMatrix()
 {
 	if (m_viewDirty)
 	{
-		DirectX::XMVECTOR R = DirectX::XMLoadFloat4(&m_right);
-		DirectX::XMVECTOR U = DirectX::XMLoadFloat4(&m_up);
-		DirectX::XMVECTOR L = DirectX::XMLoadFloat4(&m_look);
-		DirectX::XMVECTOR P = DirectX::XMLoadFloat4(&m_position);
+		DirectX::XMVECTOR R = DirectX::XMLoadFloat3(&m_right);
+		DirectX::XMVECTOR U = DirectX::XMLoadFloat3(&m_up);
+		DirectX::XMVECTOR L = DirectX::XMLoadFloat3(&m_look);
+		DirectX::XMVECTOR P = DirectX::XMLoadFloat3(&m_position);
 
-		L = DirectX::XMVector4Normalize(L);
-		U = DirectX::XMVector4Normalize(DirectX::XMVector3Cross(L, R));
+		L = DirectX::XMVector3Normalize(L);
+		U = DirectX::XMVector3Normalize(DirectX::XMVector3Cross(L, R));
 		R = DirectX::XMVector3Cross(U, L);
 
 		// v = inv(T) * transpose(R)
-		float x = -DirectX::XMVectorGetX(DirectX::XMVector4Dot(P, R));
-		float y = -DirectX::XMVectorGetX(DirectX::XMVector4Dot(P, U));
-		float z = -DirectX::XMVectorGetX(DirectX::XMVector4Dot(P, L));
+		float x = -DirectX::XMVectorGetX(DirectX::XMVector3Dot(P, R));
+		float y = -DirectX::XMVectorGetX(DirectX::XMVector3Dot(P, U));
+		float z = -DirectX::XMVectorGetX(DirectX::XMVector3Dot(P, L));
 
-		DirectX::XMStoreFloat4(&m_right, R);
-		DirectX::XMStoreFloat4(&m_up, U);
-		DirectX::XMStoreFloat4(&m_look, L);
+		DirectX::XMStoreFloat3(&m_right, R);
+		DirectX::XMStoreFloat3(&m_up, U);
+		DirectX::XMStoreFloat3(&m_look, L);
 
 		m_viewMatrix(0, 0) = m_right.x;
 		m_viewMatrix(1, 0) = m_right.y;
@@ -53,26 +53,6 @@ void Camera::UpdateViewMatrix()
 	}
 }
 
-DirectX::XMFLOAT4 Camera::GetPosition()
-{
-	return m_position;
-}
-
-DirectX::XMFLOAT4 Camera::GetUp()
-{
-	return m_up;
-}
-
-DirectX::XMFLOAT4 Camera::GetRight()
-{
-	return m_right;
-}
-
-DirectX::XMFLOAT4 Camera::GetLook()
-{
-	return m_look;
-}
-
 DirectX::XMFLOAT4X4 Camera::GetViewMatrix()
 {
 	return m_viewMatrix;
@@ -88,13 +68,18 @@ DirectX::XMFLOAT4X4 Camera::GetViewProjectionMatrix()
 	return m_viewProjMatrix;
 }
 
+DirectX::XMFLOAT2 Camera::GetFovScale()
+{
+	return m_fovScale;
+}
+
 void FirstPersonCamera::Strafe(float d)
 {
 	// m_position += d*m_right
 	DirectX::XMVECTOR s = DirectX::XMVectorReplicate(d);
-	DirectX::XMVECTOR r = DirectX::XMLoadFloat4(&m_right);
-	DirectX::XMVECTOR p = DirectX::XMLoadFloat4(&m_position);
-	DirectX::XMStoreFloat4(&m_position, DirectX::XMVectorMultiplyAdd(s, r, p));
+	DirectX::XMVECTOR r = DirectX::XMLoadFloat3(&m_right);
+	DirectX::XMVECTOR p = DirectX::XMLoadFloat3(&m_position);
+	DirectX::XMStoreFloat3(&m_position, DirectX::XMVectorMultiplyAdd(s, r, p));
 
 	m_viewDirty = true;
 }
@@ -103,9 +88,9 @@ void FirstPersonCamera::Walk(float d)
 {
 	// m_position += d*m_look
 	DirectX::XMVECTOR s = DirectX::XMVectorReplicate(d);
-	DirectX::XMVECTOR l = DirectX::XMLoadFloat4(&m_look);
-	DirectX::XMVECTOR p = DirectX::XMLoadFloat4(&m_position);
-	DirectX::XMStoreFloat4(&m_position, DirectX::XMVectorMultiplyAdd(s, l, p));
+	DirectX::XMVECTOR l = DirectX::XMLoadFloat3(&m_look);
+	DirectX::XMVECTOR p = DirectX::XMLoadFloat3(&m_position);
+	DirectX::XMStoreFloat3(&m_position, DirectX::XMVectorMultiplyAdd(s, l, p));
 
 	m_viewDirty = true;
 }
@@ -113,12 +98,12 @@ void FirstPersonCamera::Walk(float d)
 void FirstPersonCamera::Pitch(float angle)
 {
 	// Rotate up and look vector about the right vector.
-	DirectX::XMMATRIX R = DirectX::XMMatrixRotationAxis(DirectX::XMLoadFloat4(&m_right), angle);
+	DirectX::XMMATRIX R = DirectX::XMMatrixRotationAxis(DirectX::XMLoadFloat3(&m_right), angle);
 
-	DirectX::XMVECTOR u = DirectX::XMLoadFloat4(&m_up);
-	DirectX::XMVECTOR l = DirectX::XMLoadFloat4(&m_look);
-	DirectX::XMStoreFloat4(&m_up, DirectX::XMVector3TransformNormal(u, R));
-	DirectX::XMStoreFloat4(&m_look, DirectX::XMVector3TransformNormal(l, R));
+	DirectX::XMVECTOR u = DirectX::XMLoadFloat3(&m_up);
+	DirectX::XMVECTOR l = DirectX::XMLoadFloat3(&m_look);
+	DirectX::XMStoreFloat3(&m_up, DirectX::XMVector3TransformNormal(u, R));
+	DirectX::XMStoreFloat3(&m_look, DirectX::XMVector3TransformNormal(l, R));
 
 	m_viewDirty = true;
 }
@@ -128,25 +113,28 @@ void FirstPersonCamera::RotateWorldY(float angle)
 	// Rotate the basis vectors about the world y-axis.
 	DirectX::XMMATRIX R = DirectX::XMMatrixRotationY(angle);
 
-	DirectX::XMVECTOR r = DirectX::XMLoadFloat4(&m_right);
-	DirectX::XMVECTOR u = DirectX::XMLoadFloat4(&m_up);
-	DirectX::XMVECTOR l = DirectX::XMLoadFloat4(&m_look);
-	DirectX::XMStoreFloat4(&m_right, DirectX::XMVector3TransformNormal(r, R));
-	DirectX::XMStoreFloat4(&m_up, DirectX::XMVector3TransformNormal(u, R));
-	DirectX::XMStoreFloat4(&m_look, DirectX::XMVector3TransformNormal(l, R));
+	DirectX::XMVECTOR r = DirectX::XMLoadFloat3(&m_right);
+	DirectX::XMVECTOR u = DirectX::XMLoadFloat3(&m_up);
+	DirectX::XMVECTOR l = DirectX::XMLoadFloat3(&m_look);
+	DirectX::XMStoreFloat3(&m_right, DirectX::XMVector3TransformNormal(r, R));
+	DirectX::XMStoreFloat3(&m_up, DirectX::XMVector3TransformNormal(u, R));
+	DirectX::XMStoreFloat3(&m_look, DirectX::XMVector3TransformNormal(l, R));
 
 	m_viewDirty = true;
 }
 
-void FirstPersonCamera::Init(const float aspectRatio)
+void FirstPersonCamera::Init(const float verticalFov, const float aspectRatio)
 {
-	DirectX::XMMATRIX proj = DirectX::XMMatrixPerspectiveFovLH(0.25f * 3.1415926535f, aspectRatio, 1.0f, 10000.0f);
+	DirectX::XMMATRIX proj = DirectX::XMMatrixPerspectiveFovLH(verticalFov, aspectRatio, 1.0f, 10000.0f);
 	XMStoreFloat4x4(&m_projMatrix, proj);
 
-	m_position = { 0.f, 0.f, 0.f, 1.f };
-	m_right = { 1.f, 0.f, 0.f, 0.f };
-	m_up = { 0.f, 1.f, 0.f, 0.f };
-	m_look = { 0.f, 0.f, 1.f, 0.f };
+	m_fovScale.y = std::tan(verticalFov / 2.f);
+	m_fovScale.x = aspectRatio * m_fovScale.y;
+
+	m_position = { 0.f, 0.f, 0.f };
+	m_right = { 1.f, 0.f, 0.f };
+	m_up = { 0.f, 1.f, 0.f };
+	m_look = { 0.f, 0.f, 1.f };
 }
 
 void FirstPersonCamera::Update(const float dt, WPARAM mouseBtnState, const POINT mouseDelta)
@@ -183,27 +171,30 @@ void FirstPersonCamera::Update(const float dt, WPARAM mouseBtnState, const POINT
 
 void TrackballCamera::SphericalToViewBasis()
 {
-	m_position = { m_radius * std::sin(m_elev) * std::cos(m_azimuth), m_radius * std::cos(m_elev), m_radius * std::sin(m_elev) * std::sin(m_azimuth), 1.f };
-	m_look = { -m_position.x, -m_position.y, -m_position.z, 0.f };
+	m_position = { m_radius * std::sin(m_elev) * std::cos(m_azimuth), m_radius * std::cos(m_elev), m_radius * std::sin(m_elev) * std::sin(m_azimuth) };
+	m_look = { -m_position.x, -m_position.y, -m_position.z };
 
 	if (m_worldUpDir > 0.f)
 	{
-		m_up = { 0.f, 1.f, 0.f, 0.f };
+		m_up = { 0.f, 1.f, 0.f };
 	}
 	else
 	{
-		m_up = { 0.f, -1.f, 0.f, 0.f };
+		m_up = { 0.f, -1.f, 0.f };
 	}
 
-	DirectX::XMVECTOR U = DirectX::XMLoadFloat4(&m_up);
-	DirectX::XMVECTOR L = DirectX::XMLoadFloat4(&m_look);
-	DirectX::XMStoreFloat4(&m_right, DirectX::XMVector4Normalize(DirectX::XMVector3Cross(U, L)));
+	DirectX::XMVECTOR U = DirectX::XMLoadFloat3(&m_up);
+	DirectX::XMVECTOR L = DirectX::XMLoadFloat3(&m_look);
+	DirectX::XMStoreFloat3(&m_right, DirectX::XMVector3Normalize(DirectX::XMVector3Cross(U, L)));
 }
 
-void TrackballCamera::Init(const float aspectRatio)
+void TrackballCamera::Init(const float verticalFov, const float aspectRatio)
 {
-	DirectX::XMMATRIX proj = DirectX::XMMatrixPerspectiveFovLH(0.25f * 3.1415926535f, aspectRatio, 1.0f, 10000.0f);
+	DirectX::XMMATRIX proj = DirectX::XMMatrixPerspectiveFovLH(verticalFov, aspectRatio, 1.0f, 10000.0f);
 	XMStoreFloat4x4(&m_projMatrix, proj);
+
+	m_fovScale.y = std::tan(verticalFov / 2.f);
+	m_fovScale.x = aspectRatio * m_fovScale.y;
 
 	m_radius = 5.f;
 	m_elev = 0.25f * DirectX::XM_PI;

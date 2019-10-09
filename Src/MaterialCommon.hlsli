@@ -8,8 +8,6 @@ ConstantBuffer<LightConstants> cb_light : register(b2);
 ByteAddressBuffer vertices : register(t0, space0);
 ByteAddressBuffer indices : register(t1, space0);
 
-SamplerState anisoSampler : register(s0);
-
 #if !defined(UNTEXTURED)
     Texture2D texBaseColor : register(t0, space1);
     Texture2D texRoughness : register(t1, space1);
