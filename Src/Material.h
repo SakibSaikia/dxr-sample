@@ -6,7 +6,7 @@ struct MaterialRtPipelineDesc
 {
 	std::wstring closestHitShader;
 	std::wstring missShader; 
-	D3D12_ROOT_SIGNATURE_DESC rootsigDesc;
+	std::vector<D3D12_ROOT_PARAMETER> rootParams;
 };
 
 class RaytraceMaterialPipeline
@@ -20,7 +20,7 @@ public:
 	void* GetShaderIdentifier(const wchar_t* exportName) const;
 
 private:
-	static D3D12_ROOT_SIGNATURE_DESC BuildRaygenRootSignature();
+	static std::vector<D3D12_ROOT_PARAMETER> GetRaygenRootParams();
 
 private:
 	Microsoft::WRL::ComPtr<ID3D12StateObject> m_pso;
@@ -76,7 +76,7 @@ public:
 	) const override;
 
 private:
-	static D3D12_ROOT_SIGNATURE_DESC BuildRaytraceRootSignature();
+	static std::vector<D3D12_ROOT_PARAMETER> GetRaytraceRootParams();
 
 private:
 	Microsoft::WRL::ComPtr<ID3D12Resource> m_constantBuffer;
@@ -100,7 +100,7 @@ public:
 	) const override;
 
 private:
-	static D3D12_ROOT_SIGNATURE_DESC BuildRaytraceRootSignature();
+	static std::vector<D3D12_ROOT_PARAMETER> GetRaytraceRootParams();
 
 private:
 	D3D12_GPU_DESCRIPTOR_HANDLE m_srvBegin;
@@ -124,7 +124,7 @@ public:
 	) const override;
 
 private:
-	static D3D12_ROOT_SIGNATURE_DESC BuildRaytraceRootSignature();
+	static std::vector<D3D12_ROOT_PARAMETER> GetRaytraceRootParams();
 
 private:
 	D3D12_GPU_DESCRIPTOR_HANDLE m_srvBegin;

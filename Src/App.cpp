@@ -248,6 +248,7 @@ void App::Init(HWND windowHandle)
 	InitResourceHeaps();
 	InitScene();
 	InitView();
+	InitRaytracePipelines();
 
 	// Finalize init and flush 
 	m_gfxCmdList->Close();
