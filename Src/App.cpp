@@ -175,17 +175,14 @@ void App::InitSurfaces()
 
 void App::InitRaytracePipelines()
 {
-	// Holds temp resources such as blobs and root signatures until the pipeline is committed
-	std::vector<IUnknown*> pendingResources;
-
 	// Add any new materials to the list below
 	auto rtPipeline = std::make_unique<RaytraceMaterialPipeline>(m_d3dDevice.Get());
-	rtPipeline->BuildFromMaterial(m_d3dDevice.Get(), L"DefaultOpaue", DefaultOpaqueMaterial::GetRaytracePipelineDesc(), pendingResources);
-	rtPipeline->BuildFromMaterial(m_d3dDevice.Get(), L"DefaultMasked", DefaultMaskedMaterial::GetRaytracePipelineDesc(), pendingResources);
-	rtPipeline->BuildFromMaterial(m_d3dDevice.Get(), L"Untextured", UntexturedMaterial::GetRaytracePipelineDesc(), pendingResources);
+	rtPipeline->BuildFromMaterial(m_d3dDevice.Get(), L"DefaultOpaue", DefaultOpaqueMaterial::GetRaytraceMaterialPipeline(m_d3dDevice.Get()));
+	rtPipeline->BuildFromMaterial(m_d3dDevice.Get(), L"DefaultMasked", DefaultMaskedMaterial::GetRaytraceMaterialPipeline(m_d3dDevice.Get()));
+	rtPipeline->BuildFromMaterial(m_d3dDevice.Get(), L"Untextured", UntexturedMaterial::GetRaytraceMaterialPipeline(m_d3dDevice.Get()));
 
 	// Finalize and build
-	rtPipeline->Commit(m_d3dDevice.Get(), pendingResources);
+	rtPipeline->Commit(m_d3dDevice.Get());
 
 	m_raytracePipeline = std::move(rtPipeline);
 }

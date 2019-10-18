@@ -6,7 +6,7 @@ namespace
 	static const wchar_t* k_rgs = L"raygen.rgs";
 }
 
-ID3DBlob* LoadBlob(const std::wstring& filename)
+Microsoft::WRL::ComPtr<ID3DBlob> LoadBlob(const std::wstring& filename)
 {
 	std::wstring filepath = L"CompiledShaders\\" + filename + L".cso";
 	std::ifstream fileHandle(filepath, std::ios::binary);
@@ -18,8 +18,8 @@ ID3DBlob* LoadBlob(const std::wstring& filename)
 	fileHandle.seekg(0, std::ios::beg);
 
 	// serialize bytecode
-	ID3DBlob* blob;
-	CHECK(D3DCreateBlob(size, &blob));
+	Microsoft::WRL::ComPtr<ID3DBlob> blob;
+	CHECK(D3DCreateBlob(size, blob.GetAddressOf()));
 	fileHandle.read(static_cast<char*>(blob->GetBufferPointer()), size);
 
 	fileHandle.close();
@@ -27,7 +27,7 @@ ID3DBlob* LoadBlob(const std::wstring& filename)
 	return blob;
 }
 
-ID3D12RootSignature* CreateRootSignature(ID3D12Device* device, const D3D12_ROOT_SIGNATURE_DESC& desc)
+Microsoft::WRL::ComPtr<ID3D12RootSignature> CreateRootSignature(ID3D12Device* device, const D3D12_ROOT_SIGNATURE_DESC& desc)
 {
 	Microsoft::WRL::ComPtr<ID3DBlob> rootSigBlob;
 	Microsoft::WRL::ComPtr<ID3DBlob> errorBlob;
@@ -35,8 +35,8 @@ ID3D12RootSignature* CreateRootSignature(ID3D12Device* device, const D3D12_ROOT_
 	HRESULT hr = D3D12SerializeRootSignature(&desc, D3D_ROOT_SIGNATURE_VERSION_1, rootSigBlob.GetAddressOf(), errorBlob.GetAddressOf());
 	assert(hr == S_OK || static_cast<char*>(errorBlob->GetBufferPointer()));
 
-	ID3D12RootSignature* rootSig;
-	hr = device->CreateRootSignature(0, rootSigBlob->GetBufferPointer(), rootSigBlob->GetBufferSize(), IID_PPV_ARGS(&rootSig));
+	Microsoft::WRL::ComPtr<ID3D12RootSignature> rootSig;
+	hr = device->CreateRootSignature(0, rootSigBlob->GetBufferPointer(), rootSigBlob->GetBufferSize(), IID_PPV_ARGS(rootSig.GetAddressOf()));
 	assert(hr == S_OK && L"Failed to create root signature!");
 
 	return rootSig;
@@ -66,7 +66,7 @@ size_t GetRootSignatureSizeInBytes(const D3D12_ROOT_SIGNATURE_DESC& desc)
 	return size;
 }
 
-std::vector<D3D12_ROOT_PARAMETER> RaytraceMaterialPipeline::GetRaygenRootParams()
+Microsoft::WRL::ComPtr<ID3D12RootSignature> RaytraceMaterialPipeline::GetRaygenRootSignature(ID3D12Device5* device)
 {
 	std::vector<D3D12_ROOT_PARAMETER> rootParams;
 	rootParams.reserve(3);
@@ -93,7 +93,13 @@ std::vector<D3D12_ROOT_PARAMETER> RaytraceMaterialPipeline::GetRaygenRootParams(
 	outputUAV.Descriptor.ShaderRegister = 0;
 	rootParams.push_back(outputUAV);
 
-	return rootParams;
+	D3D12_ROOT_SIGNATURE_DESC rootDesc = {};
+	rootDesc.NumParameters = static_cast<UINT>(rootParams.size());
+	rootDesc.pParameters = rootParams.data();
+	rootDesc.Flags = D3D12_ROOT_SIGNATURE_FLAG_LOCAL_ROOT_SIGNATURE;
+	assert(GetRootSignatureSizeInBytes(rootDesc) <= k_maxRootSignatureSize);
+
+	return CreateRootSignature(device, rootDesc);
 }
 
 RaytraceMaterialPipeline::RaytraceMaterialPipeline(ID3D12Device5* device)
@@ -109,8 +115,8 @@ RaytraceMaterialPipeline::RaytraceMaterialPipeline(ID3D12Device5* device)
 	rgsExportDesc.ExportToRename = L"RayGen";
 
 	D3D12_DXIL_LIBRARY_DESC rgsLibDesc{};
-	rgsLibDesc.DXILLibrary.pShaderBytecode = rgsByteCode.Get()->GetBufferPointer();
-	rgsLibDesc.DXILLibrary.BytecodeLength = rgsByteCode.Get()->GetBufferSize();
+	rgsLibDesc.DXILLibrary.pShaderBytecode = rgsByteCode->GetBufferPointer();
+	rgsLibDesc.DXILLibrary.BytecodeLength = rgsByteCode->GetBufferSize();
 	rgsLibDesc.NumExports = 1;
 	rgsLibDesc.pExports = &rgsExportDesc;
 
@@ -147,17 +153,11 @@ RaytraceMaterialPipeline::RaytraceMaterialPipeline(ID3D12Device5* device)
 	m_pipelineSubObjects.push_back(shaderConfigAssociationSubObject);
 
 	// Raygen Root Signature
-	std::vector<D3D12_ROOT_PARAMETER> rootParams = GetRaygenRootParams();
-	D3D12_ROOT_SIGNATURE_DESC rootDesc = {};
-	rootDesc.NumParameters = static_cast<UINT>(rootParams.size());
-	rootDesc.pParameters = rootParams.data();
-	rootDesc.Flags = D3D12_ROOT_SIGNATURE_FLAG_LOCAL_ROOT_SIGNATURE;
-	assert(GetRootSignatureSizeInBytes(rootDesc) <= k_maxRootSignatureSize);
-	m_raytraceRootSignature = CreateRootSignature(device, rootDesc);
+	m_raygenRootSignature = GetRaygenRootSignature(device);
 
 	D3D12_STATE_SUBOBJECT raygenRootSigSubObject{};
 	raygenRootSigSubObject.Type = D3D12_STATE_SUBOBJECT_TYPE_LOCAL_ROOT_SIGNATURE;
-	raygenRootSigSubObject.pDesc = m_raytraceRootSignature.Get();
+	raygenRootSigSubObject.pDesc = m_raygenRootSignature.Get();
 	m_pipelineSubObjects.push_back(raygenRootSigSubObject);
 
 
@@ -186,21 +186,19 @@ RaytraceMaterialPipeline::RaytraceMaterialPipeline(ID3D12Device5* device)
 void RaytraceMaterialPipeline::BuildFromMaterial(
 	ID3D12Device5* device, 
 	std::wstring materialName, 
-	MaterialRtPipelineDesc pipelineDesc, 
-	std::vector<IUnknown*>& pendingResources
+	RtMaterialPipeline material
 )
 {
-	// Closest Hit Shader
-	ID3DBlob* chsByteCode = LoadBlob(pipelineDesc.closestHitShader);
-	pendingResources.push_back(chsByteCode);
+	m_materials.push_back(material);
 
+	// Closest Hit Shader
 	D3D12_EXPORT_DESC chsExportDesc{};
 	chsExportDesc.Name = (L"ClosestHit" + materialName).c_str();
 	chsExportDesc.ExportToRename = L"ClosestHit";
 
 	D3D12_DXIL_LIBRARY_DESC chsLibDesc{};
-	chsLibDesc.DXILLibrary.pShaderBytecode = chsByteCode->GetBufferPointer();
-	chsLibDesc.DXILLibrary.BytecodeLength = chsByteCode->GetBufferSize();
+	chsLibDesc.DXILLibrary.pShaderBytecode = material.closestHitShader->GetBufferPointer();
+	chsLibDesc.DXILLibrary.BytecodeLength = material.closestHitShader->GetBufferSize();
 	chsLibDesc.NumExports = 1;
 	chsLibDesc.pExports = &chsExportDesc;
 
@@ -211,16 +209,13 @@ void RaytraceMaterialPipeline::BuildFromMaterial(
 
 
 	// Miss Shader
-	ID3DBlob* msByteCode = LoadBlob(pipelineDesc.missShader);
-	pendingResources.push_back(msByteCode);
-
 	D3D12_EXPORT_DESC msExportDesc{};
 	msExportDesc.Name = (L"Miss" + materialName).c_str();
 	msExportDesc.ExportToRename = L"Miss";
 
 	D3D12_DXIL_LIBRARY_DESC msLibDesc{};
-	msLibDesc.DXILLibrary.pShaderBytecode = msByteCode->GetBufferPointer();
-	msLibDesc.DXILLibrary.BytecodeLength = msByteCode->GetBufferSize();
+	msLibDesc.DXILLibrary.pShaderBytecode = material.missShader->GetBufferPointer();
+	msLibDesc.DXILLibrary.BytecodeLength = material.missShader->GetBufferSize();
 	msLibDesc.NumExports = 1;
 	msLibDesc.pExports = &msExportDesc;
 
@@ -259,17 +254,9 @@ void RaytraceMaterialPipeline::BuildFromMaterial(
 
 
 	// Root Signature
-	D3D12_ROOT_SIGNATURE_DESC rootSigDesc = {};
-	rootSigDesc.NumParameters = static_cast<UINT>(pipelineDesc.rootParams.size());
-	rootSigDesc.pParameters = pipelineDesc.rootParams.data();
-	rootSigDesc.Flags = D3D12_ROOT_SIGNATURE_FLAG_LOCAL_ROOT_SIGNATURE;
-	assert(GetRootSignatureSizeInBytes(rootSigDesc) <= k_maxRootSignatureSize);
-	ID3D12RootSignature* rootSig = CreateRootSignature(device, rootSigDesc);
-	pendingResources.push_back(rootSig);
-
 	D3D12_STATE_SUBOBJECT sharedRootSigSubObject{};
 	sharedRootSigSubObject.Type = D3D12_STATE_SUBOBJECT_TYPE_LOCAL_ROOT_SIGNATURE;
-	sharedRootSigSubObject.pDesc = &rootSig;
+	sharedRootSigSubObject.pDesc = material.rootSignature.Get();
 	m_pipelineSubObjects.push_back(sharedRootSigSubObject);
 
 
@@ -285,7 +272,7 @@ void RaytraceMaterialPipeline::BuildFromMaterial(
 	m_pipelineSubObjects.push_back(sharedRootSignatureAssociationSubObject);
 }
 
-void RaytraceMaterialPipeline::Commit(ID3D12Device5* device, std::vector<IUnknown*>& pendingResources)
+void RaytraceMaterialPipeline::Commit(ID3D12Device5* device)
 {
 	assert(m_pipelineSubObjects.size() < k_maxRtPipelineSubobjectCount);
 
@@ -304,10 +291,14 @@ void RaytraceMaterialPipeline::Commit(ID3D12Device5* device, std::vector<IUnknow
 	CHECK(m_pso->QueryInterface(IID_PPV_ARGS(m_psoProperties.GetAddressOf())));
 
 	// Release the pending resources
-	for (auto resource : pendingResources)
+	for (auto material : m_materials)
 	{
-		resource->Release();
+		material.closestHitShader.Reset();
+		material.missShader.Reset();
+		material.rootSignature.Reset();
 	}
+
+	m_pipelineSubObjects.clear();
 }
 
 void RaytraceMaterialPipeline::Bind(
@@ -331,11 +322,6 @@ void RaytraceMaterialPipeline::Bind(
 	*(pRootDescriptors++) = outputUAV.ptr;
 }
 
-size_t RaytraceMaterialPipeline::GetRootSignatureSize() const
-{
-	return m_raytraceRootSignatureSize;
-}
-
 void* RaytraceMaterialPipeline::GetShaderIdentifier(const wchar_t* exportName) const
 {
 	return m_psoProperties->GetShaderIdentifier(exportName);
@@ -352,12 +338,12 @@ DefaultOpaqueMaterial::DefaultOpaqueMaterial(std::string& name, const D3D12_GPU_
 {
 }
 
-MaterialRtPipelineDesc DefaultOpaqueMaterial::GetRaytracePipelineDesc()
+RtMaterialPipeline DefaultOpaqueMaterial::GetRaytraceMaterialPipeline(ID3D12Device5* device)
 {
-	return MaterialRtPipelineDesc{ k_chs, k_ms, GetRaytraceRootParams() };
+	return RtMaterialPipeline{ LoadBlob(k_chs), LoadBlob(k_ms), GetRaytraceRootSignature(device) };
 }
 
-std::vector<D3D12_ROOT_PARAMETER> DefaultOpaqueMaterial::GetRaytraceRootParams()
+Microsoft::WRL::ComPtr<ID3D12RootSignature> DefaultOpaqueMaterial::GetRaytraceRootSignature(ID3D12Device5* device)
 {
 	std::vector<D3D12_ROOT_PARAMETER> rootParams;
 	rootParams.reserve(7);
@@ -411,7 +397,13 @@ std::vector<D3D12_ROOT_PARAMETER> DefaultOpaqueMaterial::GetRaytraceRootParams()
 	materialSRVs.DescriptorTable.pDescriptorRanges = &materialSRVRange;
 	rootParams.push_back(materialSRVs);
 
-	return rootParams;
+	D3D12_ROOT_SIGNATURE_DESC rootSigDesc = {};
+	rootSigDesc.NumParameters = static_cast<UINT>(rootParams.size());
+	rootSigDesc.pParameters = rootParams.data();
+	rootSigDesc.Flags = D3D12_ROOT_SIGNATURE_FLAG_LOCAL_ROOT_SIGNATURE;
+	assert(GetRootSignatureSizeInBytes(rootSigDesc) <= k_maxRootSignatureSize);
+
+	return CreateRootSignature(device, rootSigDesc);
 }
 
 void DefaultOpaqueMaterial::BindConstants(
@@ -458,12 +450,12 @@ DefaultMaskedMaterial::DefaultMaskedMaterial(std::string& name, const D3D12_GPU_
 {
 }
 
-MaterialRtPipelineDesc DefaultMaskedMaterial::GetRaytracePipelineDesc()
+RtMaterialPipeline DefaultMaskedMaterial::GetRaytraceMaterialPipeline(ID3D12Device5* device)
 {
-	return MaterialRtPipelineDesc{ k_chs, k_ms, GetRaytraceRootParams() };
+	return RtMaterialPipeline{ LoadBlob(k_chs), LoadBlob(k_ms), GetRaytraceRootSignature(device) };
 }
 
-std::vector<D3D12_ROOT_PARAMETER> DefaultMaskedMaterial::GetRaytraceRootParams()
+Microsoft::WRL::ComPtr<ID3D12RootSignature> DefaultMaskedMaterial::GetRaytraceRootSignature(ID3D12Device5* device)
 {
 	std::vector<D3D12_ROOT_PARAMETER> rootParams;
 	rootParams.reserve(5);
@@ -517,7 +509,13 @@ std::vector<D3D12_ROOT_PARAMETER> DefaultMaskedMaterial::GetRaytraceRootParams()
 	materialSRVs.DescriptorTable.pDescriptorRanges = &materialSRVRange;
 	rootParams.push_back(materialSRVs);
 
-	return rootParams;
+	D3D12_ROOT_SIGNATURE_DESC rootSigDesc = {};
+	rootSigDesc.NumParameters = static_cast<UINT>(rootParams.size());
+	rootSigDesc.pParameters = rootParams.data();
+	rootSigDesc.Flags = D3D12_ROOT_SIGNATURE_FLAG_LOCAL_ROOT_SIGNATURE;
+	assert(GetRootSignatureSizeInBytes(rootSigDesc) <= k_maxRootSignatureSize);
+
+	return CreateRootSignature(device, rootSigDesc);
 }
 
 void DefaultMaskedMaterial::BindConstants(
@@ -563,12 +561,12 @@ UntexturedMaterial::UntexturedMaterial(std::string& name, Microsoft::WRL::ComPtr
 {
 }
 
-MaterialRtPipelineDesc UntexturedMaterial::GetRaytracePipelineDesc()
+RtMaterialPipeline UntexturedMaterial::GetRaytraceMaterialPipeline(ID3D12Device5* device)
 {
-	return MaterialRtPipelineDesc{ k_chs, k_ms, GetRaytraceRootParams() };
+	return RtMaterialPipeline{ LoadBlob(k_chs), LoadBlob(k_ms), GetRaytraceRootSignature(device) };
 }
 
-std::vector<D3D12_ROOT_PARAMETER> UntexturedMaterial::GetRaytraceRootParams()
+Microsoft::WRL::ComPtr<ID3D12RootSignature> UntexturedMaterial::GetRaytraceRootSignature(ID3D12Device5* device)
 {
 	std::vector<D3D12_ROOT_PARAMETER> rootParams;
 	rootParams.reserve(5);
@@ -613,7 +611,13 @@ std::vector<D3D12_ROOT_PARAMETER> UntexturedMaterial::GetRaytraceRootParams()
 	meshSRVs.DescriptorTable.pDescriptorRanges = &meshSRVRange;
 	rootParams.push_back(meshSRVs);
 
-	return rootParams;
+	D3D12_ROOT_SIGNATURE_DESC rootSigDesc = {};
+	rootSigDesc.NumParameters = static_cast<UINT>(rootParams.size());
+	rootSigDesc.pParameters = rootParams.data();
+	rootSigDesc.Flags = D3D12_ROOT_SIGNATURE_FLAG_LOCAL_ROOT_SIGNATURE;
+	assert(GetRootSignatureSizeInBytes(rootSigDesc) <= k_maxRootSignatureSize);
+
+	return CreateRootSignature(device, rootSigDesc);
 }
 
 void UntexturedMaterial::BindConstants(
