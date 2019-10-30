@@ -204,7 +204,7 @@ void Scene::LoadMaterials(
 			cbBarrierDesc.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
 			cbBarrierDesc.Transition.pResource = mtlCb.Get();
 			cbBarrierDesc.Transition.StateBefore = D3D12_RESOURCE_STATE_COPY_DEST;
-			cbBarrierDesc.Transition.StateAfter = D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER;
+			cbBarrierDesc.Transition.StateAfter = D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
 			cbBarrierDesc.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
 			cmdList->ResourceBarrier(
 				1,

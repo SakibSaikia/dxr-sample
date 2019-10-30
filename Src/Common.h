@@ -11,7 +11,6 @@ constexpr size_t k_uploadBufferSize = 40 * 1024 * 1024; // 40 MB
 constexpr size_t k_scratchDataSize = 40 * 1024 * 1024; // 40 MB
 constexpr size_t k_geometryDataSize = 100 * 1024 * 1024; // 100 MB
 constexpr size_t k_materialConstantsSize = 20 * 1024 * 1024; // 20 MB
-constexpr size_t k_defaultResourceAlignment = 64 * 1024; // 64 K
 constexpr size_t k_constantBufferAlignment = 256 * 1024; // 256 K
 constexpr size_t k_maxRootSignatureSize = 6 * 2 * sizeof(DWORD); // 6 descriptor tables or 6 root parameters or 12 root constants
 constexpr size_t k_shaderRecordSize = D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES + k_maxRootSignatureSize;

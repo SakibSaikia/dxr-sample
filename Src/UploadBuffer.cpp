@@ -44,21 +44,22 @@ void UploadBuffer::Init(ID3D12Device5* device, const size_t sizeInBytes)
 	m_allocatedSize = 0;
 }
 
-auto UploadBuffer::GetAlloc(const size_t sizeInBytes) -> Alloc
+auto UploadBuffer::GetAlloc(const size_t sizeInBytes, const size_t alignment) -> Alloc
 {
 	size_t capacity = m_totalSize - m_allocatedSize;
+	size_t alignedSize = (sizeInBytes + (alignment - 1)) & ~(alignment - 1);
 
-	if (sizeInBytes > capacity)
+	if (alignedSize > capacity)
 	{
 		Flush();
 
 		capacity = m_totalSize - m_allocatedSize;
-		assert(sizeInBytes <= capacity && L"Upload buffer is too small. Consider increasing its size!");
+		assert(alignedSize <= capacity && L"Upload buffer is too small. Consider increasing its size!");
 	}
 
 	uint8_t* allocPtr = m_dataPtr + m_allocatedSize;
 	size_t offset = m_allocatedSize;
-	m_allocatedSize += sizeInBytes;
+	m_allocatedSize += alignedSize;
 
 	return std::make_pair(allocPtr, offset);
 

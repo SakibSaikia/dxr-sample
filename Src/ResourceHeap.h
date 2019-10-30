@@ -8,7 +8,7 @@ public:
 	using Alloc = size_t;
 
 	void Init(ID3D12Device5* device, const size_t sizeInBytes);
-	Alloc GetAlloc(const size_t sizeInBytes, const size_t alignment = k_defaultResourceAlignment);
+	Alloc GetAlloc(const size_t sizeInBytes, const size_t alignment = D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT);
 	ID3D12Heap* GetHeap() const;
 
 private:
