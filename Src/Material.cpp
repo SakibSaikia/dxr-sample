@@ -1,5 +1,6 @@
 #include "stdafx.h"
 #include "Material.h"
+#include "StackAllocator.h"
 
 namespace
 {
@@ -102,55 +103,61 @@ Microsoft::WRL::ComPtr<ID3D12RootSignature> RaytraceMaterialPipeline::GetRaygenR
 	return CreateRootSignature(device, rootDesc);
 }
 
-RaytraceMaterialPipeline::RaytraceMaterialPipeline(ID3D12Device5* device)
+RaytraceMaterialPipeline::RaytraceMaterialPipeline(
+	StackAllocator& stackAlloc, 
+	std::vector<D3D12_STATE_SUBOBJECT>& subObjects,
+	size_t& payloadIndex,
+	ID3D12Device5* device)
 {
 	// This is important as we don't want reallocations since subobjects can refer to other subobjects by ptr
-	m_pipelineSubObjects.reserve(k_maxRtPipelineSubobjectCount);
+	subObjects.reserve(k_maxRtPipelineSubobjectCount);
 
 	// RayGen shader
-	Microsoft::WRL::ComPtr<ID3DBlob> rgsByteCode = LoadBlob(k_rgs);
+	auto rgsByteCode = stackAlloc.Allocate<Microsoft::WRL::ComPtr<ID3DBlob>>();
+	*rgsByteCode = LoadBlob(k_rgs);
 
-	D3D12_EXPORT_DESC rgsExportDesc{};
-	rgsExportDesc.Name = L"RayGenDefaultPass";
-	rgsExportDesc.ExportToRename = L"RayGen";
+	auto rgsExportDesc = stackAlloc.Allocate<D3D12_EXPORT_DESC>(); rgsExportDesc;
+	rgsExportDesc->Name = stackAlloc.ConstructName(L"RayGenDefaultPass");
+	rgsExportDesc->ExportToRename = stackAlloc.ConstructName(L"RayGen");
 
-	D3D12_DXIL_LIBRARY_DESC rgsLibDesc{};
-	rgsLibDesc.DXILLibrary.pShaderBytecode = rgsByteCode->GetBufferPointer();
-	rgsLibDesc.DXILLibrary.BytecodeLength = rgsByteCode->GetBufferSize();
-	rgsLibDesc.NumExports = 1;
-	rgsLibDesc.pExports = &rgsExportDesc;
+	auto rgsLibDesc = stackAlloc.Allocate<D3D12_DXIL_LIBRARY_DESC>();
+	rgsLibDesc->DXILLibrary.pShaderBytecode = (*rgsByteCode)->GetBufferPointer();
+	rgsLibDesc->DXILLibrary.BytecodeLength = (*rgsByteCode)->GetBufferSize();
+	rgsLibDesc->NumExports = 1;
+	rgsLibDesc->pExports = rgsExportDesc;
 
 	D3D12_STATE_SUBOBJECT rgsSubObject{};
 	rgsSubObject.Type = D3D12_STATE_SUBOBJECT_TYPE_DXIL_LIBRARY;
-	rgsSubObject.pDesc = &rgsLibDesc;
-	m_pipelineSubObjects.push_back(rgsSubObject);
+	rgsSubObject.pDesc = rgsLibDesc;
+	subObjects.push_back(rgsSubObject);
 
 
 	// Payload
-	D3D12_RAYTRACING_SHADER_CONFIG shaderConfigDesc{};
-	shaderConfigDesc.MaxPayloadSizeInBytes = sizeof(DirectX::XMFLOAT4);
-	shaderConfigDesc.MaxAttributeSizeInBytes = D3D12_RAYTRACING_MAX_ATTRIBUTE_SIZE_IN_BYTES;
+	auto shaderConfigDesc = stackAlloc.Allocate<D3D12_RAYTRACING_SHADER_CONFIG>();
+	shaderConfigDesc->MaxPayloadSizeInBytes = sizeof(DirectX::XMFLOAT4);
+	shaderConfigDesc->MaxAttributeSizeInBytes = D3D12_RAYTRACING_MAX_ATTRIBUTE_SIZE_IN_BYTES;
 
 	D3D12_STATE_SUBOBJECT shaderConfigSubObject{};
 	shaderConfigSubObject.Type = D3D12_STATE_SUBOBJECT_TYPE_RAYTRACING_SHADER_CONFIG;
-	shaderConfigSubObject.pDesc = &shaderConfigDesc;
-	m_pipelineSubObjects.push_back(shaderConfigSubObject);
+	shaderConfigSubObject.pDesc = shaderConfigDesc;
+	subObjects.push_back(shaderConfigSubObject);
 
-	m_pPayloadSubobject = &m_pipelineSubObjects.back();
+	payloadIndex = subObjects.size();
 
 
 	// RGS - Payload Association
-	const wchar_t* shaderExports[] = { rgsExportDesc.Name };
+	auto shaderExports = stackAlloc.Allocate<const wchar_t*>(1);
+	shaderExports[0] = { rgsExportDesc->Name };
 
-	D3D12_SUBOBJECT_TO_EXPORTS_ASSOCIATION shaderConfigAssociationDesc{};
-	shaderConfigAssociationDesc.pExports = shaderExports;
-	shaderConfigAssociationDesc.NumExports = std::extent<decltype(shaderExports)>::value;
-	shaderConfigAssociationDesc.pSubobjectToAssociate = m_pPayloadSubobject;
+	auto shaderConfigAssociationDesc = stackAlloc.Allocate<D3D12_SUBOBJECT_TO_EXPORTS_ASSOCIATION>();
+	shaderConfigAssociationDesc->pExports = shaderExports;
+	shaderConfigAssociationDesc->NumExports = 1;
+	shaderConfigAssociationDesc->pSubobjectToAssociate = &subObjects.back();
 
 	D3D12_STATE_SUBOBJECT shaderConfigAssociationSubObject{};
 	shaderConfigAssociationSubObject.Type = D3D12_STATE_SUBOBJECT_TYPE_SUBOBJECT_TO_EXPORTS_ASSOCIATION;
-	shaderConfigAssociationSubObject.pDesc = &shaderConfigAssociationDesc;
-	m_pipelineSubObjects.push_back(shaderConfigAssociationSubObject);
+	shaderConfigAssociationSubObject.pDesc = shaderConfigAssociationDesc;
+	subObjects.push_back(shaderConfigAssociationSubObject);
 
 	// Raygen Root Signature
 	m_raygenRootSignature = GetRaygenRootSignature(device);
@@ -158,129 +165,149 @@ RaytraceMaterialPipeline::RaytraceMaterialPipeline(ID3D12Device5* device)
 	D3D12_STATE_SUBOBJECT raygenRootSigSubObject{};
 	raygenRootSigSubObject.Type = D3D12_STATE_SUBOBJECT_TYPE_LOCAL_ROOT_SIGNATURE;
 	raygenRootSigSubObject.pDesc = m_raygenRootSignature.Get();
-	m_pipelineSubObjects.push_back(raygenRootSigSubObject);
+	subObjects.push_back(raygenRootSigSubObject);
 
 
 	// Raygen - Root Signature Association
-	D3D12_SUBOBJECT_TO_EXPORTS_ASSOCIATION sharedRootSignatureAssociationDesc{};
-	sharedRootSignatureAssociationDesc.pExports = shaderExports;
-	sharedRootSignatureAssociationDesc.NumExports = std::extent<decltype(shaderExports)>::value;
-	sharedRootSignatureAssociationDesc.pSubobjectToAssociate = &m_pipelineSubObjects.back();
+	auto sharedRootSignatureAssociationDesc = stackAlloc.Allocate<D3D12_SUBOBJECT_TO_EXPORTS_ASSOCIATION>();
+	sharedRootSignatureAssociationDesc->pExports = shaderExports;
+	sharedRootSignatureAssociationDesc->NumExports = 1;
+	sharedRootSignatureAssociationDesc->pSubobjectToAssociate = &subObjects.back();
 
 	D3D12_STATE_SUBOBJECT sharedRootSignatureAssociationSubObject{};
 	sharedRootSignatureAssociationSubObject.Type = D3D12_STATE_SUBOBJECT_TYPE_SUBOBJECT_TO_EXPORTS_ASSOCIATION;
-	sharedRootSignatureAssociationSubObject.pDesc = &sharedRootSignatureAssociationDesc;
-	m_pipelineSubObjects.push_back(sharedRootSignatureAssociationSubObject);
+	sharedRootSignatureAssociationSubObject.pDesc = sharedRootSignatureAssociationDesc;
+	subObjects.push_back(sharedRootSignatureAssociationSubObject);
 
 
 	// Pipeline Config
-	D3D12_RAYTRACING_PIPELINE_CONFIG pipelineConfigDesc{};
-	pipelineConfigDesc.MaxTraceRecursionDepth = 1;
+	auto pipelineConfigDesc = stackAlloc.Allocate<D3D12_RAYTRACING_PIPELINE_CONFIG>();
+	pipelineConfigDesc->MaxTraceRecursionDepth = 1;
 
 	D3D12_STATE_SUBOBJECT pipelineConfigSubObject{};
 	pipelineConfigSubObject.Type = D3D12_STATE_SUBOBJECT_TYPE_RAYTRACING_PIPELINE_CONFIG;
-	pipelineConfigSubObject.pDesc = &pipelineConfigDesc;
-	m_pipelineSubObjects.push_back(pipelineConfigSubObject);
+	pipelineConfigSubObject.pDesc = pipelineConfigDesc;
+	subObjects.push_back(pipelineConfigSubObject);
 }
 
-void RaytraceMaterialPipeline::BuildFromMaterial(
-	ID3D12Device5* device, 
-	std::wstring materialName, 
-	RtMaterialPipeline material
-)
+template<class MaterialType>
+RtMaterialPipeline RaytraceMaterialPipeline::GetMaterialPipeline(StackAllocator& stackAlloc, ID3D12Device5* device)
 {
-	m_materials.push_back(material);
+	RtMaterialPipeline rtPipeline = {};
 
 	// Closest Hit Shader
-	D3D12_EXPORT_DESC chsExportDesc{};
-	chsExportDesc.Name = (L"ClosestHit" + materialName).c_str();
-	chsExportDesc.ExportToRename = L"ClosestHit";
+	auto chsExportDesc = stackAlloc.Allocate<D3D12_EXPORT_DESC>();
+	chsExportDesc->Name = stackAlloc.ConstructName((std::wstring(L"ClosestHit") + MaterialType::k_name).c_str());
+	chsExportDesc->ExportToRename = stackAlloc.ConstructName(L"ClosestHit");
+	rtPipeline.closestHitShader.exportDesc = chsExportDesc;
+	rtPipeline.closestHitShader.shaderBlob = LoadBlob(MaterialType::k_chs);
 
-	D3D12_DXIL_LIBRARY_DESC chsLibDesc{};
-	chsLibDesc.DXILLibrary.pShaderBytecode = material.closestHitShader->GetBufferPointer();
-	chsLibDesc.DXILLibrary.BytecodeLength = material.closestHitShader->GetBufferSize();
-	chsLibDesc.NumExports = 1;
-	chsLibDesc.pExports = &chsExportDesc;
+	// Miss Shader
+	auto msExportDesc = stackAlloc.Allocate<D3D12_EXPORT_DESC>();
+	msExportDesc->Name = stackAlloc.ConstructName((std::wstring(L"Miss") + MaterialType::k_name).c_str());
+	msExportDesc->ExportToRename = stackAlloc.ConstructName(L"Miss");
+	rtPipeline.missShader.exportDesc = msExportDesc;
+	rtPipeline.missShader.shaderBlob = LoadBlob(MaterialType::k_ms);
+
+	// Hit Group
+	auto hitGroup = stackAlloc.Allocate<D3D12_HIT_GROUP_DESC>();
+	hitGroup->ClosestHitShaderImport = chsExportDesc->Name;
+	hitGroup->HitGroupExport = stackAlloc.ConstructName((std::wstring(L"HitGroup") + MaterialType::k_name).c_str());
+	rtPipeline.hitGroupDesc = hitGroup;
+
+	// Root Signature
+	rtPipeline.rootSignature = MaterialType::GetRaytraceRootSignature(device);
+
+	return rtPipeline;
+}
+
+template <class MaterialType>
+void RaytraceMaterialPipeline::BuildFromMaterial(
+	StackAllocator& stackAlloc,
+	std::vector<D3D12_STATE_SUBOBJECT>& subObjects,
+	const size_t payloadIndex,
+	ID3D12Device5* device
+)
+{
+	RtMaterialPipeline material = GetMaterialPipeline<MaterialType>(stackAlloc, device);
+
+	// Closest Hit Subobject
+	auto chsLibDesc = stackAlloc.Allocate<D3D12_DXIL_LIBRARY_DESC>();
+	chsLibDesc->DXILLibrary.pShaderBytecode = material.closestHitShader.shaderBlob->GetBufferPointer();
+	chsLibDesc->DXILLibrary.BytecodeLength = material.closestHitShader.shaderBlob->GetBufferSize();
+	chsLibDesc->NumExports = 1;
+	chsLibDesc->pExports = material.closestHitShader.exportDesc;
 
 	D3D12_STATE_SUBOBJECT chsSubObject{};
 	chsSubObject.Type = D3D12_STATE_SUBOBJECT_TYPE_DXIL_LIBRARY;
-	chsSubObject.pDesc = &chsLibDesc;
-	m_pipelineSubObjects.push_back(chsSubObject);
+	chsSubObject.pDesc = chsLibDesc;
+	subObjects.push_back(chsSubObject);
 
 
-	// Miss Shader
-	D3D12_EXPORT_DESC msExportDesc{};
-	msExportDesc.Name = (L"Miss" + materialName).c_str();
-	msExportDesc.ExportToRename = L"Miss";
-
-	D3D12_DXIL_LIBRARY_DESC msLibDesc{};
-	msLibDesc.DXILLibrary.pShaderBytecode = material.missShader->GetBufferPointer();
-	msLibDesc.DXILLibrary.BytecodeLength = material.missShader->GetBufferSize();
-	msLibDesc.NumExports = 1;
-	msLibDesc.pExports = &msExportDesc;
+	// Miss Subobject
+	auto msLibDesc = stackAlloc.Allocate<D3D12_DXIL_LIBRARY_DESC>();
+	msLibDesc->DXILLibrary.pShaderBytecode = material.missShader.shaderBlob->GetBufferPointer();
+	msLibDesc->DXILLibrary.BytecodeLength = material.missShader.shaderBlob->GetBufferSize();
+	msLibDesc->NumExports = 1;
+	msLibDesc->pExports = material.missShader.exportDesc;
 
 	D3D12_STATE_SUBOBJECT msSubObject{};
 	msSubObject.Type = D3D12_STATE_SUBOBJECT_TYPE_DXIL_LIBRARY;
-	msSubObject.pDesc = &msLibDesc;
-	m_pipelineSubObjects.push_back(msSubObject);
+	msSubObject.pDesc = msLibDesc;
+	subObjects.push_back(msSubObject);
 
 
-	// Hit Group
-	D3D12_HIT_GROUP_DESC hitGroupDesc{};
-	hitGroupDesc.ClosestHitShaderImport = chsExportDesc.Name;
-	hitGroupDesc.HitGroupExport = (L"HitGroup" + materialName).c_str();
-
+	// Hit Group Subobject
 	D3D12_STATE_SUBOBJECT hitGroupSubObject{};
 	hitGroupSubObject.Type = D3D12_STATE_SUBOBJECT_TYPE_HIT_GROUP;
-	hitGroupSubObject.pDesc = &hitGroupDesc;
-	m_pipelineSubObjects.push_back(hitGroupSubObject);
+	hitGroupSubObject.pDesc = material.hitGroupDesc;
+	subObjects.push_back(hitGroupSubObject);
 
 
-	// HitGroup/Miss - Payload Association
-	const wchar_t* shaderExports[] = {
-		msExportDesc.Name,
-		hitGroupDesc.HitGroupExport
-	};
+	// Payload Association Subobject
+	auto shaderExports = stackAlloc.Allocate<const wchar_t*>(2);
+	shaderExports[0] = material.missShader.exportDesc->Name;
+	shaderExports[1] = material.hitGroupDesc->HitGroupExport;
 
-	D3D12_SUBOBJECT_TO_EXPORTS_ASSOCIATION shaderConfigAssociationDesc{};
-	shaderConfigAssociationDesc.pExports = shaderExports;
-	shaderConfigAssociationDesc.NumExports = std::extent<decltype(shaderExports)>::value;
-	shaderConfigAssociationDesc.pSubobjectToAssociate = m_pPayloadSubobject;
+	auto shaderConfigAssociationDesc = stackAlloc.Allocate<D3D12_SUBOBJECT_TO_EXPORTS_ASSOCIATION>();
+	shaderConfigAssociationDesc->pExports = shaderExports;
+	shaderConfigAssociationDesc->NumExports = 2;
+	shaderConfigAssociationDesc->pSubobjectToAssociate = &subObjects[payloadIndex];
 
 	D3D12_STATE_SUBOBJECT shaderConfigAssociationSubObject{};
 	shaderConfigAssociationSubObject.Type = D3D12_STATE_SUBOBJECT_TYPE_SUBOBJECT_TO_EXPORTS_ASSOCIATION;
-	shaderConfigAssociationSubObject.pDesc = &shaderConfigAssociationDesc;
-	m_pipelineSubObjects.push_back(shaderConfigAssociationSubObject);
+	shaderConfigAssociationSubObject.pDesc = shaderConfigAssociationDesc;
+	subObjects.push_back(shaderConfigAssociationSubObject);
 
 
-	// Root Signature
+	// Material Root Signature Subobject
 	D3D12_STATE_SUBOBJECT sharedRootSigSubObject{};
 	sharedRootSigSubObject.Type = D3D12_STATE_SUBOBJECT_TYPE_LOCAL_ROOT_SIGNATURE;
 	sharedRootSigSubObject.pDesc = material.rootSignature.Get();
-	m_pipelineSubObjects.push_back(sharedRootSigSubObject);
+	subObjects.push_back(sharedRootSigSubObject);
 
 
-	// HitGroup/Miss - Root Signature Association
-	D3D12_SUBOBJECT_TO_EXPORTS_ASSOCIATION sharedRootSignatureAssociationDesc{};
-	sharedRootSignatureAssociationDesc.pExports = shaderExports;
-	sharedRootSignatureAssociationDesc.NumExports = std::extent<decltype(shaderExports)>::value;
-	sharedRootSignatureAssociationDesc.pSubobjectToAssociate = &m_pipelineSubObjects.back();
+	// Root Signature Association Subobject
+	auto sharedRootSignatureAssociationDesc = stackAlloc.Allocate<D3D12_SUBOBJECT_TO_EXPORTS_ASSOCIATION>();
+	sharedRootSignatureAssociationDesc->pExports = shaderExports;
+	sharedRootSignatureAssociationDesc->NumExports = 2;
+	sharedRootSignatureAssociationDesc->pSubobjectToAssociate = &subObjects.back();
 
 	D3D12_STATE_SUBOBJECT sharedRootSignatureAssociationSubObject{};
 	sharedRootSignatureAssociationSubObject.Type = D3D12_STATE_SUBOBJECT_TYPE_SUBOBJECT_TO_EXPORTS_ASSOCIATION;
-	sharedRootSignatureAssociationSubObject.pDesc = &sharedRootSignatureAssociationDesc;
-	m_pipelineSubObjects.push_back(sharedRootSignatureAssociationSubObject);
+	sharedRootSignatureAssociationSubObject.pDesc = sharedRootSignatureAssociationDesc;
+	subObjects.push_back(sharedRootSignatureAssociationSubObject);
 }
 
-void RaytraceMaterialPipeline::Commit(ID3D12Device5* device)
+void RaytraceMaterialPipeline::Commit(const StackAllocator& stackAlloc, const std::vector<D3D12_STATE_SUBOBJECT>& subObjects, ID3D12Device5* device)
 {
-	assert(m_pipelineSubObjects.size() < k_maxRtPipelineSubobjectCount);
+	assert(subObjects.size() < k_maxRtPipelineSubobjectCount);
 
 	// Create the PSO
 	D3D12_STATE_OBJECT_DESC psoDesc;
 	psoDesc.Type = D3D12_STATE_OBJECT_TYPE_RAYTRACING_PIPELINE;
-	psoDesc.NumSubobjects = static_cast<UINT>(m_pipelineSubObjects.size());
-	psoDesc.pSubobjects = m_pipelineSubObjects.data();
+	psoDesc.NumSubobjects = static_cast<UINT>(subObjects.size());
+	psoDesc.pSubobjects = subObjects.data();
 
 	CHECK(device->CreateStateObject(
 		&psoDesc,
@@ -289,16 +316,6 @@ void RaytraceMaterialPipeline::Commit(ID3D12Device5* device)
 
 	// Get the PSO properties
 	CHECK(m_pso->QueryInterface(IID_PPV_ARGS(m_psoProperties.GetAddressOf())));
-
-	// Release the pending resources
-	for (auto material : m_materials)
-	{
-		material.closestHitShader.Reset();
-		material.missShader.Reset();
-		material.rootSignature.Reset();
-	}
-
-	m_pipelineSubObjects.clear();
 }
 
 void RaytraceMaterialPipeline::Bind(
@@ -336,11 +353,6 @@ DefaultOpaqueMaterial::DefaultOpaqueMaterial(std::string& name, const D3D12_GPU_
 	Material{ name },
 	m_srvBegin{ srvHandle }
 {
-}
-
-RtMaterialPipeline DefaultOpaqueMaterial::GetRaytraceMaterialPipeline(ID3D12Device5* device)
-{
-	return RtMaterialPipeline{ LoadBlob(k_chs), LoadBlob(k_ms), GetRaytraceRootSignature(device) };
 }
 
 Microsoft::WRL::ComPtr<ID3D12RootSignature> DefaultOpaqueMaterial::GetRaytraceRootSignature(ID3D12Device5* device)
@@ -450,11 +462,6 @@ DefaultMaskedMaterial::DefaultMaskedMaterial(std::string& name, const D3D12_GPU_
 {
 }
 
-RtMaterialPipeline DefaultMaskedMaterial::GetRaytraceMaterialPipeline(ID3D12Device5* device)
-{
-	return RtMaterialPipeline{ LoadBlob(k_chs), LoadBlob(k_ms), GetRaytraceRootSignature(device) };
-}
-
 Microsoft::WRL::ComPtr<ID3D12RootSignature> DefaultMaskedMaterial::GetRaytraceRootSignature(ID3D12Device5* device)
 {
 	std::vector<D3D12_ROOT_PARAMETER> rootParams;
@@ -559,11 +566,6 @@ UntexturedMaterial::UntexturedMaterial(std::string& name, Microsoft::WRL::ComPtr
 	Material{ name },
 	m_constantBuffer{ constantBuffer }
 {
-}
-
-RtMaterialPipeline UntexturedMaterial::GetRaytraceMaterialPipeline(ID3D12Device5* device)
-{
-	return RtMaterialPipeline{ LoadBlob(k_chs), LoadBlob(k_ms), GetRaytraceRootSignature(device) };
 }
 
 Microsoft::WRL::ComPtr<ID3D12RootSignature> UntexturedMaterial::GetRaytraceRootSignature(ID3D12Device5* device)

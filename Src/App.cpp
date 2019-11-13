@@ -1,5 +1,6 @@
 #include "stdafx.h"
 #include "App.h"
+#include "StackAllocator.h"
 
 App* AppInstance()
 {
@@ -175,14 +176,19 @@ void App::InitSurfaces()
 
 void App::InitRaytracePipelines()
 {
+	StackAllocator stackAlloc{ 4096 };
+
 	// Add any new materials to the list below
-	auto rtPipeline = std::make_unique<RaytraceMaterialPipeline>(m_d3dDevice.Get());
-	rtPipeline->BuildFromMaterial(m_d3dDevice.Get(), L"DefaultOpaue", DefaultOpaqueMaterial::GetRaytraceMaterialPipeline(m_d3dDevice.Get()));
-	rtPipeline->BuildFromMaterial(m_d3dDevice.Get(), L"DefaultMasked", DefaultMaskedMaterial::GetRaytraceMaterialPipeline(m_d3dDevice.Get()));
-	rtPipeline->BuildFromMaterial(m_d3dDevice.Get(), L"Untextured", UntexturedMaterial::GetRaytraceMaterialPipeline(m_d3dDevice.Get()));
+	std::vector<D3D12_STATE_SUBOBJECT> pipelineSubObjects;
+	size_t payloadIndex{};
+
+	auto rtPipeline = std::make_unique<RaytraceMaterialPipeline>(stackAlloc, pipelineSubObjects, payloadIndex, m_d3dDevice.Get());
+	rtPipeline->BuildFromMaterial<DefaultOpaqueMaterial>(stackAlloc, pipelineSubObjects, payloadIndex, m_d3dDevice.Get());
+	rtPipeline->BuildFromMaterial<DefaultMaskedMaterial>(stackAlloc, pipelineSubObjects, payloadIndex, m_d3dDevice.Get());
+	rtPipeline->BuildFromMaterial<UntexturedMaterial>(stackAlloc, pipelineSubObjects, payloadIndex, m_d3dDevice.Get());
 
 	// Finalize and build
-	rtPipeline->Commit(m_d3dDevice.Get());
+	rtPipeline->Commit(stackAlloc, pipelineSubObjects, m_d3dDevice.Get());
 
 	m_raytracePipeline = std::move(rtPipeline);
 }
