@@ -281,9 +281,11 @@ void RaytraceMaterialPipeline::BuildFromMaterial(
 
 
 	// Material Root Signature Subobject
+	auto rootSigComPtr = stackAlloc.Allocate<Microsoft::WRL::ComPtr<ID3D12RootSignature>>();
+	*rootSigComPtr = material.rootSignature;
 	D3D12_STATE_SUBOBJECT sharedRootSigSubObject{};
 	sharedRootSigSubObject.Type = D3D12_STATE_SUBOBJECT_TYPE_LOCAL_ROOT_SIGNATURE;
-	sharedRootSigSubObject.pDesc = material.rootSignature.Get();
+	sharedRootSigSubObject.pDesc = rootSigComPtr->Get();
 	subObjects.push_back(sharedRootSigSubObject);
 
 
@@ -358,7 +360,7 @@ DefaultOpaqueMaterial::DefaultOpaqueMaterial(std::string& name, const D3D12_GPU_
 Microsoft::WRL::ComPtr<ID3D12RootSignature> DefaultOpaqueMaterial::GetRaytraceRootSignature(ID3D12Device5* device)
 {
 	std::vector<D3D12_ROOT_PARAMETER> rootParams;
-	rootParams.reserve(7);
+	rootParams.reserve(5);
 
 	// Constant buffers
 	D3D12_ROOT_PARAMETER objectCBV{};
