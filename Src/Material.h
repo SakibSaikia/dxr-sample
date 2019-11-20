@@ -110,11 +110,11 @@ private:
 
 class DefaultMaskedMaterial : public Material
 {
+public:
 	static inline wchar_t* k_name = L"DefaultMasked";
 	static inline wchar_t* k_chs = L"mtl_masked.chs";
 	static inline wchar_t* k_ms = L"mtl_masked.miss";
 
-public:
 	DefaultMaskedMaterial(std::string& name, const D3D12_GPU_DESCRIPTOR_HANDLE srvHandle, const D3D12_GPU_DESCRIPTOR_HANDLE opacityMaskSrvHandle);
 	void BindConstants(
 		uint8_t* pData, 
