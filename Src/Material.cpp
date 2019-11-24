@@ -142,7 +142,7 @@ RaytraceMaterialPipeline::RaytraceMaterialPipeline(
 	shaderConfigSubObject.pDesc = shaderConfigDesc;
 	subObjects.push_back(shaderConfigSubObject);
 
-	payloadIndex = subObjects.size();
+	payloadIndex = subObjects.size() - 1;
 
 
 	// RGS - Payload Association
@@ -152,7 +152,7 @@ RaytraceMaterialPipeline::RaytraceMaterialPipeline(
 	auto shaderConfigAssociationDesc = stackAlloc.Allocate<D3D12_SUBOBJECT_TO_EXPORTS_ASSOCIATION>();
 	shaderConfigAssociationDesc->pExports = shaderExports;
 	shaderConfigAssociationDesc->NumExports = 1;
-	shaderConfigAssociationDesc->pSubobjectToAssociate = &subObjects.back();
+	shaderConfigAssociationDesc->pSubobjectToAssociate = &subObjects[payloadIndex];
 
 	D3D12_STATE_SUBOBJECT shaderConfigAssociationSubObject{};
 	shaderConfigAssociationSubObject.Type = D3D12_STATE_SUBOBJECT_TYPE_SUBOBJECT_TO_EXPORTS_ASSOCIATION;
