@@ -164,7 +164,7 @@ RaytraceMaterialPipeline::RaytraceMaterialPipeline(
 
 	D3D12_STATE_SUBOBJECT raygenRootSigSubObject{};
 	raygenRootSigSubObject.Type = D3D12_STATE_SUBOBJECT_TYPE_LOCAL_ROOT_SIGNATURE;
-	raygenRootSigSubObject.pDesc = m_raygenRootSignature.Get();
+	raygenRootSigSubObject.pDesc = m_raygenRootSignature.GetAddressOf();
 	subObjects.push_back(raygenRootSigSubObject);
 
 
@@ -285,7 +285,7 @@ void RaytraceMaterialPipeline::BuildFromMaterial(
 	*rootSigComPtr = material.rootSignature;
 	D3D12_STATE_SUBOBJECT sharedRootSigSubObject{};
 	sharedRootSigSubObject.Type = D3D12_STATE_SUBOBJECT_TYPE_LOCAL_ROOT_SIGNATURE;
-	sharedRootSigSubObject.pDesc = rootSigComPtr->Get();
+	sharedRootSigSubObject.pDesc = rootSigComPtr->GetAddressOf();
 	subObjects.push_back(sharedRootSigSubObject);
 
 
