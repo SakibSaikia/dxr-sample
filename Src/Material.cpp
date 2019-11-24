@@ -118,7 +118,7 @@ RaytraceMaterialPipeline::RaytraceMaterialPipeline(
 
 	auto rgsExportDesc = stackAlloc.Allocate<D3D12_EXPORT_DESC>(); rgsExportDesc;
 	rgsExportDesc->Name = stackAlloc.ConstructName(L"RayGenDefaultPass");
-	rgsExportDesc->ExportToRename = stackAlloc.ConstructName(L"RayGen");
+	rgsExportDesc->ExportToRename = stackAlloc.ConstructName(L"Raygen");
 
 	auto rgsLibDesc = stackAlloc.Allocate<D3D12_DXIL_LIBRARY_DESC>();
 	rgsLibDesc->DXILLibrary.pShaderBytecode = (*rgsByteCode)->GetBufferPointer();

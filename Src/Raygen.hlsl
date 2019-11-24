@@ -7,7 +7,7 @@ RaytracingAccelerationStructure SceneBVH : register(t0);
 RWTexture2D<float4> RTOutput : register(u0);
 
 [shader("raygeneration")]
-void Main()
+void Raygen()
 {
     // Pixel UV
     uint2 launchIndex = DispatchRaysIndex().xy;
