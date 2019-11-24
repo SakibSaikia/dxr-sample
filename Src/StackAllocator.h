@@ -22,7 +22,7 @@ public:
 		const uint8_t* alloc = m_data.get() + m_current;
 		m_current += alignedSize;
 
-		return (T*)(alloc);
+		return new((void*)alloc) T{};
 	}
 
 	wchar_t* ConstructName(const wchar_t* name, const size_t alignment = DEFAULT_ALIGNMENT)
