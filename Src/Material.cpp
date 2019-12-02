@@ -88,11 +88,19 @@ Microsoft::WRL::ComPtr<ID3D12RootSignature> RaytraceMaterialPipeline::GetRaygenR
 	rootParams.push_back(tlasSRV);
 
 	// UAV
-	D3D12_ROOT_PARAMETER outputUAV{};
-	outputUAV.ParameterType = D3D12_ROOT_PARAMETER_TYPE_UAV;
-	outputUAV.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
-	outputUAV.Descriptor.ShaderRegister = 0;
-	rootParams.push_back(outputUAV);
+	D3D12_DESCRIPTOR_RANGE uavRange{};
+	uavRange.BaseShaderRegister = 0;
+	uavRange.NumDescriptors = 1;
+	uavRange.RegisterSpace = 0;
+	uavRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_UAV;
+	uavRange.OffsetInDescriptorsFromTableStart = 0;
+
+	D3D12_ROOT_PARAMETER uav{};
+	uav.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+	uav.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+	uav.DescriptorTable.NumDescriptorRanges = 1;
+	uav.DescriptorTable.pDescriptorRanges = &uavRange;
+	rootParams.push_back(uav);
 
 	D3D12_ROOT_SIGNATURE_DESC rootDesc = {};
 	rootDesc.NumParameters = static_cast<UINT>(rootParams.size());
@@ -312,13 +320,15 @@ void RaytraceMaterialPipeline::Commit(const StackAllocator& stackAlloc, const st
 	psoDesc.NumSubobjects = static_cast<UINT>(subObjects.size());
 	psoDesc.pSubobjects = subObjects.data();
 
-	CHECK(device->CreateStateObject(
+	assert(SUCCEEDED(device->CreateStateObject(
 		&psoDesc,
 		IID_PPV_ARGS(m_pso.GetAddressOf())
-	));
+	)));
 
 	// Get the PSO properties
-	CHECK(m_pso->QueryInterface(IID_PPV_ARGS(m_psoProperties.GetAddressOf())));
+	assert(SUCCEEDED(
+		m_pso->QueryInterface(IID_PPV_ARGS(m_psoProperties.GetAddressOf()))
+	));
 }
 
 void RaytraceMaterialPipeline::Bind(
