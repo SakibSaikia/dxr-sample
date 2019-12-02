@@ -53,11 +53,11 @@ void App::InitBaseD3D()
 			}
 
 			// Check for SM6 support
-			D3D12_FEATURE_DATA_SHADER_MODEL shaderModelSupport{ D3D_SHADER_MODEL_6_0 };
+			D3D12_FEATURE_DATA_SHADER_MODEL shaderModelSupport{ D3D_SHADER_MODEL_6_3 };
 			if (FAILED(m_d3dDevice->CheckFeatureSupport(D3D12_FEATURE_SHADER_MODEL, &shaderModelSupport, sizeof(shaderModelSupport))))
 			{
 				m_d3dDevice.Reset();
-				OutputDebugString(L"ERROR: Failed to find SM6 support");
+				OutputDebugString(L"ERROR: Failed to find SM6_3 support");
 				exit(-1);
 			}
 
