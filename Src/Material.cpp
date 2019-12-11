@@ -111,6 +111,24 @@ Microsoft::WRL::ComPtr<ID3D12RootSignature> RaytraceMaterialPipeline::GetRaygenR
 	return CreateRootSignature(device, rootDesc);
 }
 
+const std::wstring RaytraceMaterialPipeline::GetShaderIdentifierName(const ShaderType shaderType, const wchar_t* materialName) const
+{
+	switch (shaderType)
+	{
+	case ShaderType::Raygen:
+		return std::wstring{ L"RayGenDefaultPass" };
+	case ShaderType::ClosestHit:
+		return std::wstring(L"ClosestHit") + materialName;
+	case ShaderType::Miss:
+		return std::wstring(L"Miss") + materialName;
+	case ShaderType::HitGroup:
+		return std::wstring(L"HitGroup") + materialName;
+	default:
+		assert(false);
+		return {};
+	}
+}
+
 RaytraceMaterialPipeline::RaytraceMaterialPipeline(
 	StackAllocator& stackAlloc, 
 	std::vector<D3D12_STATE_SUBOBJECT>& subObjects,
@@ -125,7 +143,7 @@ RaytraceMaterialPipeline::RaytraceMaterialPipeline(
 	*rgsByteCode = LoadBlob(k_rgs);
 
 	auto rgsExportDesc = stackAlloc.Allocate<D3D12_EXPORT_DESC>(); rgsExportDesc;
-	rgsExportDesc->Name = stackAlloc.ConstructName(L"RayGenDefaultPass");
+	rgsExportDesc->Name = stackAlloc.ConstructName(GetShaderIdentifierName(ShaderType::Raygen).c_str());
 	rgsExportDesc->ExportToRename = stackAlloc.ConstructName(L"Raygen");
 
 	auto rgsLibDesc = stackAlloc.Allocate<D3D12_DXIL_LIBRARY_DESC>();
@@ -205,14 +223,14 @@ RtMaterialPipeline RaytraceMaterialPipeline::GetMaterialPipeline(StackAllocator&
 
 	// Closest Hit Shader
 	auto chsExportDesc = stackAlloc.Allocate<D3D12_EXPORT_DESC>();
-	chsExportDesc->Name = stackAlloc.ConstructName((std::wstring(L"ClosestHit") + MaterialType::k_name).c_str());
+	chsExportDesc->Name = stackAlloc.ConstructName(GetShaderIdentifierName(ShaderType::ClosestHit, MaterialType::k_name).c_str());
 	chsExportDesc->ExportToRename = stackAlloc.ConstructName(L"ClosestHit");
 	rtPipeline.closestHitShader.exportDesc = chsExportDesc;
 	rtPipeline.closestHitShader.shaderBlob = LoadBlob(MaterialType::k_chs);
 
 	// Miss Shader
 	auto msExportDesc = stackAlloc.Allocate<D3D12_EXPORT_DESC>();
-	msExportDesc->Name = stackAlloc.ConstructName((std::wstring(L"Miss") + MaterialType::k_name).c_str());
+	msExportDesc->Name = stackAlloc.ConstructName(GetShaderIdentifierName(ShaderType::Miss, MaterialType::k_name).c_str());
 	msExportDesc->ExportToRename = stackAlloc.ConstructName(L"Miss");
 	rtPipeline.missShader.exportDesc = msExportDesc;
 	rtPipeline.missShader.shaderBlob = LoadBlob(MaterialType::k_ms);
@@ -220,7 +238,7 @@ RtMaterialPipeline RaytraceMaterialPipeline::GetMaterialPipeline(StackAllocator&
 	// Hit Group
 	auto hitGroup = stackAlloc.Allocate<D3D12_HIT_GROUP_DESC>();
 	hitGroup->ClosestHitShaderImport = chsExportDesc->Name;
-	hitGroup->HitGroupExport = stackAlloc.ConstructName((std::wstring(L"HitGroup") + MaterialType::k_name).c_str());
+	hitGroup->HitGroupExport = stackAlloc.ConstructName(GetShaderIdentifierName(ShaderType::HitGroup, MaterialType::k_name).c_str());
 	rtPipeline.hitGroupDesc = hitGroup;
 
 	// Root Signature
@@ -343,7 +361,7 @@ void RaytraceMaterialPipeline::Bind(
 	cmdList->SetPipelineState1(m_pso.Get());
 
 	// Raygen shader 
-	memcpy(pData, GetShaderIdentifier(k_rgs), D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
+	memcpy(pData, GetPSOShaderIdentifier(ShaderType::Raygen), D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
 
 	// Raygen shader bindings
 	auto* pRootDescriptors = reinterpret_cast<D3D12_GPU_VIRTUAL_ADDRESS*>(pData + D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
@@ -352,9 +370,9 @@ void RaytraceMaterialPipeline::Bind(
 	*(pRootDescriptors++) = outputUAV.ptr;
 }
 
-void* RaytraceMaterialPipeline::GetShaderIdentifier(const wchar_t* exportName) const
+void* RaytraceMaterialPipeline::GetPSOShaderIdentifier(const ShaderType shaderType, const wchar_t* materialName) const
 {
-	return m_psoProperties->GetShaderIdentifier(exportName);
+	return m_psoProperties->GetShaderIdentifier(GetShaderIdentifierName(shaderType, materialName).c_str());
 }
 
 Material::Material(const std::string& name) :
@@ -442,7 +460,7 @@ void DefaultOpaqueMaterial::BindConstants(
 {
 	// Entry 1 - Miss Program
 	{
-		memcpy(pData, pipeline->GetShaderIdentifier(k_ms), D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
+		memcpy(pData, pipeline->GetPSOShaderIdentifier(ShaderType::Miss, k_name), D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
 		auto* pRootDescriptors = reinterpret_cast<D3D12_GPU_VIRTUAL_ADDRESS*>(pData + D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
 		*(pRootDescriptors++) = objConstants;
 		*(pRootDescriptors++) = viewConstants;
@@ -457,7 +475,7 @@ void DefaultOpaqueMaterial::BindConstants(
 
 	// Entry 2 - Closest Hit Program / Hit Group
 	{
-		memcpy(pData, pipeline->GetShaderIdentifier(L"HitGroup"), D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
+		memcpy(pData, pipeline->GetPSOShaderIdentifier(ShaderType::HitGroup, k_name), D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
 		auto* pRootDescriptors = reinterpret_cast<D3D12_GPU_VIRTUAL_ADDRESS*>(pData + D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
 		*(pRootDescriptors++) = viewConstants;
 		*(pRootDescriptors++) = lightConstants;
@@ -549,7 +567,7 @@ void DefaultMaskedMaterial::BindConstants(
 {
 	// Entry 1 - Miss Program
 	{
-		memcpy(pData, pipeline->GetShaderIdentifier(k_ms), D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
+		memcpy(pData, pipeline->GetPSOShaderIdentifier(ShaderType::Miss, k_name), D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
 		auto* pRootDescriptors = reinterpret_cast<D3D12_GPU_VIRTUAL_ADDRESS*>(pData + D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
 		*(pRootDescriptors++) = objConstants;
 		*(pRootDescriptors++) = viewConstants;
@@ -564,7 +582,7 @@ void DefaultMaskedMaterial::BindConstants(
 
 	// Entry 2 - Closest Hit Program / Hit Group
 	{
-		memcpy(pData, pipeline->GetShaderIdentifier(L"HitGroup"), D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
+		memcpy(pData, pipeline->GetPSOShaderIdentifier(ShaderType::HitGroup, k_name), D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
 		auto* pRootDescriptors = reinterpret_cast<D3D12_GPU_VIRTUAL_ADDRESS*>(pData + D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
 		*(pRootDescriptors++) = viewConstants;
 		*(pRootDescriptors++) = lightConstants;
@@ -646,7 +664,7 @@ void UntexturedMaterial::BindConstants(
 {
 	// Entry 1 - Miss Program
 	{
-		memcpy(pData, pipeline->GetShaderIdentifier(k_ms), D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
+		memcpy(pData, pipeline->GetPSOShaderIdentifier(ShaderType::Miss, k_name), D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
 		auto* pRootDescriptors = reinterpret_cast<D3D12_GPU_VIRTUAL_ADDRESS*>(pData + D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
 		*(pRootDescriptors++) = objConstants;
 		*(pRootDescriptors++) = viewConstants;
@@ -661,7 +679,7 @@ void UntexturedMaterial::BindConstants(
 
 	// Entry 2 - Closest Hit Program / Hit Group
 	{
-		memcpy(pData, pipeline->GetShaderIdentifier(L"HitGroup"), D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
+		memcpy(pData, pipeline->GetPSOShaderIdentifier(ShaderType::HitGroup, k_name), D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
 		auto* pRootDescriptors = reinterpret_cast<D3D12_GPU_VIRTUAL_ADDRESS*>(pData + D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
 		*(pRootDescriptors++) = viewConstants;
 		*(pRootDescriptors++) = lightConstants;

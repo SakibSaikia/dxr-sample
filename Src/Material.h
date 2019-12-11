@@ -16,6 +16,14 @@ struct RtMaterialPipeline
 	Microsoft::WRL::ComPtr<ID3D12RootSignature> rootSignature;
 };
 
+enum class ShaderType
+{
+	Raygen,
+	ClosestHit,
+	Miss,
+	HitGroup
+};
+
 class RaytraceMaterialPipeline
 {
 public:
@@ -23,7 +31,8 @@ public:
 	template<class MaterialType> void BuildFromMaterial(class StackAllocator& stackAlloc, std::vector<D3D12_STATE_SUBOBJECT>& subObjects, size_t payloadIndex, ID3D12Device5* device);
 	void Commit(const class StackAllocator& stackAlloc, const std::vector<D3D12_STATE_SUBOBJECT>& subObjects, ID3D12Device5* device);
 	void Bind(ID3D12GraphicsCommandList4* cmdList, uint8_t* pData, D3D12_GPU_VIRTUAL_ADDRESS viewCBV, D3D12_GPU_DESCRIPTOR_HANDLE tlasSRV, D3D12_GPU_DESCRIPTOR_HANDLE outputUAV) const;
-	void* GetShaderIdentifier(const wchar_t* exportName) const;
+	const std::wstring GetShaderIdentifierName(const ShaderType shaderType, const wchar_t* materialName = nullptr) const;
+	void* GetPSOShaderIdentifier(const ShaderType shaderType, const wchar_t* materialName = nullptr) const;
 
 private:
 	Microsoft::WRL::ComPtr<ID3D12RootSignature> GetRaygenRootSignature(ID3D12Device5* device);
