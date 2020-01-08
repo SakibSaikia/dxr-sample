@@ -136,6 +136,11 @@ void App::InitSwapChain(HWND windowHandle)
 		nullptr,
 		m_swapChain.GetAddressOf()
 	));
+
+	for (auto bufferIdx = 0; bufferIdx < k_gfxBufferCount; bufferIdx++)
+	{
+		CHECK(m_swapChain->GetBuffer(bufferIdx, IID_PPV_ARGS(m_swapChainBuffers.at(bufferIdx).GetAddressOf())));
+	}
 }
 
 void App::InitSurfaces()
@@ -161,14 +166,14 @@ void App::InitSurfaces()
 		dxrOutResourceDesc.MipLevels = 1;
 		dxrOutResourceDesc.SampleDesc.Count = 1;
 
-		CHECK(m_d3dDevice->CreateCommittedResource(
+		assert(SUCCEEDED(m_d3dDevice->CreateCommittedResource(
 			&heapDesc,
 			D3D12_HEAP_FLAG_NONE,
 			&dxrOutResourceDesc,
 			D3D12_RESOURCE_STATE_UNORDERED_ACCESS,
 			nullptr,
 			IID_PPV_ARGS(m_dxrOutput.GetAddressOf())
-		));
+		)));
 
 
 		D3D12_UNORDERED_ACCESS_VIEW_DESC dxrOutUavDesc = {};
@@ -328,12 +333,13 @@ void App::Render()
 		}
 
 		// Transition DXR output from UAV to copy source
-		barriers[1].Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-		barriers[1].Transition.pResource = m_dxrOutput.Get();
-		barriers[1].Transition.StateBefore = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
-		barriers[1].Transition.StateAfter = D3D12_RESOURCE_STATE_COPY_SOURCE;
-		barriers[1].Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
-		m_gfxCmdList->ResourceBarrier(1, &barriers[1]);
+		D3D12_RESOURCE_BARRIER uavToCopyBarrier = {};
+		uavToCopyBarrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+		uavToCopyBarrier.Transition.pResource = m_dxrOutput.Get();
+		uavToCopyBarrier.Transition.StateBefore = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
+		uavToCopyBarrier.Transition.StateAfter = D3D12_RESOURCE_STATE_COPY_SOURCE;
+		uavToCopyBarrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+		m_gfxCmdList->ResourceBarrier(1, &uavToCopyBarrier);
 
 		// Blit to back buffer
 		m_gfxCmdList->CopyResource(
@@ -342,12 +348,13 @@ void App::Render()
 		);
 
 		// Transition back buffer from copy dest to present
-		barriers[0].Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-		barriers[0].Transition.pResource = m_swapChainBuffers.at(m_gfxBufferIndex).Get();
-		barriers[0].Transition.StateBefore = D3D12_RESOURCE_STATE_COPY_DEST;
-		barriers[0].Transition.StateAfter = D3D12_RESOURCE_STATE_PRESENT;
-		barriers[0].Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
-		m_gfxCmdList->ResourceBarrier(1, &barriers[0]);
+		D3D12_RESOURCE_BARRIER copyToPresentBarrier = {};
+		copyToPresentBarrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+		copyToPresentBarrier.Transition.pResource = m_swapChainBuffers.at(m_gfxBufferIndex).Get();
+		copyToPresentBarrier.Transition.StateBefore = D3D12_RESOURCE_STATE_COPY_DEST;
+		copyToPresentBarrier.Transition.StateAfter = D3D12_RESOURCE_STATE_PRESENT;
+		copyToPresentBarrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+		m_gfxCmdList->ResourceBarrier(1, &copyToPresentBarrier);
 	}
 
 	// Execute

@@ -142,7 +142,7 @@ RaytraceMaterialPipeline::RaytraceMaterialPipeline(
 	auto rgsByteCode = stackAlloc.Allocate<Microsoft::WRL::ComPtr<ID3DBlob>>();
 	*rgsByteCode = LoadBlob(k_rgs);
 
-	auto rgsExportDesc = stackAlloc.Allocate<D3D12_EXPORT_DESC>(); rgsExportDesc;
+	auto rgsExportDesc = stackAlloc.Allocate<D3D12_EXPORT_DESC>();
 	rgsExportDesc->Name = stackAlloc.ConstructName(GetShaderIdentifierName(ShaderType::Raygen).c_str());
 	rgsExportDesc->ExportToRename = stackAlloc.ConstructName(L"Raygen");
 

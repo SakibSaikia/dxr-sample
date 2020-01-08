@@ -387,7 +387,8 @@ void Scene::CreateTLAS(
 void Scene::CreateShaderBindingTable(ID3D12Device5* device)
 {
 	const size_t numEntities = m_meshEntities.size();
-	const size_t sbtSize = k_shaderRecordSize * (1 + 2 * numEntities); // 1 for RGS. CHS and MS params are unique per material
+	size_t sbtSize = k_shaderRecordSize * (1 + 2 * numEntities); // 1 for RGS. CHS and MS params are unique per material
+	sbtSize = (sbtSize + (D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT - 1)) & ~(D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT - 1);
 
 	D3D12_RESOURCE_DESC resDesc = {};
 	resDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
