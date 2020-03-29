@@ -292,9 +292,10 @@ void RaytraceMaterialPipeline::BuildFromMaterial(
 
 
 	// Payload Association Subobject
-	auto shaderExports = stackAlloc.Allocate<const wchar_t*>(2);
+	auto shaderExports = stackAlloc.Allocate<const wchar_t*>(3);
 	shaderExports[0] = pMaterial->missShader.exportDesc->Name;
-	shaderExports[1] = pMaterial->hitGroupDesc->HitGroupExport;
+	shaderExports[1] = pMaterial->closestHitShader.exportDesc->Name;
+	shaderExports[2] = pMaterial->hitGroupDesc->HitGroupExport;
 
 	auto shaderConfigAssociationDesc = stackAlloc.Allocate<D3D12_SUBOBJECT_TO_EXPORTS_ASSOCIATION>();
 	shaderConfigAssociationDesc->pExports = shaderExports;
