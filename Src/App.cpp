@@ -170,7 +170,7 @@ void App::InitSurfaces()
 			&heapDesc,
 			D3D12_HEAP_FLAG_NONE,
 			&dxrOutResourceDesc,
-			D3D12_RESOURCE_STATE_UNORDERED_ACCESS,
+			D3D12_RESOURCE_STATE_COPY_SOURCE,
 			nullptr,
 			IID_PPV_ARGS(m_dxrOutput.GetAddressOf())
 		)));
