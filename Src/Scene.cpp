@@ -169,14 +169,17 @@ void Scene::LoadMaterials(
 			size_t offsetInHeap = mtlConstantsHeap->GetAlloc(cbDesc.Width, k_constantBufferAlignment);
 
 			Microsoft::WRL::ComPtr<ID3D12Resource> mtlCb;
-			CHECK(device->CreatePlacedResource(
+			HRESULT hr = device->CreatePlacedResource(
 				mtlConstantsHeap->GetHeap(),
 				offsetInHeap,
 				&cbDesc,
 				D3D12_RESOURCE_STATE_COPY_DEST,
 				nullptr,
 				IID_PPV_ARGS(mtlCb.GetAddressOf())
-			));
+			);
+
+			assert(SUCCEEDED(hr));
+			mtlCb->SetName(L"mtl_constant_buffer_untextured");
 
 			// copy constant data to upload buffer
 			uint64_t cbSizeInBytes;
@@ -322,14 +325,17 @@ void Scene::CreateTLAS(
 	auto offsetInHeap = scratchHeap->GetAlloc(scratchBufDesc.Width);
 
 	ID3D12Resource* scratchBuffer;
-	CHECK(device->CreatePlacedResource(
+	HRESULT hr = device->CreatePlacedResource(
 		scratchHeap->GetHeap(),
 		offsetInHeap,
 		&scratchBufDesc,
 		D3D12_RESOURCE_STATE_UNORDERED_ACCESS,
 		nullptr,
 		IID_PPV_ARGS(&scratchBuffer)
-	));
+	);
+
+	assert(SUCCEEDED(hr));
+	scratchBuffer->SetName(L"tlas_scratch_buffer");
 
 	// Create TLAS buffer
 	D3D12_RESOURCE_DESC tlasBufDesc = {};
@@ -346,14 +352,17 @@ void Scene::CreateTLAS(
 
 	offsetInHeap = resourceHeap->GetAlloc(tlasBufDesc.Width);
 
-	CHECK(device->CreatePlacedResource(
+	hr = device->CreatePlacedResource(
 		resourceHeap->GetHeap(),
 		offsetInHeap,
 		&tlasBufDesc,
 		D3D12_RESOURCE_STATE_RAYTRACING_ACCELERATION_STRUCTURE,
 		nullptr,
 		IID_PPV_ARGS(m_tlasBuffer.GetAddressOf())
-	));
+	);
+
+	assert(SUCCEEDED(hr));
+	m_tlasBuffer->SetName(L"tlas_buffer");
 
 	// Now, build the top level acceleration structure
 	D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_DESC buildDesc{};
@@ -406,17 +415,21 @@ void Scene::CreateShaderBindingTable(ID3D12Device5* device)
 	heapDesc.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
 
 	// Create a shader binding table
-	CHECK(device->CreateCommittedResource(
+	HRESULT hr = device->CreateCommittedResource(
 		&heapDesc,
 		D3D12_HEAP_FLAG_NONE,
 		&resDesc,
 		D3D12_RESOURCE_STATE_GENERIC_READ,
 		nullptr,
 		IID_PPV_ARGS(m_shaderBindingTable.GetAddressOf())
-	));
+	);
+
+	assert(SUCCEEDED(hr));
+	m_shaderBindingTable->SetName(L"shader_binding_table");
 
 	D3D12_RANGE readRange = { 0 };
-	CHECK(m_shaderBindingTable->Map(0, &readRange, &reinterpret_cast<void*>(m_sbtPtr)));
+	hr = m_shaderBindingTable->Map(0, &readRange, &reinterpret_cast<void*>(m_sbtPtr));
+	assert(SUCCEEDED(hr));
 }
 
 void Scene::InitLights(ID3D12Device5* device)
@@ -475,14 +488,17 @@ void Scene::InitResources(
 		heapDesc.Type = D3D12_HEAP_TYPE_UPLOAD; // must be CPU accessible
 		heapDesc.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN; // GPU or system mem
 
-		CHECK(device->CreateCommittedResource(
+		HRESULT hr = device->CreateCommittedResource(
 			&heapDesc,
 			D3D12_HEAP_FLAG_NONE,
 			&resDesc,
 			D3D12_RESOURCE_STATE_GENERIC_READ,
 			nullptr,
 			IID_PPV_ARGS(m_objectConstantBuffer.GetAddressOf())
-		));
+		);
+
+		assert(SUCCEEDED(hr));
+		m_objectConstantBuffer->SetName(L"object_constant_buffer");
 
 		// Get ptr to mapped resource
 		auto** ptr = reinterpret_cast<void**>(&m_objectConstantBufferPtr);
@@ -507,14 +523,17 @@ void Scene::InitResources(
 		heapDesc.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN; // GPU or system mem
 
 
-		CHECK(device->CreateCommittedResource(
+		HRESULT hr = device->CreateCommittedResource(
 			&heapDesc,
 			D3D12_HEAP_FLAG_NONE,
 			&resDesc,
 			D3D12_RESOURCE_STATE_GENERIC_READ,
 			nullptr,
 			IID_PPV_ARGS(m_lightConstantBuffer.GetAddressOf())
-		));
+		);
+
+		assert(SUCCEEDED(hr));
+		m_lightConstantBuffer->SetName(L"light_constant_buffer");
 
 		// Get ptr to mapped resource
 		auto** ptr = reinterpret_cast<void**>(&m_lightConstantBufferPtr);
@@ -596,7 +615,7 @@ void Scene::Render(
 	desc.MissShaderTable.StrideInBytes = 2 * k_shaderRecordSize; // miss and hit shaders are interleaved
 
 	desc.HitGroupTable.StartAddress = desc.MissShaderTable.StartAddress + k_shaderRecordSize;
-	desc.HitGroupTable.SizeInBytes = 2 * k_shaderRecordSize * m_meshEntities.size();
+	desc.HitGroupTable.SizeInBytes = 2 * k_shaderRecordSize * m_meshEntities.size() - k_shaderRecordSize;
 	desc.HitGroupTable.StrideInBytes = 2 * k_shaderRecordSize; // miss and hit shaders are interleaved
 
 	desc.Width = k_screenWidth;

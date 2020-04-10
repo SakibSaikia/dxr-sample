@@ -28,14 +28,17 @@ void UploadBuffer::Init(ID3D12Device5* device, const size_t sizeInBytes)
 	resourceDesc.SampleDesc.Count = 1;
 	resourceDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
 
-	CHECK(device->CreateCommittedResource(
+	HRESULT hr = device->CreateCommittedResource(
 		&heapDesc,
 		D3D12_HEAP_FLAG_NONE,
 		&resourceDesc,
 		D3D12_RESOURCE_STATE_GENERIC_READ, // required starting state for upload heaps
 		nullptr,
 		IID_PPV_ARGS(m_buffer.GetAddressOf())
-	));
+	);
+
+	assert(SUCCEEDED(hr));
+	m_buffer->SetName(L"upload_buffer");
 
 	// keep it mapped
 	m_buffer->Map(0, nullptr, reinterpret_cast<void**>(&m_dataPtr));

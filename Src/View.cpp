@@ -28,14 +28,17 @@ void View::Init(ID3D12Device5* device, size_t bufferCount, const size_t width, c
 		heapDesc.Type = D3D12_HEAP_TYPE_UPLOAD;
 		heapDesc.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
 
-		CHECK(device->CreateCommittedResource(
+		HRESULT hr = device->CreateCommittedResource(
 			&heapDesc,
 			D3D12_HEAP_FLAG_NONE,
 			&resDesc,
 			D3D12_RESOURCE_STATE_GENERIC_READ,
 			nullptr,
 			IID_PPV_ARGS(m_cbuffer.GetAddressOf())
-		));
+		);
+
+		assert(SUCCEEDED(hr));
+		m_cbuffer->SetName(L"view_constant_buffer");
 
 		// Get ptr to mapped resource
 		auto** ptr = reinterpret_cast<void**>(&m_cbufferPtr);

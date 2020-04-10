@@ -47,14 +47,17 @@ void StaticMesh::CreateVertexBuffer(
 
 	const auto offsetInHeap = resourceHeap->GetAlloc(vbDesc.Width);
 
-	CHECK(device->CreatePlacedResource(
+	HRESULT hr = device->CreatePlacedResource(
 		resourceHeap->GetHeap(),
 		offsetInHeap,
 		&vbDesc,
 		D3D12_RESOURCE_STATE_COPY_DEST,
 		nullptr,
 		IID_PPV_ARGS(m_vertexBuffer.GetAddressOf())
-	));
+	);
+
+	assert(SUCCEEDED(hr));
+	m_vertexBuffer->SetName(L"vertex_buffer");
 
 	// copy vertex data to upload buffer
 	uint64_t vbSizeInBytes;
@@ -128,14 +131,17 @@ void StaticMesh::CreateIndexBuffer(
 
 	const auto offsetInHeap = resourceHeap->GetAlloc(ibDesc.Width);
 
-	CHECK(device->CreatePlacedResource(
+	HRESULT hr = device->CreatePlacedResource(
 		resourceHeap->GetHeap(),
 		offsetInHeap,
 		&ibDesc,
 		D3D12_RESOURCE_STATE_COPY_DEST,
 		nullptr,
 		IID_PPV_ARGS(m_indexBuffer.GetAddressOf())
-	));
+	);
+
+	assert(SUCCEEDED(hr));
+	m_indexBuffer->SetName(L"index_buffer");
 
 	// copy index data to upload buffer
 	uint64_t ibSizeInBytes;
@@ -229,14 +235,17 @@ void StaticMesh::CreateBLAS(ID3D12Device5* device, ID3D12GraphicsCommandList4* c
 	auto offsetInHeap = scratchHeap->GetAlloc(scratchBufDesc.Width);
 
 	ID3D12Resource* scratchBuffer;
-	CHECK(device->CreatePlacedResource(
+	HRESULT hr = device->CreatePlacedResource(
 		scratchHeap->GetHeap(),
 		offsetInHeap,
 		&scratchBufDesc,
 		D3D12_RESOURCE_STATE_UNORDERED_ACCESS,
 		nullptr,
 		IID_PPV_ARGS(&scratchBuffer)
-	));
+	);
+
+	assert(SUCCEEDED(hr));
+	scratchBuffer->SetName(L"blas_scratch_buffer");
 
 	// Create BLAS buffer
 	D3D12_RESOURCE_DESC blasBufDesc = {};
@@ -253,14 +262,17 @@ void StaticMesh::CreateBLAS(ID3D12Device5* device, ID3D12GraphicsCommandList4* c
 
 	offsetInHeap = resourceHeap->GetAlloc(blasBufDesc.Width);
 
-	CHECK(device->CreatePlacedResource(
+	hr = device->CreatePlacedResource(
 		resourceHeap->GetHeap(),
 		offsetInHeap,
 		&blasBufDesc,
 		D3D12_RESOURCE_STATE_RAYTRACING_ACCELERATION_STRUCTURE,
 		nullptr,
 		IID_PPV_ARGS(m_blasBuffer.GetAddressOf())
-	));
+	);
+
+	assert(SUCCEEDED(hr));
+	m_blasBuffer->SetName(L"blas_buffer");
 
 	// Now, build the bottom level acceleration structure
 	D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_DESC buildDesc{};

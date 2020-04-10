@@ -175,6 +175,8 @@ void App::InitSurfaces()
 			IID_PPV_ARGS(m_dxrOutput.GetAddressOf())
 		)));
 
+		m_dxrOutput->SetName(L"output_uav");
+
 
 		D3D12_UNORDERED_ACCESS_VIEW_DESC dxrOutUavDesc = {};
 		dxrOutUavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
