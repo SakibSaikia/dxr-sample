@@ -339,15 +339,15 @@ void RaytraceMaterialPipeline::Commit(const StackAllocator& stackAlloc, const st
 	psoDesc.NumSubobjects = static_cast<UINT>(subObjects.size());
 	psoDesc.pSubobjects = subObjects.data();
 
-	assert(SUCCEEDED(device->CreateStateObject(
+	HRESULT hr = device->CreateStateObject(
 		&psoDesc,
 		IID_PPV_ARGS(m_pso.GetAddressOf())
-	)));
+	);
+	assert(SUCCEEDED(hr));
 
 	// Get the PSO properties
-	assert(SUCCEEDED(
-		m_pso->QueryInterface(IID_PPV_ARGS(m_psoProperties.GetAddressOf()))
-	));
+	hr = m_pso->QueryInterface(IID_PPV_ARGS(m_psoProperties.GetAddressOf()));
+	assert(SUCCEEDED(hr));
 }
 
 void RaytraceMaterialPipeline::Bind(

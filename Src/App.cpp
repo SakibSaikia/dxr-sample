@@ -174,14 +174,15 @@ void App::InitSurfaces()
 		dxrOutResourceDesc.MipLevels = 1;
 		dxrOutResourceDesc.SampleDesc.Count = 1;
 
-		assert(SUCCEEDED(m_d3dDevice->CreateCommittedResource(
+		HRESULT hr = m_d3dDevice->CreateCommittedResource(
 			&heapDesc,
 			D3D12_HEAP_FLAG_NONE,
 			&dxrOutResourceDesc,
 			D3D12_RESOURCE_STATE_COPY_SOURCE,
 			nullptr,
 			IID_PPV_ARGS(m_dxrOutput.GetAddressOf())
-		)));
+		);
+		assert(SUCCEEDED(hr));
 
 		m_dxrOutput->SetName(L"output_uav");
 
