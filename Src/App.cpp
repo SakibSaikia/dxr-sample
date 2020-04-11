@@ -128,19 +128,27 @@ void App::InitSwapChain(HWND windowHandle)
 	swapChainDesc.BufferCount = k_gfxBufferCount;
 	swapChainDesc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
 
-	CHECK(m_dxgiFactory->CreateSwapChainForHwnd(
+	Microsoft::WRL::ComPtr<IDXGISwapChain1> swapChain;
+	HRESULT hr = m_dxgiFactory->CreateSwapChainForHwnd(
 		m_cmdQueue.Get(),
 		windowHandle,
 		&swapChainDesc,
 		nullptr, 
 		nullptr,
-		m_swapChain.GetAddressOf()
-	));
+		swapChain.GetAddressOf()
+	);
+	assert(SUCCEEDED(hr));
+
+	hr = swapChain->QueryInterface(IID_PPV_ARGS(m_swapChain.GetAddressOf()));
+	assert(SUCCEEDED(hr));
 
 	for (auto bufferIdx = 0; bufferIdx < k_gfxBufferCount; bufferIdx++)
 	{
-		CHECK(m_swapChain->GetBuffer(bufferIdx, IID_PPV_ARGS(m_swapChainBuffers.at(bufferIdx).GetAddressOf())));
+		hr = m_swapChain->GetBuffer(bufferIdx, IID_PPV_ARGS(m_swapChainBuffers.at(bufferIdx).GetAddressOf()));
+		assert(SUCCEEDED(hr));
 	}
+
+	m_gfxBufferIndex = m_swapChain->GetCurrentBackBufferIndex();
 }
 
 void App::InitSurfaces()
@@ -367,7 +375,13 @@ void App::Render()
 	// Present
 	{
 		PIXScopedEvent(m_cmdQueue.Get(), 0, L"present");
-		m_swapChain->Present(1, 0);
+		HRESULT hr = m_swapChain->Present(1, 0);
+		if (FAILED(hr))
+		{
+			hr = m_d3dDevice->GetDeviceRemovedReason();
+			assert(SUCCEEDED(hr));
+		}
+
 	}
 
 	// Swap buffers
@@ -414,13 +428,16 @@ void App::AdvanceGfxFrame()
 	m_cmdQueue->Signal(m_gfxFence.Get(), currentFenceValue);
 
 	// Cycle to next buffer index
-	m_gfxBufferIndex = (m_gfxBufferIndex + 1) % k_gfxBufferCount;
+	m_gfxBufferIndex = m_swapChain->GetCurrentBackBufferIndex();;
 
 	// If the buffer that was swapped in hasn't finished rendering on the GPU (from a previous submit), then wait!
 	if (m_gfxFence->GetCompletedValue() < m_gfxFenceValues.at(m_gfxBufferIndex))
 	{
 		PIXBeginEvent(0, L"gfx_wait_on_previous_frame");
-		m_gfxFence->SetEventOnCompletion(m_gfxFenceValues.at(m_gfxBufferIndex), m_gfxFenceEvent);
+
+		HRESULT hr = m_gfxFence->SetEventOnCompletion(m_gfxFenceValues.at(m_gfxBufferIndex), m_gfxFenceEvent);
+		assert(SUCCEEDED(hr));
+
 		WaitForSingleObjectEx(m_gfxFenceEvent, INFINITE, FALSE);
 	}
 

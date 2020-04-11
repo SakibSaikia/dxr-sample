@@ -56,7 +56,7 @@ private:
 	HANDLE m_gfxFenceEvent;
 
 	// Swap chain
-	Microsoft::WRL::ComPtr<IDXGISwapChain1> m_swapChain;
+	Microsoft::WRL::ComPtr<IDXGISwapChain3> m_swapChain;
 	std::array<Microsoft::WRL::ComPtr<ID3D12Resource>, k_gfxBufferCount> m_swapChainBuffers;
 
 	// Output UAV
