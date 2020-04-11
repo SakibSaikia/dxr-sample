@@ -22,6 +22,8 @@ void App::InitBaseD3D()
 	// DXGI
 	CHECK(CreateDXGIFactory1(IID_PPV_ARGS(m_dxgiFactory.GetAddressOf())));
 
+	DXGIGetDebugInterface1(0, IID_PPV_ARGS(m_pixAnalysis.GetAddressOf()));
+
 	// Enumerate adapters and create device
 	uint32_t i = 0;
 	Microsoft::WRL::ComPtr<IDXGIAdapter> adapter;
@@ -377,6 +379,7 @@ void App::Render()
 	{
 		PIXScopedEvent(m_cmdQueue.Get(), 0, L"present");
 		HRESULT hr = m_swapChain->Present(1, 0);
+
 		if (FAILED(hr))
 		{
 			hr = m_d3dDevice->GetDeviceRemovedReason();

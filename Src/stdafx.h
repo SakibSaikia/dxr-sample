@@ -35,4 +35,5 @@
 #include <DirectXMath.h>
 #include <DirectXCollision.h>
 #include <pix3.h>
+#include <DXProgrammableCapture.h>
 #include <ResourceUploadBatch.h>

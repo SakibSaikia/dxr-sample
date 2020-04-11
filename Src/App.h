@@ -46,6 +46,8 @@ private:
 	Microsoft::WRL::ComPtr<IDXGIFactory4> m_dxgiFactory;
 	Microsoft::WRL::ComPtr<ID3D12Device5> m_d3dDevice;
 
+	Microsoft::WRL::ComPtr<IDXGraphicsAnalysis> m_pixAnalysis;
+
 	// Command objects
 	Microsoft::WRL::ComPtr<ID3D12CommandQueue> m_cmdQueue;
 	std::array<Microsoft::WRL::ComPtr<ID3D12CommandAllocator>, k_gfxBufferCount> m_gfxCmdAllocators;
