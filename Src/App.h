@@ -34,6 +34,8 @@ private:
 
 	D3D12_CPU_DESCRIPTOR_HANDLE GetSrvUavDescriptorCPU(SrvUav::Id srvId) const;
 	D3D12_GPU_DESCRIPTOR_HANDLE GetSrvUavDescriptorGPU(SrvUav::Id srvId) const;
+	D3D12_CPU_DESCRIPTOR_HANDLE GetRtvDescriptorCPU(RTV::Id rtvId) const;
+	D3D12_GPU_DESCRIPTOR_HANDLE GetRtvDescriptorGPU(RTV::Id rtvId) const;
 
 	void AdvanceGfxFrame();
 
@@ -66,6 +68,7 @@ private:
 
 	// Descriptor heaps
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_cbvSrvUavHeap;
+	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_rtvHeap;
 
 	// Resource heaps
 	ResourceHeap m_geometryDataHeap;

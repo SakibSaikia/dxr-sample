@@ -38,15 +38,17 @@ void App::InitBaseD3D()
 
 		if (desc.VendorId == 0x10DE /*NV*/)
 		{
-			CHECK(D3D12CreateDevice(
+			HRESULT hr = D3D12CreateDevice(
 				adapter.Get(),
 				D3D_FEATURE_LEVEL_12_1,
 				IID_PPV_ARGS(m_d3dDevice.GetAddressOf())
-			));
+			);
+			assert(SUCCEEDED(hr));
 
 			// Check for ray tracing support
 			D3D12_FEATURE_DATA_D3D12_OPTIONS5 features{};
-			CHECK(m_d3dDevice->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS5, &features, sizeof(features)));
+			hr = m_d3dDevice->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS5, &features, sizeof(features));
+			assert(SUCCEEDED(hr));
 			if (features.RaytracingTier < D3D12_RAYTRACING_TIER_1_0)
 			{
 				m_d3dDevice.Reset();
@@ -148,6 +150,9 @@ void App::InitSwapChain(HWND windowHandle)
 	{
 		hr = m_swapChain->GetBuffer(bufferIdx, IID_PPV_ARGS(m_swapChainBuffers.at(bufferIdx).GetAddressOf()));
 		assert(SUCCEEDED(hr));
+
+		const D3D12_CPU_DESCRIPTOR_HANDLE rtvDescriptor = GetRtvDescriptorCPU(static_cast<RTV::Id>(RTV::Id::SwapChain + bufferIdx));
+		m_d3dDevice->CreateRenderTargetView(m_swapChainBuffers.at(bufferIdx).Get(), nullptr, rtvDescriptor);
 	}
 
 	m_gfxBufferIndex = m_swapChain->GetCurrentBackBufferIndex();
@@ -227,7 +232,16 @@ void App::InitDescriptorHeaps()
 	cbvSrvUavHeapDesc.NumDescriptors = SrvUav::Count;
 	cbvSrvUavHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
 	cbvSrvUavHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
-	CHECK(m_d3dDevice->CreateDescriptorHeap(&cbvSrvUavHeapDesc, IID_PPV_ARGS(m_cbvSrvUavHeap.GetAddressOf())));
+	HRESULT hr = m_d3dDevice->CreateDescriptorHeap(&cbvSrvUavHeapDesc, IID_PPV_ARGS(m_cbvSrvUavHeap.GetAddressOf()));
+	assert(SUCCEEDED(hr));
+
+	// rtv heap
+	D3D12_DESCRIPTOR_HEAP_DESC rtvHeapDesc = {};
+	rtvHeapDesc.NumDescriptors = 2;
+	rtvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
+	rtvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
+	hr = m_d3dDevice->CreateDescriptorHeap(&rtvHeapDesc, IID_PPV_ARGS(m_rtvHeap.GetAddressOf()));
+	assert(SUCCEEDED(hr));
 }
 
 void App::InitUploadBuffer()
@@ -271,8 +285,8 @@ void App::Init(HWND windowHandle)
 {
 	InitBaseD3D();
 	InitCommandObjects();
-	InitSwapChain(windowHandle);
 	InitDescriptorHeaps();
+	InitSwapChain(windowHandle);
 	InitSurfaces();
 	InitUploadBuffer();
 	InitResourceHeaps();
@@ -403,6 +417,20 @@ D3D12_GPU_DESCRIPTOR_HANDLE App::GetSrvUavDescriptorGPU(SrvUav::Id srvId) const
 {
 	D3D12_GPU_DESCRIPTOR_HANDLE hnd;
 	hnd.ptr = m_cbvSrvUavHeap->GetGPUDescriptorHandleForHeapStart().ptr + srvId * m_cbvSrvUavDescriptorSize;
+	return hnd;
+}
+
+D3D12_CPU_DESCRIPTOR_HANDLE App::GetRtvDescriptorCPU(RTV::Id rtvId) const
+{
+	D3D12_CPU_DESCRIPTOR_HANDLE hnd;
+	hnd.ptr = m_rtvHeap->GetCPUDescriptorHandleForHeapStart().ptr + rtvId * m_rtvDescriptorSize;
+	return hnd;
+}
+
+D3D12_GPU_DESCRIPTOR_HANDLE App::GetRtvDescriptorGPU(RTV::Id rtvId) const
+{
+	D3D12_GPU_DESCRIPTOR_HANDLE hnd;
+	hnd.ptr = m_rtvHeap->GetGPUDescriptorHandleForHeapStart().ptr + rtvId * m_rtvDescriptorSize;
 	return hnd;
 }
 
