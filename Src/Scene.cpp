@@ -473,6 +473,7 @@ void Scene::InitResources(
 	}
 
 	// Object Constant Buffer
+	if(!m_meshEntities.empty())
 	{
 		D3D12_RESOURCE_DESC resDesc = {};
 		resDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
@@ -556,8 +557,11 @@ void Scene::UpdateRenderResources(uint32_t bufferIndex)
 	}
 
 	// light(s)
-	LightConstants* l = m_lightConstantBufferPtr + bufferIndex;
-	m_light->FillConstants(l);
+	if (m_light)
+	{
+		LightConstants* l = m_lightConstantBufferPtr + bufferIndex;
+		m_light->FillConstants(l);
+	}
 }
 
 void Scene::Render(
