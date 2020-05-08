@@ -9,7 +9,7 @@ public:
 
 	~UploadBuffer();
 	void Init(ID3D12Device5* device, const size_t sizeInBytes);
-	Alloc GetAlloc(const size_t sizeInBytes, const size_t alignment = 0);
+	Alloc GetAlloc(const size_t sizeInBytes, const size_t alignment = 1);
 	ID3D12Resource* GetResource() const;
 	void Flush();
 
