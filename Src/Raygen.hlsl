@@ -32,7 +32,7 @@ void Raygen()
     payload.color = float3(1.f, 0.f, 0.f);
     payload.hitT = 0.f;
 
-    TraceRay(SceneBVH, RAY_FLAG_NONE, 0xFF, 0, 0, 0, ray, payload);
+    TraceRay(SceneBVH, RAY_FLAG_NONE, 0xFF, 0, 1, 0, ray, payload);
 
     RTOutput[launchIndex.xy] = float4(payload.color, 1.f);
 }

@@ -96,6 +96,10 @@ private:
 	WPARAM m_buttonState = {};
 	POINT m_currentMousePos = { 0, 0 };
 	POINT m_lastMousePos = { 0, 0 };
+
+	// Programmatic capture
+	bool m_pixAttached;
+	Microsoft::WRL::ComPtr<IDXGraphicsAnalysis> m_pixCapture;
 };
 
 // Singleton

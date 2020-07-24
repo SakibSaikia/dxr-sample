@@ -83,6 +83,9 @@ void App::InitBaseD3D()
 	m_dsvDescriptorSize = m_d3dDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_DSV);
 	m_cbvSrvUavDescriptorSize = m_d3dDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 	m_samplerDescriptorSize = m_d3dDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER);
+
+	hr = DXGIGetDebugInterface1(0, IID_PPV_ARGS(m_pixCapture.GetAddressOf()));
+	m_pixAttached = SUCCEEDED(hr);
 }
 
 void App::InitCommandObjects()
@@ -318,6 +321,11 @@ void App::Update(float dt)
 
 void App::Render()
 {
+	if (m_pixAttached)
+	{
+		m_pixCapture->BeginCapture();
+	}
+
 	// Reset command list
 	m_gfxCmdAllocators.at(m_gfxBufferIndex)->Reset();
 	m_gfxCmdList->Reset(m_gfxCmdAllocators.at(m_gfxBufferIndex).Get(), nullptr);
@@ -393,6 +401,11 @@ void App::Render()
 	{
 		PIXScopedEvent(m_cmdQueue.Get(), 0, L"present");
 		HRESULT hr = m_swapChain->Present(1, 0);
+
+		if (m_pixAttached)
+		{
+			m_pixCapture->EndCapture();
+		}
 
 		if (FAILED(hr))
 		{
